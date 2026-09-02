@@ -106,6 +106,21 @@ rm -rf /jffs/addons/tailcat /jffs/scripts/tailcat /jffs/addons/amtm/tailcat.mod
 
 ---
 
+## 📝 Changelog
+
+### [v1.0.0] - 2026-09-02
+* **🆘 Instant Remote Shell (Passwordless):** Ephemeral WireGuard shell powered by TailCat's native SSH server with capability-based token access (no passwords or SSH keys to configure).
+* **📥 Encrypted File DropBox:** Write-only peer-to-peer file drop receiver into `/tmp/tailcat-inbox`.
+* **📤 SFTP File Share:** Read-only directory serving with native SFTP path confinement.
+* **🌐 WebGUI Remote Port Forwarder:** Securely forward local router management WebUI (port 8443).
+* **⏱️ Automated 30-Minute Session Auto-Kill:** Background supervisor process automatically tears down active sessions when timer expires.
+* **📦 Universal ARMv7 & ARM64 Architecture Support:** Automatically fetches official `tailscale/tailcat` `v0.4.0` static binaries for all Asuswrt-Merlin routers.
+* **🛠️ amtm Integration:** Fully registered into the `amtm` menu hierarchy.
+
+See [CHANGELOG.md](./CHANGELOG.md) for full history.
+
+---
+
 ## 📜 License
 
 GPL-3.0 License.
