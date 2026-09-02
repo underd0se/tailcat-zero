@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.1] - 2026-09-02
+
+### 🎨 High-Contrast Terminal Color Refinements
+
+* **🎨 Enhanced Dark-Theme Readability:** Upgraded Chat Invite Snippets to high-contrast crisp white (`C_WHITE`) and cyan borders (`C_CYAN`) with highlighted yellow commands (`C_YELLOW`), ensuring pristine visibility across dark-background terminals (Ghostty, iTerm2, macOS Terminal).
+
+---
+
 ## [1.1.0] - 2026-09-02
 
 ### ✨ Modern UX, Live Session Card & KISS Architecture Refactor

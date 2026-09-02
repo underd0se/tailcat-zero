@@ -8,7 +8,7 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
 
 ```text
 ========================================================================
-  TailCat-Merlin v1.1.0 — Ephemeral WireGuard Tunnel Manager
+  TailCat-Merlin v1.1.1 — Ephemeral WireGuard Tunnel Manager
   Status: [ ACTIVE: SSH | 28m remaining ] [Press '5' or 's']
 ========================================================================
   1. 🆘 Start Remote Shell           (Instant Support, No Password/Key)
@@ -111,6 +111,9 @@ rm -rf /jffs/addons/tailcat /jffs/scripts/tailcat /jffs/addons/amtm/tailcat.mod
 ---
 
 ## 📝 Changelog
+
+### [v1.1.1] - 2026-09-02
+* **🎨 High-Contrast Terminal Color Refinements:** Upgraded Chat Invite Snippets to high-contrast crisp white (`C_WHITE`) and cyan borders (`C_CYAN`) with highlighted yellow commands (`C_YELLOW`), ensuring pristine visibility across dark-background terminals.
 
 ### [v1.1.0] - 2026-09-02
 * **📱 Live Active Session Card:** Dedicated interactive dashboard with live auto-kill countdown, active service details, and 1-key quick actions (`s` to stop, `r` to refresh, `q` for QR code, `b` to exit).
