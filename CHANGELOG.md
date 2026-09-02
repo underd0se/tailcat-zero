@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0] - 2026-09-02
+
+### 🚀 TUI Dashboard, Dynamic Storage Awareness & Smart Status Badges
+
+* **📺 Flicker-Free Live Dashboard:** Screen cleanly refreshes without terminal history scroll clutter when updating live timers (`r`) or toggling ASCII QR codes (`q`).
+* **💾 Dynamic DropBox Storage Awareness:** Displays real-time free disk space for volatile RAM (`/tmp`) and mounted USB partitions (`/tmp/mnt/*`), with dynamic choice numbering based on USB presence.
+* **🌐 Browser-Ready WebGUI Guidance:** Generates step-by-step instructions for remote administrators connecting via SOCKS5 proxy (`1. Run: tailcat socks <token>`, `2. Open browser: https://localhost:8443`).
+* **🟢 Smart Status Indicators & Menu Badging:** Added prominent visual status badge (`🟢 ACTIVE` vs `⚪ INACTIVE`) and dynamically badges menu options 5 & 6 with active timer and kill labels.
+* **⏱️ Precision Auto-Kill Warning:** Displays `< 1m remaining (expiring soon)` when session timer falls below 60 seconds.
+
+---
+
+## [1.1.3] - 2026-09-02
+
+### ↩️ Submenu Navigation & Cancellation Support
+
+* **↩️ Submenu Cancel Navigation:** Added full support for canceling and returning to the main menu using `e` / `b` / `cancel` from DropBox destination selection, SFTP directory/mode prompts, and Auto-Kill timeout configuration, preventing accidental tunnel launches.
+
+---
+
 ## [1.1.2] - 2026-09-02
 
 ### 🧹 UI Cleanup, Anti-Bleed Dividers & Underline Hotkeys

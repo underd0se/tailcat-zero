@@ -8,18 +8,19 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
 
 ```text
 ========================================================================
-  TailCat-Merlin v1.1.2 — Ephemeral WireGuard Tunnel Manager
-  Status: [ ACTIVE: SSH | 28m remaining ] [Press '5' or 's']
+  TailCat-Merlin v1.2.0 — Ephemeral WireGuard Tunnel Manager
+  Status: 🟢 ACTIVE — 🆘 Instant Remote Shell (28m remaining)
 ========================================================================
   1. 🆘 Start Remote Shell           (Instant Support, No Password/Key)
   2. 📥 Receive Files / DropBox      (Direct P2P File Drop to Router)
   3. 📁 Share Directory (SFTP)       (Read-Only / Read-Write Share)
   4. 🌐 Expose Router WebGUI         (Instant Web Administration Tunnel)
-  5. 👁️ View Active Session          (Live Timer, QR Code & Chat Snippet)
-  6. 🛑 Stop Active Session          (Kill active tunnel)
+  ------------------------------------------------------------------------
+  5. 👁️ View Active Session          [Active: 28m remaining]
+  6. 🛑 Stop Active Session          [Kill Tunnel]
   ------------------------------------------------------------------------
   7. ⏱️ Configure Auto-Kill Timeout  (Current: 30 min)
-  8. 🔄 Reinstall / Update Binary    (Download latest v0.4.0)
+  8. 🔄 Reinstall / Update Binary    (ARMv7 / ARM64 Auto-Detect)
   9. 🗑️ Uninstall TailCat Addon     (Clean up all files)
 ========================================================================
  Enter selection [1-9, s=Stop, t=Timeout, e=Exit]: 
@@ -111,6 +112,16 @@ rm -rf /jffs/addons/tailcat /jffs/scripts/tailcat /jffs/addons/amtm/tailcat.mod
 ---
 
 ## 📝 Changelog
+
+### [v1.2.0] - 2026-09-02
+* **🚀 Flicker-Free TUI Dashboard:** Screen cleanly redraws without terminal history clutter when refreshing timers (`r`) or toggling QR codes (`q`).
+* **💾 Dynamic DropBox Storage Awareness:** Live free disk space detection for volatile RAM (`/tmp`) and USB partitions (`/tmp/mnt/*`) with adaptive numbering.
+* **🌐 Browser-Ready WebGUI Instructions:** Built-in guidance for connecting via SOCKS5 proxy (`tailcat socks <token>` ➔ `https://localhost:8443`).
+* **🟢 Smart Status Indicators & Menu Badging:** High-visibility active/inactive status badges (`🟢 ACTIVE` vs `⚪ INACTIVE`) and contextual menu tags.
+* **⏱️ Precision Auto-Kill Timer:** Displays `< 1m remaining (expiring soon)` when countdown drops below 60s.
+
+### [v1.1.3] - 2026-09-02
+* **↩️ Submenu Navigation & Cancellation Support:** Added full support for canceling and returning to the main menu using `e` / `b` / `cancel` from DropBox destination selection, SFTP directory/mode prompts, and Auto-Kill timeout configuration.
 
 ### [v1.1.2] - 2026-09-02
 * **🧹 Active Session Header:** Renamed card header to concise `Active Session`.
