@@ -295,8 +295,7 @@ start_tunnel() {
     fi
 
     if [ ! -x "$TAILCAT_BIN" ]; then
-        printf "\n%b[!] TailCat binary not found at %s.%b\n" "$C_RED" "$TAILCAT_BIN" "$C_RESET"
-        printf "%b[*] Please run Option 8 to download/reinstall the binary.%b\n" "$C_YELLOW" "$C_RESET"
+        FLASH_MSG="${C_RED}[!] TailCat binary not found. Please run Option 6 or 7 to install it.${C_RESET}"
         return 1
     fi
 
@@ -650,8 +649,18 @@ reinstall_tailcat() {
     if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-merlin/main/tailcat" -o /jffs/scripts/tailcat.tmp 2>/dev/null; then
         chmod 755 /jffs/scripts/tailcat.tmp
         mv -f /jffs/scripts/tailcat.tmp /jffs/scripts/tailcat
+        ln -sf /jffs/scripts/tailcat /jffs/scripts/tailcat-merlin 2>/dev/null || true
+        if [ -d "/opt/bin" ]; then
+            ln -sf /jffs/scripts/tailcat /opt/bin/tailcat-merlin 2>/dev/null || true
+            ln -sf /jffs/scripts/tailcat /opt/bin/tailcat 2>/dev/null || true
+        fi
         printf "  %b[+] Script updated from GitHub.%b\n\n" "$C_GREEN" "$C_RESET"
     else
+        ln -sf /jffs/scripts/tailcat /jffs/scripts/tailcat-merlin 2>/dev/null || true
+        if [ -d "/opt/bin" ]; then
+            ln -sf /jffs/scripts/tailcat /opt/bin/tailcat-merlin 2>/dev/null || true
+            ln -sf /jffs/scripts/tailcat /opt/bin/tailcat 2>/dev/null || true
+        fi
         printf "  %b[*] Keeping current script version.%b\n\n" "$C_GRAY" "$C_RESET"
     fi
     FLASH_MSG="${C_GREEN}[+] TailCat-Merlin reinstalled successfully.${C_RESET}"
@@ -673,7 +682,7 @@ uninstall_tailcat() {
             if [ -f "/jffs/scripts/init-start" ]; then
                 sed -i '/tailcat/d' /jffs/scripts/init-start 2>/dev/null || true
             fi
-            rm -rf "$CONFIG_DIR" "$SESSIONS_DIR" /jffs/scripts/tailcat /jffs/addons/amtm/tailcat.mod 2>/dev/null || true
+            rm -rf "$CONFIG_DIR" "$SESSIONS_DIR" /jffs/scripts/tailcat /jffs/scripts/tailcat-merlin /jffs/addons/amtm/tailcat.mod /opt/bin/tailcat /opt/bin/tailcat-merlin 2>/dev/null || true
             clear_screen
             printf "\n%b[+] TailCat-Merlin has been completely uninstalled.%b\n\n" "$C_GREEN" "$C_RESET"
             exit 0
@@ -939,8 +948,107 @@ main_menu() {
     done
 }
 
+# -------------------------------------------------------------------------------------------------------------------------
+# CLI Command-Line Interface Dispatcher
+
+cli_help() {
+    printf "%bTailCat-Merlin v%s%b — Ephemeral WireGuard Tunnel & Multi-Service Manager\n\n" "$C_BOLD" "${VERSION}" "$C_RESET"
+    printf "Usage:\n"
+    printf "  %btailcat-merlin%b                     Launch interactive TUI dashboard (default)\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcat-merlin status%b              Display running sessions and connect tokens\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcat-merlin stop [all|SVC]%b      Stop all sessions or a specific service (SSH, RECV, FILES, WEBGUI)\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcat-merlin ssh%b                 Start instant remote shell tunnel\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcat-merlin webgui%b              Start router WebGUI tunnel\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcat-merlin update%b              Update TailCat binary to latest release\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcat-merlin -v, --version%b       Show version\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcat-merlin -h, --help%b          Show this help message\n\n" "$C_CYAN" "$C_RESET"
+}
+
+cli_status() {
+    cnt=$(get_active_service_count)
+    if [ "$cnt" -eq 0 ]; then
+        printf "%b[⚪] No active TailCat sessions running.%b\n" "$C_GRAY" "$C_RESET"
+        return 0
+    fi
+    printf "%b[🟢] Active TailCat Sessions (%d Running):%b\n\n" "$C_GREEN" "$cnt" "$C_RESET"
+    for s in SSH RECV FILES WEBGUI; do
+        if is_service_active "$s"; then
+            s_file="${SESSIONS_DIR}/${s}.env"
+            # shellcheck disable=SC1090
+            . "$s_file"
+            tl=$(get_service_time_left "$s")
+            cmd=$(get_client_connect_cmd "$s" "$TOKEN")
+            printf "  • %b%-26s%b ⏱️  %-14s PID: %s\n" "$C_BOLD" "${DESC}" "$C_RESET" "$tl" "${PID:-unknown}"
+            printf "    Connect: %b%s%b\n\n" "$C_YELLOW" "$cmd" "$C_RESET"
+        fi
+    done
+}
+
+if [ $# -gt 0 ]; then
+    case "${1:-}" in
+        status|list)
+            cli_status
+            exit 0
+            ;;
+        stop)
+            target="${2:-all}"
+            case "$target" in
+                all|[aA])
+                    stop_all_sessions
+                    ;;
+                SSH|ssh|1)
+                    stop_single_session "SSH"
+                    ;;
+                RECV|recv|2)
+                    stop_single_session "RECV"
+                    ;;
+                FILES|files|sftp|3)
+                    stop_single_session "FILES"
+                    ;;
+                WEBGUI|webgui|web|4)
+                    stop_single_session "WEBGUI"
+                    ;;
+                *)
+                    printf "%b[!] Unknown service: %s%b\n" "$C_RED" "$target" "$C_RESET"
+                    exit 1
+                    ;;
+            esac
+            exit 0
+            ;;
+        ssh)
+            start_tunnel "SSH" "serve no-auth-ssh" "🆘 Instant Remote Shell"
+            exit 0
+            ;;
+        webgui|web)
+            https_port=$(nvram get https_lanport 2>/dev/null || echo 8443)
+            [ -z "$https_port" ] && https_port=8443
+            http_port=$(nvram get http_lanport 2>/dev/null || echo 80)
+            [ -z "$http_port" ] && http_port=80
+            start_tunnel "WEBGUI" "serve ${https_port},${http_port}" "🌐 Router WebGUI (Ports ${https_port}, ${http_port})" "HTTPS: ${https_port}, HTTP: ${http_port}"
+            exit 0
+            ;;
+        update)
+            update_binary
+            exit 0
+            ;;
+        -v|--version|version)
+            printf "TailCat-Merlin v%s (engine %s)\n" "$VERSION" "$(get_binary_version)"
+            exit 0
+            ;;
+        -h|--help|help)
+            cli_help
+            exit 0
+            ;;
+        *)
+            printf "%b[!] Unknown argument: %s%b\n\n" "$C_RED" "$1" "$C_RESET"
+            cli_help
+            exit 1
+            ;;
+    esac
+fi
+
 # Ensure binary exists on first run
-if [ ! -x "$TAILCAT_BIN" ] && [ "${1:-}" != "--help" ] && [ "${1:-}" != "-h" ]; then
+if [ ! -x "$TAILCAT_BIN" ]; then
     update_binary || true
 fi
 

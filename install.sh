@@ -63,7 +63,7 @@ else
     exit 1
 fi
 
-# 5. Install Main CLI Script
+# 5. Install Main CLI Script & Register tailcat-merlin Command
 printf "%b[*] Installing CLI script to %s...%b\n" "$C_CYAN" "$INSTALL_SCRIPT" "$C_RESET"
 if [ -f "./tailcat" ]; then
     cp -f "./tailcat" "$INSTALL_SCRIPT"
@@ -71,6 +71,14 @@ else
     curl -fsSL "${REPO_RAW_URL}/tailcat" -o "$INSTALL_SCRIPT"
 fi
 chmod 755 "$INSTALL_SCRIPT"
+
+# Create tailcat-merlin symlinks for universal command line access
+ln -sf "$INSTALL_SCRIPT" "/jffs/scripts/tailcat-merlin"
+if [ -d "/opt/bin" ]; then
+    ln -sf "$INSTALL_SCRIPT" "/opt/bin/tailcat-merlin"
+    ln -sf "$INSTALL_SCRIPT" "/opt/bin/tailcat"
+fi
+printf "%b[+] Registered command: %b%s%b (alias: %s)\n" "$C_GREEN" "$C_BOLD" "tailcat-merlin" "$C_RESET" "tailcat"
 
 # 6. Default Configuration
 if [ ! -f "$CFG_FILE" ]; then
@@ -87,15 +95,15 @@ if [ -d "/jffs/addons/amtm" ]; then
 # tailcat.mod for amtm
 name="TailCat"
 desc="Ephemeral WireGuard Tunnels"
-exec="/jffs/scripts/tailcat"
+exec="/jffs/scripts/tailcat-merlin"
 EOF
     printf "%b[+] Registered TailCat into amtm menu.%b\n" "$C_GREEN" "$C_RESET"
 fi
 
 # 8. Reboot Teardown Hook in init-start
 if [ -f "/jffs/scripts/init-start" ]; then
-    if ! grep -q "tailcat_session" /jffs/scripts/init-start 2>/dev/null; then
-        echo 'rm -f /tmp/tailcat_session.env /tmp/tailcat_addr.txt 2>/dev/null # TailCat cleanup' >> /jffs/scripts/init-start
+    if ! grep -q "tailcat_sessions" /jffs/scripts/init-start 2>/dev/null; then
+        echo 'rm -rf /tmp/tailcat_sessions /tmp/tailcat_addr*.txt 2>/dev/null # TailCat cleanup' >> /jffs/scripts/init-start
     fi
 fi
 
@@ -103,5 +111,5 @@ printf "\n%b%b==============================================================%b\n
 printf "  %b🎉 TailCat-Merlin Successfully Installed!%b\n" "$C_BOLD" "$C_RESET"
 printf "%b==============================================================%b\n" "$C_GREEN" "$C_RESET"
 printf "  To launch the TailCat Manager, simply run:\n"
-printf "    %b%btailcat%b  or  %b%b/jffs/scripts/tailcat%b\n" "$C_CYAN" "$C_BOLD" "$C_RESET" "$C_CYAN" "$C_BOLD" "$C_RESET"
+printf "    %b%btailcat-merlin%b  or  %b%btailcat%b\n" "$C_CYAN" "$C_BOLD" "$C_RESET" "$C_CYAN" "$C_BOLD" "$C_RESET"
 printf "%b==============================================================%b\n\n" "$C_GREEN" "$C_RESET"

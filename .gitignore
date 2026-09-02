@@ -2,3 +2,5 @@
 test_e2e.sh
 *.log
 .DS_Store
+forum_post*
+*.txt

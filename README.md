@@ -40,9 +40,27 @@ Run this command directly in your router SSH terminal:
 curl -fsSL https://raw.githubusercontent.com/underd0se/tailcat-merlin/main/install.sh | sh
 ```
 
-To launch the manager at any time:
+### 🖥️ Usage
+
+Launch the interactive TUI dashboard:
 ```sh
+tailcat-merlin
+# or
 tailcat
+```
+
+### ⚙️ Non-Interactive CLI Commands
+
+TailCat-Merlin can also be run directly from scripts or the command line:
+
+```sh
+tailcat-merlin status            # Display running sessions and connect tokens
+tailcat-merlin ssh               # Start instant remote shell tunnel
+tailcat-merlin webgui            # Start router WebGUI tunnel
+tailcat-merlin stop all          # Stop all active sessions
+tailcat-merlin stop SSH          # Stop specific service (SSH, RECV, FILES, WEBGUI)
+tailcat-merlin update            # Update TailCat binary engine
+tailcat-merlin --version         # Display version
 ```
 
 ---
@@ -108,7 +126,7 @@ tailcat ls tcXXXXXXXXX
 
 ## 🗑️ Uninstallation
 
-Launch `tailcat` and select **Option 9**, or run:
+Launch `tailcat` and select **Option 7 (Manage TailCat-Merlin) ➔ Option 3 (Complete Uninstall)**, or run:
 ```sh
 rm -rf /jffs/addons/tailcat /jffs/scripts/tailcat /jffs/addons/amtm/tailcat.mod
 ```
@@ -118,14 +136,12 @@ rm -rf /jffs/addons/tailcat /jffs/scripts/tailcat /jffs/addons/amtm/tailcat.mod
 ## 📝 Changelog
 
 ### [v1.3.0] - 2026-09-02
-* **🌈 Animated Nyan Cat ASCII Header & Branding:** Added a vibrant 6-color rainbow Nyan Cat ASCII banner (`draw_nyancat`) with pop-tart sprinkles and a fast, delightful 4-frame terminal startup animation sequence.
-
-### [v1.2.0] - 2026-09-02
-* **🚀 Flicker-Free TUI Dashboard:** Screen cleanly redraws without terminal history clutter when refreshing timers (`r`) or toggling QR codes (`q`).
-* **💾 Dynamic DropBox Storage Awareness:** Live free disk space detection for volatile RAM (`/tmp`) and USB partitions (`/tmp/mnt/*`) with adaptive numbering.
-* **🌐 Browser-Ready WebGUI Instructions:** Built-in guidance for connecting via SOCKS5 proxy (`tailcat socks <token>` ➔ `https://localhost:8443`).
-* **🟢 Smart Status Indicators & Menu Badging:** High-visibility active/inactive status badges (`🟢 ACTIVE` vs `⚪ INACTIVE`) and contextual menu tags.
-* **⏱️ Precision Auto-Kill Timer:** Displays `< 1m remaining (expiring soon)` when countdown drops below 60s.
+* **⚡ Multi-Service Concurrency:** Full concurrent execution across SSH, DropBox, SFTP, and WebGUI with independent WireGuard userspace nodes.
+* **🐱 Side-by-Side ASCII Cat Header:** Clean Japanese minimalist ASCII cat (`╱|、`) paired with project title and subtitle.
+* **📋 Streamlined 7-Item Menu Architecture:** Focused 7-item layout with global actions in the bottom hotkey bar.
+* **⚙️ Dedicated Management Submenu:** Interactive menu for updating binaries, reinstalling from GitHub, or cleanly uninstalling.
+* **🛑 Selective & Batch Process Killer:** Interactive process list to terminate specific individual sessions or all active tunnels.
+* **✨ Flicker-Free Clean Canvas:** VT100 screen clearing with non-intrusive toast notifications.
 
 ### [v1.1.3] - 2026-09-02
 * **↩️ Submenu Navigation & Cancellation Support:** Added full support for canceling and returning to the main menu using `e` / `b` / `cancel` from DropBox destination selection, SFTP directory/mode prompts, and Auto-Kill timeout configuration.
