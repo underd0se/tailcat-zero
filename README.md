@@ -7,23 +7,35 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
 ---
 
 ```text
+                            ╱|、
+                          (˚ˎ 。7  
+                           |、˜〵          
+                          じしˍ,)ノ
+
 ========================================================================
-  TailCat-Merlin v1.2.0 — Ephemeral WireGuard Tunnel Manager
-  Status: 🟢 ACTIVE — 🆘 Instant Remote Shell (28m remaining)
+  TailCat-Merlin v1.3.0 — Ephemeral WireGuard Tunnel Manager
+  Status: 🟢 ACTIVE — 2/4 Services Running
 ========================================================================
-  1. 🆘 Start Remote Shell           (Instant Support, No Password/Key)
-  2. 📥 Receive Files / DropBox      (Direct P2P File Drop to Router)
-  3. 📁 Share Directory (SFTP)       (Read-Only / Read-Write Share)
-  4. 🌐 Expose Router WebGUI         (Instant Web Administration Tunnel)
+
+  1. 🆘 Start Remote Shell           Instant Support, No Password/Key  [🟢 Active: 28m]
+  2. 📥 Receive Files / DropBox      Direct P2P File Drop to Router    [⚪ Inactive]
+  3. 📁 Share Directory (SFTP)       Read-Only / Read-Write Share      [🟢 Active: 28m]
+  4. 🌐 Expose Router WebGUI         Instant Web Administration Tunnel [⚪ Inactive]
+
   ------------------------------------------------------------------------
-  5. 👁️ View Active Session          [Active: 28m remaining]
-  6. 🛑 Stop Active Session          [Kill Tunnel]
+
+  5. 👁️ View Active Sessions         Instant Token & QR Viewer         [2 Active]
+  6. 🛑 Stop Active Sessions         Terminate Running Services        [Kill Active]
+
   ------------------------------------------------------------------------
-  7. ⏱️ Configure Auto-Kill Timeout  (Current: 30 min)
-  8. 🔄 Reinstall / Update Binary    (ARMv7 / ARM64 Auto-Detect)
-  9. 🗑️ Uninstall TailCat Addon     (Clean up all files)
+
+  7. ⏱️ Configure Auto-Kill Timeout  Current: 30 min
+  8. 🔄 Reinstall / Update Binary    ARMv7 / ARM64 Auto-Detect
+  9. 🗑️ Uninstall TailCat Addon     Clean up all files
+
 ========================================================================
- Enter selection [1-9, s=Stop, t=Timeout, e=Exit]: 
+
+  Actions: 1-9 Menu Selection  |  🛑 Stop  |  ⏱️ Timeout  |  ↩️ Exit: 
 ```
 
 ---
@@ -112,6 +124,9 @@ rm -rf /jffs/addons/tailcat /jffs/scripts/tailcat /jffs/addons/amtm/tailcat.mod
 ---
 
 ## 📝 Changelog
+
+### [v1.3.0] - 2026-09-02
+* **🌈 Animated Nyan Cat ASCII Header & Branding:** Added a vibrant 6-color rainbow Nyan Cat ASCII banner (`draw_nyancat`) with pop-tart sprinkles and a fast, delightful 4-frame terminal startup animation sequence.
 
 ### [v1.2.0] - 2026-09-02
 * **🚀 Flicker-Free TUI Dashboard:** Screen cleanly redraws without terminal history clutter when refreshing timers (`r`) or toggling QR codes (`q`).

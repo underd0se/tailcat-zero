@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.0] - 2026-09-02
+
+### 🚀 Multi-Service Concurrency & Aesthetic ASCII Cat Branding
+
+* **⚡ Multi-Service Concurrent Management:** Full concurrent execution and management across all 4 services (Remote Shell, File DropBox, SFTP Directory Share, and Router WebGUI). Multiple tunnels can run simultaneously with independent WireGuard userspace nodes, tokens, and watchdog auto-kill timers in `/tmp/tailcat_sessions/`.
+* **📋 Multi-Service Active Dashboard:** Overview card displaying all running services, individual connect commands, copy-paste snippets, and fast 1-key switching/stopping.
+* **🐱 Aesthetic Minimalist ASCII Cat Header:** Added a sleek, minimalist Japanese ASCII cat (`╱|、`) header in high-contrast cyan.
+* **🧹 Clean Menu Typography:** Stripped outer parentheses from descriptions for streamlined column readability.
+* **📐 Unified Bottom Action Bars:** Aligned the Main Menu bottom prompt (`Actions: 1-9 Menu Selection | 🛑 Stop | ⏱️ Timeout | ↩️ Exit:`) with the Active Session card format.
+
+---
+
 ## [1.2.0] - 2026-09-02
 
 ### 🚀 TUI Dashboard, Dynamic Storage Awareness & Smart Status Badges

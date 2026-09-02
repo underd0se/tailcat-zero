@@ -1,19 +1,18 @@
 #!/bin/sh
 # =========================================================================================================================
-# TailCat-Merlin — Ephemeral WireGuard Tunnel & File Drop Manager for Asuswrt-Merlin
+# TailCat-Merlin — Ephemeral WireGuard Tunnel & Multi-Service Manager for Asuswrt-Merlin
 # Managed by AMTM standard conventions.
 # =========================================================================================================================
 # shellcheck disable=SC2153
 
 set -eu
 
-VERSION="1.2.0"
+VERSION="1.3.0"
 CONFIG_DIR="/jffs/addons/tailcat"
 CONFIG_FILE="${CONFIG_DIR}/tailcat.cfg"
 BIN_DIR="${CONFIG_DIR}/bin"
 TAILCAT_BIN="${BIN_DIR}/tailcat"
-SESSION_FILE="/tmp/tailcat_session.env"
-ADDR_FILE="/tmp/tailcat_addr.txt"
+SESSIONS_DIR="/tmp/tailcat_sessions"
 LOG_TAG="tailcat-merlin"
 
 # ANSI Color Palette
@@ -40,6 +39,7 @@ if [ -f "$CONFIG_FILE" ]; then
 fi
 
 TIMEOUT_MINUTES="${TIMEOUT_MINUTES:-$DEFAULT_TIMEOUT}"
+mkdir -p "$SESSIONS_DIR"
 
 # -------------------------------------------------------------------------------------------------------------------------
 # Helper Functions
@@ -48,15 +48,36 @@ log_msg() {
     logger -t "$LOG_TAG" "$*"
 }
 
-is_session_active() {
-    if [ -f "$SESSION_FILE" ]; then
+is_service_active() {
+    s_id="$1"
+    s_file="${SESSIONS_DIR}/${s_id}.env"
+    if [ -f "$s_file" ]; then
         # shellcheck disable=SC1090
-        . "$SESSION_FILE"
+        . "$s_file"
         if [ -n "${PID:-}" ] && kill -0 "$PID" 2>/dev/null; then
             return 0
         fi
     fi
     return 1
+}
+
+has_any_active_session() {
+    for s in SSH RECV FILES WEBGUI; do
+        if is_service_active "$s"; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+get_active_service_count() {
+    cnt=0
+    for s in SSH RECV FILES WEBGUI; do
+        if is_service_active "$s"; then
+            cnt=$((cnt + 1))
+        fi
+    done
+    echo "$cnt"
 }
 
 get_free_space() {
@@ -68,15 +89,17 @@ get_free_space() {
     fi
 }
 
-get_time_left() {
-    if is_session_active; then
+get_service_time_left() {
+    s_id="$1"
+    s_file="${SESSIONS_DIR}/${s_id}.env"
+    if is_service_active "$s_id"; then
         # shellcheck disable=SC1090
-        . "$SESSION_FILE"
+        . "$s_file"
         now=$(date +%s)
         if [ "$now" -lt "${EXPIRE_EPOCH:-0}" ]; then
             diff=$(( EXPIRE_EPOCH - now ))
             if [ "$diff" -lt 60 ]; then
-                printf "< 1m remaining (expiring soon)"
+                printf "< 1m remaining"
                 return
             fi
             remaining=$(( diff / 60 ))
@@ -87,23 +110,111 @@ get_time_left() {
     printf "Expired"
 }
 
-stop_session() {
-    if is_session_active; then
+get_service_badge() {
+    s_id="$1"
+    if is_service_active "$s_id"; then
+        tl=$(get_service_time_left "$s_id")
+        printf "%b[🟢 Active: %s]%b" "$C_GREEN" "$tl" "$C_RESET"
+    else
+        printf "%b[⚪ Inactive]%b" "$C_GRAY" "$C_RESET"
+    fi
+}
+
+stop_single_session() {
+    s_id="$1"
+    s_file="${SESSIONS_DIR}/${s_id}.env"
+    addr_file="/tmp/tailcat_addr_${s_id}.txt"
+    if [ -f "$s_file" ]; then
         # shellcheck disable=SC1090
-        . "$SESSION_FILE"
+        . "$s_file"
         if [ -n "${PID:-}" ]; then
             kill -9 "$PID" 2>/dev/null || true
         fi
         if [ -n "${WATCHDOG_PID:-}" ]; then
             kill -9 "$WATCHDOG_PID" 2>/dev/null || true
         fi
-        rm -f "$SESSION_FILE" "$ADDR_FILE"
-        log_msg "TailCat session stopped: ${SERVICE:-unknown}"
-        printf "%b[+] Active TailCat session has been stopped.%b\n" "$C_GREEN" "$C_RESET"
+        rm -f "$s_file" "$addr_file"
+        log_msg "TailCat session stopped: ${s_id}"
+        printf "\n%b[+] Stopped session: %s%b\n" "$C_GREEN" "${DESC:-$s_id}" "$C_RESET"
     else
-        rm -f "$SESSION_FILE" "$ADDR_FILE"
-        printf "%b[!] No active TailCat session found.%b\n" "$C_YELLOW" "$C_RESET"
+        rm -f "$s_file" "$addr_file"
     fi
+}
+
+stop_all_sessions() {
+    found=0
+    for s in SSH RECV FILES WEBGUI; do
+        if [ -f "${SESSIONS_DIR}/${s}.env" ]; then
+            stop_single_session "$s"
+            found=1
+        fi
+    done
+    if [ "$found" = "0" ]; then
+        printf "\n%b[!] No active TailCat sessions found.%b\n" "$C_YELLOW" "$C_RESET"
+    fi
+}
+
+stop_sessions_menu() {
+    count=$(get_active_service_count)
+    if [ "$count" -eq 0 ]; then
+        printf "\n%b[!] No active TailCat sessions found.%b\n" "$C_YELLOW" "$C_RESET"
+        return
+    fi
+    if [ "$count" -eq 1 ]; then
+        stop_all_sessions
+        return
+    fi
+
+    printf "\n%bStop Running Sessions:%b\n\n" "$C_CYAN" "$C_RESET"
+    idx=1
+    svc_list=""
+    for s in SSH RECV FILES WEBGUI; do
+        if is_service_active "$s"; then
+            s_file="${SESSIONS_DIR}/${s}.env"
+            # shellcheck disable=SC1090
+            . "$s_file"
+            tl=$(get_service_time_left "$s")
+            printf "  %d. Stop %s (%s)\n" "$idx" "${DESC}" "$tl"
+            svc_list="${svc_list} ${s}"
+            idx=$((idx + 1))
+        fi
+    done
+    printf "  %d. 🛑 Stop ALL Sessions\n\n" "$idx"
+    printf " Choice [1-%d, default %d, e to cancel]: " "$idx" "$idx"
+    if ! read -r s_choice; then
+        return
+    fi
+    case "$s_choice" in
+        [eE]|[bB]|cancel|exit)
+            printf "\n%b[*] Operation cancelled.%b\n" "$C_YELLOW" "$C_RESET"
+            return
+            ;;
+        "$idx"|'')
+            stop_all_sessions
+            return
+            ;;
+        *[!0-9]*)
+            printf "\n%b[!] Invalid selection.%b\n" "$C_RED" "$C_RESET"
+            return
+            ;;
+    esac
+
+    c_idx=1
+    for s in $svc_list; do
+        if [ "$c_idx" -eq "$s_choice" ]; then
+            stop_single_session "$s"
+            return
+        fi
+        c_idx=$((c_idx + 1))
+    done
+    printf "\n%b[!] Invalid selection.%b\n" "$C_RED" "$C_RESET"
+}
+
+draw_cat() {
+    printf "                            %b╱|、%b\n" "$C_CYAN" "$C_RESET"
+    printf "                          %b(˚ˎ 。7%b\n" "$C_CYAN" "$C_RESET"
+    printf "                           %b|、˜〵%b\n" "$C_CYAN" "$C_RESET"
+    printf "                          %bじしˍ,)ノ%b\n\n" "$C_CYAN" "$C_RESET"
 }
 
 start_tunnel() {
@@ -112,9 +223,32 @@ start_tunnel() {
     desc="$3"
     extra_info="${4:-}"
 
-    if is_session_active; then
-        printf "\n%b[!] A TailCat session is already active. Stop it first (Option 6 or 's').%b\n" "$C_RED" "$C_RESET"
-        return 1
+    if is_service_active "$service_type"; then
+        printf "\n%b[*] %s is already running.%b\n\n" "$C_YELLOW" "$desc" "$C_RESET"
+        printf "  1. View connect card & QR code\n"
+        printf "  2. Stop this session\n"
+        printf "  3. Restart session\n\n"
+        printf " Choice [1-3, default 1, e to cancel]: "
+        if ! read -r act_choice; then
+            return
+        fi
+        case "$act_choice" in
+            1|'')
+                interactive_session_card "$service_type"
+                return
+                ;;
+            2)
+                stop_single_session "$service_type"
+                return
+                ;;
+            3)
+                stop_single_session "$service_type"
+                ;;
+            *)
+                printf "\n%b[*] Operation cancelled.%b\n" "$C_YELLOW" "$C_RESET"
+                return
+                ;;
+        esac
     fi
 
     if [ ! -x "$TAILCAT_BIN" ]; then
@@ -123,52 +257,56 @@ start_tunnel() {
         return 1
     fi
 
+    mkdir -p "$SESSIONS_DIR"
+    addr_file="/tmp/tailcat_addr_${service_type}.txt"
+    rm -f "$addr_file"
+
     printf "\n%b[*] Starting %s...%b\n" "$C_CYAN" "$desc" "$C_RESET"
-    rm -f "$ADDR_FILE"
 
     # Start tailcat in background with address output file
     # shellcheck disable=SC2086
-    TAILCAT_ADDR_FILE="$ADDR_FILE" "$TAILCAT_BIN" $subcmd >/dev/null 2>&1 &
+    TAILCAT_ADDR_FILE="$addr_file" "$TAILCAT_BIN" $subcmd >/dev/null 2>&1 &
     tailcat_pid=$!
 
     # Wait up to 10 seconds for address file
     count=0
     while [ $count -lt 10 ]; do
-        if [ -s "$ADDR_FILE" ]; then
+        if [ -s "$addr_file" ]; then
             break
         fi
         sleep 1
         count=$((count + 1))
     done
 
-    if [ ! -s "$ADDR_FILE" ] || ! kill -0 "$tailcat_pid" 2>/dev/null; then
-        printf "\n%b[-] Failed to start TailCat session.%b\n" "$C_RED" "$C_RESET"
+    if [ ! -s "$addr_file" ] || ! kill -0 "$tailcat_pid" 2>/dev/null; then
+        printf "\n%b[-] Failed to start %s.%b\n" "$C_RED" "$desc" "$C_RESET"
         kill -9 "$tailcat_pid" 2>/dev/null || true
-        rm -f "$ADDR_FILE"
+        rm -f "$addr_file"
         return 1
     fi
 
-    token=$(tr -d '\r\n' < "$ADDR_FILE")
+    token=$(tr -d '\r\n' < "$addr_file")
     now=$(date +%s)
     timeout_sec=$(( TIMEOUT_MINUTES * 60 ))
     expire_epoch=$(( now + timeout_sec ))
+    session_file="${SESSIONS_DIR}/${service_type}.env"
 
-    # Launch Auto-Kill Watcher Subshell
+    # Launch Auto-Kill Watcher Subshell for this specific service
     (
         sleep "$timeout_sec"
         if kill -0 "$tailcat_pid" 2>/dev/null; then
             kill -9 "$tailcat_pid" 2>/dev/null || true
-            rm -f "$SESSION_FILE" "$ADDR_FILE"
+            rm -f "$session_file" "$addr_file"
             logger -t "$LOG_TAG" "Session ${service_type} auto-expired after ${TIMEOUT_MINUTES}m"
         fi
     ) &
     watchdog_pid=$!
 
     # Save Session State
-    cat <<EOF > "$SESSION_FILE"
+    cat <<EOF > "$session_file"
 PID=${tailcat_pid}
 WATCHDOG_PID=${watchdog_pid}
-SERVICE="${service_type}"
+SERVICE_ID="${service_type}"
 DESC="${desc}"
 TOKEN="${token}"
 EXTRA_INFO="${extra_info}"
@@ -178,7 +316,7 @@ TIMEOUT_MINUTES=${TIMEOUT_MINUTES}
 EOF
 
     log_msg "TailCat session started: ${service_type} (Auto-kill: ${TIMEOUT_MINUTES}m)"
-    interactive_session_card
+    interactive_session_card "$service_type"
 }
 
 get_client_connect_cmd() {
@@ -204,19 +342,62 @@ get_client_connect_cmd() {
     esac
 }
 
-render_session_card() {
-    show_qr="${1:-0}"
-    if ! is_session_active; then
-        printf "\n%b[!] No active TailCat session.%b\n" "$C_YELLOW" "$C_RESET"
+render_multi_session_overview() {
+    draw_cat
+    cnt=$(get_active_service_count)
+    printf "%b%b========================================================================%b\n" "$C_GREEN" "$C_BOLD" "$C_RESET"
+    printf "  %b%b🐱 TailCat-Merlin — Active Sessions (%d Running)%b\n" "$C_CYAN" "$C_BOLD" "$cnt" "$C_RESET"
+    printf "%b========================================================================%b\n\n" "$C_GREEN" "$C_RESET"
+
+    idx=1
+    for s in SSH RECV FILES WEBGUI; do
+        if is_service_active "$s"; then
+            s_file="${SESSIONS_DIR}/${s}.env"
+            # shellcheck disable=SC1090
+            . "$s_file"
+            tl=$(get_service_time_left "$s")
+            printf "  %b[%d]%b %b%-28s%b ⏱️  %-14s 🔒 P2P\n" "$C_BOLD" "$idx" "$C_RESET" "$C_MAGENTA" "${DESC}" "$C_RESET" "$tl"
+            idx=$((idx + 1))
+        fi
+    done
+
+    printf "\n  %b💬 Copy & Paste Connect Commands:%b\n" "$C_BOLD" "$C_RESET"
+    printf "  %b────────────────────────────────────────────────────────────────────────%b\n" "$C_CYAN" "$C_RESET"
+    for s in SSH RECV FILES WEBGUI; do
+        if is_service_active "$s"; then
+            s_file="${SESSIONS_DIR}/${s}.env"
+            # shellcheck disable=SC1090
+            . "$s_file"
+            cmd=$(get_client_connect_cmd "$s" "$TOKEN")
+            if [ "$s" = "WEBGUI" ]; then
+                printf "  • %bWebGUI:%b  %btailcat socks %s%b (Open https://localhost:8443)\n" "$C_BOLD" "$C_RESET" "$C_YELLOW" "$TOKEN" "$C_RESET"
+            else
+                printf "  • %b%-7s%b %b%s%b\n" "$C_BOLD" "${s}:" "$C_RESET" "$C_YELLOW" "$cmd" "$C_RESET"
+            fi
+        fi
+    done
+    printf "  %b────────────────────────────────────────────────────────────────────────%b\n\n" "$C_CYAN" "$C_RESET"
+    printf "%b========================================================================%b\n\n" "$C_GREEN" "$C_RESET"
+}
+
+render_single_session_card() {
+    s_id="$1"
+    show_qr="${2:-0}"
+    s_file="${SESSIONS_DIR}/${s_id}.env"
+
+    if ! is_service_active "$s_id"; then
+        printf "\n%b[!] Session %s is not active.%b\n" "$C_YELLOW" "$s_id" "$C_RESET"
         return 1
     fi
 
-    # shellcheck disable=SC1090,SC2153
-    . "$SESSION_FILE"
-    time_left=$(get_time_left)
-    cmd=$(get_client_connect_cmd "$SERVICE" "$TOKEN")
+    # shellcheck disable=SC1090
+    . "$s_file"
+    time_left=$(get_service_time_left "$s_id")
+    cmd=$(get_client_connect_cmd "$s_id" "$TOKEN")
 
-    printf "\n%b%b========================================================================%b\n" "$C_GREEN" "$C_BOLD" "$C_RESET"
+    draw_cat
+
+    printf "%b%b========================================================================%b\n" "$C_GREEN" "$C_BOLD" "$C_RESET"
     printf "  %b%b🐱 TailCat-Merlin — Active Session%b\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
     printf "%b========================================================================%b\n\n" "$C_GREEN" "$C_RESET"
 
@@ -227,11 +408,10 @@ render_session_card() {
     printf "  %bAuto-Kill:%b   %b⏱️  %s%b\n" "$C_BOLD" "$C_RESET" "$C_YELLOW" "${time_left}" "$C_RESET"
     printf "  %bSecurity:%b    %b🔒 WireGuard P2P Encrypted (Zero WAN Ports Open)%b\n\n" "$C_BOLD" "$C_RESET" "$C_GREEN" "$C_RESET"
 
-    # Unified Copy & Paste Chat Snippet (No redundancy, zero-wrap dividers)
     printf "  %b💬 Copy & Paste to Friend / Admin Support:%b\n" "$C_BOLD" "$C_RESET"
     printf "  %b────────────────────────────────────────────────────────────────────────%b\n" "$C_CYAN" "$C_RESET"
     printf "  %bHey, I've opened a temporary TailCat session on my router (%s).%b\n" "$C_WHITE" "${time_left}" "$C_RESET"
-    if [ "$SERVICE" = "WEBGUI" ]; then
+    if [ "$s_id" = "WEBGUI" ]; then
         web_port="8443"
         case "${EXTRA_INFO:-}" in
             *HTTPS:\ 8443*|*8443*) web_port="8443" ;;
@@ -244,7 +424,6 @@ render_session_card() {
     fi
     printf "  %b────────────────────────────────────────────────────────────────────────%b\n\n" "$C_CYAN" "$C_RESET"
 
-    # ASCII QR Code if qrencode exists and requested/supported
     if [ "$show_qr" = "1" ] && [ -x "/usr/sbin/qrencode" ]; then
         printf "  %b📱 Scan QR Code on Mobile / Laptop:%b\n\n" "$C_BOLD" "$C_RESET"
         /usr/sbin/qrencode -t UTF8 -m 1 "$cmd" 2>/dev/null || /usr/sbin/qrencode -t ASCII -m 1 "$cmd" 2>/dev/null || true
@@ -256,47 +435,108 @@ render_session_card() {
 }
 
 interactive_session_card() {
+    cur_svc="${1:-ALL}"
     show_qr=0
     clear_scr=0
-    while is_session_active; do
+
+    while has_any_active_session; do
         if [ "$clear_scr" = "1" ]; then
             clear 2>/dev/null || printf "\033[2J\033[H"
         fi
-        render_session_card "$show_qr"
         clear_scr=1
 
-        if [ "$show_qr" = "1" ]; then
-            qr_action="📱 Hide ${C_KEY}Q${C_RESET}R"
-        else
-            qr_action="📱 Show ${C_KEY}Q${C_RESET}R"
+        active_cnt=$(get_active_service_count)
+        if [ "$cur_svc" != "ALL" ] && ! is_service_active "$cur_svc"; then
+            cur_svc="ALL"
         fi
 
-        printf "  Actions: 🛑 %bS%btop Session  |  🔄 %bR%befresh  |  %b  |  ↩️ %bM%bain Menu: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$qr_action" "$C_KEY" "$C_RESET"
-        if ! read -r s_action; then
-            break
-        fi
-        case "$s_action" in
-            [sS])
-                stop_session
-                break
-                ;;
-            [rR])
-                # Loop cleanly refreshes card
-                ;;
-            [qQ])
-                if [ "$show_qr" = "1" ]; then
-                    show_qr=0
-                else
-                    show_qr=1
+        if [ "$cur_svc" = "ALL" ] && [ "$active_cnt" -eq 1 ]; then
+            for s in SSH RECV FILES WEBGUI; do
+                if is_service_active "$s"; then
+                    cur_svc="$s"
+                    break
                 fi
-                ;;
-            [mM]|[bB]|''|[eE])
+            done
+        fi
+
+        if [ "$cur_svc" = "ALL" ]; then
+            render_multi_session_overview
+            printf "  Actions: 1-%d View/QR  |  🛑 %bS%btop All  |  🔄 %bR%befresh  |  ↩️ %bM%bain Menu: " "$active_cnt" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
+            if ! read -r act; then
                 break
-                ;;
-            *)
+            fi
+            case "$act" in
+                [sS])
+                    stop_all_sessions
+                    break
+                    ;;
+                [rR])
+                    ;;
+                [mM]|[bB]|''|[eE])
+                    break
+                    ;;
+                [1-4])
+                    c_idx=1
+                    for s in SSH RECV FILES WEBGUI; do
+                        if is_service_active "$s"; then
+                            if [ "$c_idx" -eq "$act" ]; then
+                                cur_svc="$s"
+                                show_qr=0
+                                break
+                            fi
+                            c_idx=$((c_idx + 1))
+                        fi
+                    done
+                    ;;
+                *)
+                    break
+                    ;;
+            esac
+        else
+            render_single_session_card "$cur_svc" "$show_qr"
+            if [ "$show_qr" = "1" ]; then
+                qr_label="📱 Hide ${C_KEY}Q${C_RESET}R"
+            else
+                qr_label="📱 Show ${C_KEY}Q${C_RESET}R"
+            fi
+            if [ "$active_cnt" -gt 1 ]; then
+                printf "  Actions: 🛑 %bS%btop This  |  📋 %bA%bll Sessions  |  🔄 %bR%befresh  |  %b  |  ↩️ %bM%bain Menu: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$qr_label" "$C_KEY" "$C_RESET"
+            else
+                printf "  Actions: 🛑 %bS%btop Session  |  🔄 %bR%befresh  |  %b  |  ↩️ %bM%bain Menu: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$qr_label" "$C_KEY" "$C_RESET"
+            fi
+
+            if ! read -r act; then
                 break
-                ;;
-        esac
+            fi
+            case "$act" in
+                [sS])
+                    stop_single_session "$cur_svc"
+                    if ! has_any_active_session; then
+                        break
+                    fi
+                    cur_svc="ALL"
+                    ;;
+                [aA])
+                    cur_svc="ALL"
+                    show_qr=0
+                    ;;
+                [rR])
+                    ;;
+                [qQ])
+                    if [ "$show_qr" = "1" ]; then
+                        show_qr=0
+                    else
+                        show_qr=1
+                    fi
+                    ;;
+                [mM]|[bB]|''|[eE])
+                    break
+                    ;;
+                *)
+                    break
+                    ;;
+            esac
+        fi
     done
 }
 
@@ -363,49 +603,54 @@ update_binary() {
 
 main_menu() {
     while true; do
-        if is_session_active; then
-            # shellcheck disable=SC1090
-            . "$SESSION_FILE"
-            tl=$(get_time_left)
-            status_str="${C_GREEN}🟢 ACTIVE — ${DESC} (${tl})${C_RESET}"
-            opt5_info="${C_GREEN}[Active: ${tl}]${C_RESET}"
-            opt6_info="${C_RED}[Kill Tunnel]${C_RESET}"
+        active_cnt=$(get_active_service_count)
+        if [ "$active_cnt" -gt 0 ]; then
+            status_str="${C_GREEN}🟢 ACTIVE — ${active_cnt}/4 Services Running${C_RESET}"
+            opt5_badge="${C_GREEN}[${active_cnt} Active]${C_RESET}"
+            opt6_badge="${C_RED}[Kill Active]${C_RESET}"
         else
             status_str="${C_GRAY}⚪ INACTIVE${C_RESET}"
-            opt5_info="${C_GRAY}(Live Timer, QR Code & Chat Snippet)${C_RESET}"
-            opt6_info="${C_GRAY}(Kill active tunnel)${C_RESET}"
+            opt5_badge="${C_GRAY}[0 Active]${C_RESET}"
+            opt6_badge="${C_GRAY}[Idle]${C_RESET}"
         fi
 
-        printf "\n%b%b========================================================================%b\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
+        b_ssh=$(get_service_badge "SSH")
+        b_recv=$(get_service_badge "RECV")
+        b_files=$(get_service_badge "FILES")
+        b_web=$(get_service_badge "WEBGUI")
+
+        draw_cat
+
+        printf "%b%b========================================================================%b\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
         printf "  %bTailCat-Merlin v%s%b — Ephemeral WireGuard Tunnel Manager\n" "$C_BOLD" "${VERSION}" "$C_RESET"
         printf "  Status: %b\n" "${status_str}"
         printf "%b========================================================================%b\n\n" "$C_CYAN" "$C_RESET"
 
-        printf "  %b1.%b 🆘 Start Remote Shell           %b(Instant Support, No Password/Key)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
-        printf "  %b2.%b 📥 Receive Files / DropBox      %b(Direct P2P File Drop to Router)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
-        printf "  %b3.%b 📁 Share Directory (SFTP)       %b(Read-Only / Read-Write Share)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
-        printf "  %b4.%b 🌐 Expose Router WebGUI         %b(Instant Web Administration Tunnel)%b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b1.%b 🆘 Start Remote Shell           %bInstant Support, No Password/Key%b  %b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET" "$b_ssh"
+        printf "  %b2.%b 📥 Receive Files / DropBox      %bDirect P2P File Drop to Router%b    %b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET" "$b_recv"
+        printf "  %b3.%b 📁 Share Directory (SFTP)       %bRead-Only / Read-Write Share%b      %b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET" "$b_files"
+        printf "  %b4.%b 🌐 Expose Router WebGUI         %bInstant Web Administration Tunnel%b %b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET" "$b_web"
 
         printf "  %b------------------------------------------------------------------------%b\n\n" "$C_CYAN" "$C_RESET"
 
-        printf "  %b5.%b 👁️ View Active Session          %b\n" "$C_BOLD" "$C_RESET" "${opt5_info}"
-        printf "  %b6.%b 🛑 Stop Active Session          %b\n\n" "$C_BOLD" "$C_RESET" "${opt6_info}"
+        printf "  %b5.%b 👁️ View Active Sessions         %bInstant Token & QR Viewer%b        %b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET" "${opt5_badge}"
+        printf "  %b6.%b 🛑 Stop Active Sessions         %bTerminate Running Services%b       %b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET" "${opt6_badge}"
 
         printf "  %b------------------------------------------------------------------------%b\n\n" "$C_CYAN" "$C_RESET"
 
-        printf "  %b7.%b ⏱️ Configure Auto-Kill Timeout  %b(Current: %s min)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "${TIMEOUT_MINUTES}" "$C_RESET"
-        printf "  %b8.%b 🔄 Reinstall / Update Binary    %b(ARMv7 / ARM64 Auto-Detect)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
-        printf "  %b9.%b 🗑️ Uninstall TailCat Addon     %b(Clean up all files)%b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b7.%b ⏱️ Configure Auto-Kill Timeout  %bCurrent: %s min%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "${TIMEOUT_MINUTES}" "$C_RESET"
+        printf "  %b8.%b 🔄 Reinstall / Update Binary    %bARMv7 / ARM64 Auto-Detect%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b9.%b 🗑️ Uninstall TailCat Addon     %bClean up all files%b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
 
         printf "%b========================================================================%b\n\n" "$C_CYAN" "$C_RESET"
-        printf " Enter selection [1-9, s=Stop, t=Timeout, e=Exit]: "
+        printf "  Actions: 1-9 Menu Selection  |  🛑 %bS%btop  |  ⏱️ %bT%bimeout  |  ↩️ %bE%bxit: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
         if ! read -r choice; then
             break
         fi
 
         case "$choice" in
             1)
-                start_tunnel "SSH" "serve no-auth-ssh" "🆘 Instant Remote Shell (Passwordless)"
+                start_tunnel "SSH" "serve no-auth-ssh" "🆘 Instant Remote Shell"
                 ;;
             2)
                 printf "\n%bSelect DropBox Destination:%b\n\n" "$C_CYAN" "$C_RESET"
@@ -537,10 +782,13 @@ main_menu() {
                 start_tunnel "WEBGUI" "serve ${https_port},${http_port}" "🌐 Router WebGUI (Ports ${https_port}, ${http_port})" "HTTPS: ${https_port}, HTTP: ${http_port}"
                 ;;
             5|[vV])
-                interactive_session_card
+                interactive_session_card "ALL"
                 ;;
-            6|[sS])
-                stop_session
+            6)
+                stop_sessions_menu
+                ;;
+            [sS])
+                stop_all_sessions
                 ;;
             7|[tT])
                 set_timeout_config
@@ -553,11 +801,11 @@ main_menu() {
                 read -r confirm_un
                 case "$confirm_un" in
                     [yY]*)
-                        stop_session
+                        stop_all_sessions
                         if [ -f "/jffs/scripts/init-start" ]; then
-                            sed -i '/tailcat_session/d' /jffs/scripts/init-start 2>/dev/null || true
+                            sed -i '/tailcat/d' /jffs/scripts/init-start 2>/dev/null || true
                         fi
-                        rm -rf "$CONFIG_DIR" /jffs/scripts/tailcat /jffs/addons/amtm/tailcat.mod 2>/dev/null || true
+                        rm -rf "$CONFIG_DIR" "$SESSIONS_DIR" /jffs/scripts/tailcat /jffs/addons/amtm/tailcat.mod 2>/dev/null || true
                         printf "\n%b[+] TailCat-Merlin has been uninstalled.%b\n" "$C_GREEN" "$C_RESET"
                         exit 0
                         ;;
