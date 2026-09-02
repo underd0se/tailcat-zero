@@ -40,9 +40,16 @@ fi
 
 TIMEOUT_MINUTES="${TIMEOUT_MINUTES:-$DEFAULT_TIMEOUT}"
 mkdir -p "$SESSIONS_DIR"
+FLASH_MSG=""
 
 # -------------------------------------------------------------------------------------------------------------------------
 # Helper Functions
+
+clear_screen() {
+    if [ -t 1 ]; then
+        printf "\033[2J\033[H"
+    fi
+}
 
 log_msg() {
     logger -t "$LOG_TAG" "$*"
@@ -154,67 +161,100 @@ stop_all_sessions() {
     fi
 }
 
-stop_sessions_menu() {
+stop_sessions_with_confirmation() {
     count=$(get_active_service_count)
     if [ "$count" -eq 0 ]; then
-        printf "\n%b[!] No active TailCat sessions found.%b\n" "$C_YELLOW" "$C_RESET"
-        return
-    fi
-    if [ "$count" -eq 1 ]; then
-        stop_all_sessions
+        FLASH_MSG="${C_YELLOW}[!] No active TailCat sessions are currently running.${C_RESET}"
         return
     fi
 
-    printf "\n%bStop Running Sessions:%b\n\n" "$C_CYAN" "$C_RESET"
+    clear_screen
+    draw_header
+    printf "  %b%b🛑 Running TailCat Processes (%d Active):%b\n\n" "$C_CYAN" "$C_BOLD" "$count" "$C_RESET"
+
+    svc_1=""
+    svc_2=""
+    svc_3=""
+    svc_4=""
     idx=1
-    svc_list=""
     for s in SSH RECV FILES WEBGUI; do
         if is_service_active "$s"; then
+            eval "svc_${idx}=\"\$s\""
             s_file="${SESSIONS_DIR}/${s}.env"
             # shellcheck disable=SC1090
             . "$s_file"
             tl=$(get_service_time_left "$s")
-            printf "  %d. Stop %s (%s)\n" "$idx" "${DESC}" "$tl"
-            svc_list="${svc_list} ${s}"
+            printf "  %b%d.%b %b%-30s%b %b(PID: %s, %s)%b\n" "$C_BOLD" "$idx" "$C_RESET" "$C_CYAN" "${DESC}" "$C_RESET" "$C_GRAY" "${PID:-unknown}" "$tl" "$C_RESET"
             idx=$((idx + 1))
         fi
     done
-    printf "  %d. 🛑 Stop ALL Sessions\n\n" "$idx"
-    printf " Choice [1-%d, default %d, e to cancel]: " "$idx" "$idx"
-    if ! read -r s_choice; then
+
+    printf "\n%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
+
+    if [ "$count" -gt 1 ]; then
+        printf "   Choice [1-%d=Stop individual, a=Stop All, e to cancel]: " "$count"
+    else
+        printf "   Stop this session? [1/y=Stop, e to cancel]: "
+    fi
+
+    if ! read -r confirm_stop; then
+        FLASH_MSG="${C_YELLOW}[*] Operation cancelled.${C_RESET}"
         return
     fi
-    case "$s_choice" in
-        [eE]|[bB]|cancel|exit)
-            printf "\n%b[*] Operation cancelled.%b\n" "$C_YELLOW" "$C_RESET"
-            return
-            ;;
-        "$idx"|'')
+
+    case "$confirm_stop" in
+        [aA]|[aA][lL][lL]|[yY]|[yY][eE][sS])
             stop_all_sessions
-            return
+            FLASH_MSG="${C_GREEN}[+] All active TailCat sessions stopped.${C_RESET}"
             ;;
-        *[!0-9]*)
-            printf "\n%b[!] Invalid selection.%b\n" "$C_RED" "$C_RESET"
-            return
+        1|2|3|4)
+            target_svc=""
+            case "$confirm_stop" in
+                1) target_svc="$svc_1" ;;
+                2) target_svc="$svc_2" ;;
+                3) target_svc="$svc_3" ;;
+                4) target_svc="$svc_4" ;;
+            esac
+            if [ -n "$target_svc" ]; then
+                s_file="${SESSIONS_DIR}/${target_svc}.env"
+                svc_desc="$target_svc"
+                if [ -f "$s_file" ]; then
+                    # shellcheck disable=SC1090
+                    . "$s_file"
+                    svc_desc="${DESC:-$target_svc}"
+                fi
+                stop_single_session "$target_svc"
+                FLASH_MSG="${C_GREEN}[+] Stopped ${svc_desc}.${C_RESET}"
+            else
+                FLASH_MSG="${C_RED}[!] Invalid selection.${C_RESET}"
+            fi
+            ;;
+        [eE]|[bB]|cancel|exit|'')
+            FLASH_MSG="${C_YELLOW}[*] Operation cancelled.${C_RESET}"
+            ;;
+        *)
+            FLASH_MSG="${C_RED}[!] Invalid selection.${C_RESET}"
             ;;
     esac
-
-    c_idx=1
-    for s in $svc_list; do
-        if [ "$c_idx" -eq "$s_choice" ]; then
-            stop_single_session "$s"
-            return
-        fi
-        c_idx=$((c_idx + 1))
-    done
-    printf "\n%b[!] Invalid selection.%b\n" "$C_RED" "$C_RESET"
 }
 
-draw_cat() {
-    printf "                            %b╱|、%b\n" "$C_CYAN" "$C_RESET"
-    printf "                          %b(˚ˎ 。7%b\n" "$C_CYAN" "$C_RESET"
-    printf "                           %b|、˜〵%b\n" "$C_CYAN" "$C_RESET"
-    printf "                          %bじしˍ,)ノ%b\n\n" "$C_CYAN" "$C_RESET"
+get_binary_version() {
+    if [ -x "$TAILCAT_BIN" ]; then
+        b_ver=$("$TAILCAT_BIN" --version 2>/dev/null | head -n 1 | tr -d '\r\n')
+        if [ -n "$b_ver" ]; then
+            printf "%s" "$b_ver"
+            return
+        fi
+    fi
+    printf "v%s" "$VERSION"
+}
+
+draw_header() {
+    printf "  %b%bTailCat-Merlin v%s%b            %b╱|、%b\n" "$C_CYAN" "$C_BOLD" "${VERSION}" "$C_RESET" "$C_CYAN" "$C_RESET"
+    printf "                                 %b(˚ˎ 。7%b\n" "$C_CYAN" "$C_RESET"
+    printf "                                  %b|、˜〵%b\n" "$C_CYAN" "$C_RESET"
+    printf "  %bInstant Tunnel Manager%b         %bじしˍ,)ノ%b\n\n" "$C_GRAY" "$C_RESET" "$C_CYAN" "$C_RESET"
+    printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
 }
 
 start_tunnel() {
@@ -224,11 +264,13 @@ start_tunnel() {
     extra_info="${4:-}"
 
     if is_service_active "$service_type"; then
-        printf "\n%b[*] %s is already running.%b\n\n" "$C_YELLOW" "$desc" "$C_RESET"
-        printf "  1. View connect card & QR code\n"
-        printf "  2. Stop this session\n"
-        printf "  3. Restart session\n\n"
-        printf " Choice [1-3, default 1, e to cancel]: "
+        clear_screen
+        draw_header
+        printf "  %b[*] %s is already running.%b\n\n" "$C_YELLOW" "$desc" "$C_RESET"
+        printf "    1. View connect card & QR code\n"
+        printf "    2. Stop this session\n"
+        printf "    3. Restart session\n\n"
+        printf "   Choice [1-3, default 1, e to cancel]: "
         if ! read -r act_choice; then
             return
         fi
@@ -239,13 +281,14 @@ start_tunnel() {
                 ;;
             2)
                 stop_single_session "$service_type"
+                FLASH_MSG="${C_GREEN}[+] Stopped ${desc}.${C_RESET}"
                 return
                 ;;
             3)
                 stop_single_session "$service_type"
                 ;;
             *)
-                printf "\n%b[*] Operation cancelled.%b\n" "$C_YELLOW" "$C_RESET"
+                FLASH_MSG="${C_YELLOW}[*] Operation cancelled.${C_RESET}"
                 return
                 ;;
         esac
@@ -343,7 +386,7 @@ get_client_connect_cmd() {
 }
 
 render_multi_session_overview() {
-    draw_cat
+    draw_header
     cnt=$(get_active_service_count)
     printf "%b%b========================================================================%b\n" "$C_GREEN" "$C_BOLD" "$C_RESET"
     printf "  %b%b🐱 TailCat-Merlin — Active Sessions (%d Running)%b\n" "$C_CYAN" "$C_BOLD" "$cnt" "$C_RESET"
@@ -395,7 +438,7 @@ render_single_session_card() {
     time_left=$(get_service_time_left "$s_id")
     cmd=$(get_client_connect_cmd "$s_id" "$TOKEN")
 
-    draw_cat
+    draw_header
 
     printf "%b%b========================================================================%b\n" "$C_GREEN" "$C_BOLD" "$C_RESET"
     printf "  %b%b🐱 TailCat-Merlin — Active Session%b\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
@@ -437,13 +480,9 @@ render_single_session_card() {
 interactive_session_card() {
     cur_svc="${1:-ALL}"
     show_qr=0
-    clear_scr=0
 
     while has_any_active_session; do
-        if [ "$clear_scr" = "1" ]; then
-            clear 2>/dev/null || printf "\033[2J\033[H"
-        fi
-        clear_scr=1
+        clear_screen
 
         active_cnt=$(get_active_service_count)
         if [ "$cur_svc" != "ALL" ] && ! is_service_active "$cur_svc"; then
@@ -541,61 +580,151 @@ interactive_session_card() {
 }
 
 set_timeout_config() {
-    printf "\n%bConfigure Session Auto-Kill Timeout%b\n\n" "$C_CYAN" "$C_RESET"
-    printf "Current Timeout: %b%s minutes%b\n\n" "$C_BOLD" "${TIMEOUT_MINUTES}" "$C_RESET"
-    printf "Enter new timeout in minutes [5-240] (default 30, e to cancel): "
+    clear_screen
+    draw_header
+    printf "  %b⏱️ Configure Session Auto-Kill Timeout%b\n\n" "$C_CYAN" "$C_RESET"
+    printf "  Current Timeout: %b%s minutes%b\n\n" "$C_BOLD" "${TIMEOUT_MINUTES}" "$C_RESET"
+    printf "  Enter new timeout in minutes [5-240, default 30, e to cancel]: "
     if ! read -r user_t; then
         return
     fi
     case "$user_t" in
         [eE]|[bB]|cancel|exit)
-            printf "\n%b[*] Operation cancelled.%b\n" "$C_YELLOW" "$C_RESET"
+            FLASH_MSG="${C_YELLOW}[*] Operation cancelled.${C_RESET}"
             return
             ;;
         '')
             user_t=30
             ;;
         *[!0-9]*)
-            printf "\n%b[!] Invalid number. Setting unchanged.%b\n" "$C_RED" "$C_RESET"
+            FLASH_MSG="${C_RED}[!] Invalid number. Setting unchanged.${C_RESET}"
             return
             ;;
     esac
 
     if [ "$user_t" -lt 5 ] || [ "$user_t" -gt 240 ]; then
-        printf "\n%b[!] Timeout must be between 5 and 240 minutes.%b\n" "$C_RED" "$C_RESET"
+        FLASH_MSG="${C_RED}[!] Timeout must be between 5 and 240 minutes.${C_RESET}"
         return
     fi
 
     TIMEOUT_MINUTES="$user_t"
     mkdir -p "$CONFIG_DIR"
     echo "TIMEOUT_MINUTES=${TIMEOUT_MINUTES}" > "$CONFIG_FILE"
-    printf "\n%b[+] Timeout updated to %s minutes.%b\n" "$C_GREEN" "${TIMEOUT_MINUTES}" "$C_RESET"
+    FLASH_MSG="${C_GREEN}[+] Timeout updated to ${TIMEOUT_MINUTES} minutes.${C_RESET}"
 }
 
 update_binary() {
-    printf "\n%b[*] Checking router architecture & downloading official TailCat binary...%b\n" "$C_CYAN" "$C_RESET"
+    clear_screen
+    draw_header
+    printf "  %b[*] Checking router architecture & downloading official TailCat binary...%b\n\n" "$C_CYAN" "$C_RESET"
     arch=$(uname -m)
     pkg_arch=""
     case "$arch" in
         armv7*|armv6*|arm) pkg_arch="armv7" ;;
         aarch64*|arm64*)  pkg_arch="arm64" ;;
         *)
-            printf "\n%b[!] Unsupported router architecture: %s%b\n" "$C_RED" "${arch}" "$C_RESET"
+            FLASH_MSG="${C_RED}[!] Unsupported router architecture: ${arch}${C_RESET}"
             return 1
             ;;
     esac
 
     mkdir -p "$BIN_DIR"
     download_url="https://github.com/tailscale/tailcat/releases/download/v0.4.0/tailcat_0.4.0_linux_${pkg_arch}.tar.gz"
-    printf "%b[*] Downloading %s...%b\n" "$C_CYAN" "${download_url}" "$C_RESET"
+    printf "  %b[*] Downloading %s...%b\n" "$C_CYAN" "${download_url}" "$C_RESET"
 
     if curl -fsSL "$download_url" | tar -xz -C "$BIN_DIR" tailcat; then
         chmod 755 "$TAILCAT_BIN"
-        printf "\n%b[+] TailCat binary installed successfully (%s).%b\n" "$C_GREEN" "${pkg_arch}" "$C_RESET"
+        FLASH_MSG="${C_GREEN}[+] TailCat binary installed successfully (${pkg_arch}).${C_RESET}"
     else
-        printf "\n%b[-] Failed to download TailCat binary.%b\n" "$C_RED" "$C_RESET"
+        FLASH_MSG="${C_RED}[-] Failed to download TailCat binary.${C_RESET}"
         return 1
     fi
+}
+
+reinstall_tailcat() {
+    clear_screen
+    draw_header
+    printf "  %b⚡ Reinstalling TailCat-Merlin...%b\n\n" "$C_CYAN" "$C_RESET"
+    update_binary || true
+    printf "  %b[*] Updating /jffs/scripts/tailcat...%b\n" "$C_CYAN" "$C_RESET"
+    if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-merlin/main/tailcat" -o /jffs/scripts/tailcat.tmp 2>/dev/null; then
+        chmod 755 /jffs/scripts/tailcat.tmp
+        mv -f /jffs/scripts/tailcat.tmp /jffs/scripts/tailcat
+        printf "  %b[+] Script updated from GitHub.%b\n\n" "$C_GREEN" "$C_RESET"
+    else
+        printf "  %b[*] Keeping current script version.%b\n\n" "$C_GRAY" "$C_RESET"
+    fi
+    FLASH_MSG="${C_GREEN}[+] TailCat-Merlin reinstalled successfully.${C_RESET}"
+}
+
+uninstall_tailcat() {
+    clear_screen
+    draw_header
+    printf "  %b🗑️  Uninstall TailCat-Merlin%b\n\n" "$C_RED" "$C_RESET"
+    printf "  This will terminate all active sessions and clean up all TailCat files.\n\n"
+    printf "   Are you sure you want to completely remove TailCat? [y/N]: "
+    if ! read -r confirm_un; then
+        FLASH_MSG="${C_YELLOW}[*] Uninstall cancelled.${C_RESET}"
+        return
+    fi
+    case "$confirm_un" in
+        [yY]*)
+            stop_all_sessions
+            if [ -f "/jffs/scripts/init-start" ]; then
+                sed -i '/tailcat/d' /jffs/scripts/init-start 2>/dev/null || true
+            fi
+            rm -rf "$CONFIG_DIR" "$SESSIONS_DIR" /jffs/scripts/tailcat /jffs/addons/amtm/tailcat.mod 2>/dev/null || true
+            clear_screen
+            printf "\n%b[+] TailCat-Merlin has been completely uninstalled.%b\n\n" "$C_GREEN" "$C_RESET"
+            exit 0
+            ;;
+        *)
+            FLASH_MSG="${C_YELLOW}[*] Uninstall cancelled.${C_RESET}"
+            ;;
+    esac
+}
+
+manage_tailcat_menu() {
+    while true; do
+        clear_screen
+        draw_header
+        b_ver=$(get_binary_version)
+
+        printf "  %b%b⚙️  Manage TailCat-Merlin:%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
+        printf "  %b1.%b 🔄 Update Binary               %bCheck & update engine (%s)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "${b_ver}" "$C_RESET"
+        printf "  %b2.%b ⚡ Reinstall TailCat-Merlin     %bFresh download of script & binary%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b3.%b 🗑️ Complete Uninstall           %bRemove addon, configs & init hooks%b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+
+        printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
+        printf "   Choice [1-3, e to return]: "
+
+        if ! read -r m_choice; then
+            break
+        fi
+
+        case "$m_choice" in
+            1)
+                update_binary
+                break
+                ;;
+            2)
+                reinstall_tailcat
+                break
+                ;;
+            3)
+                uninstall_tailcat
+                break
+                ;;
+            [eE]|[bB]|cancel|exit|'')
+                FLASH_MSG="${C_YELLOW}[*] Returned to main menu.${C_RESET}"
+                break
+                ;;
+            *)
+                FLASH_MSG="${C_RED}[!] Invalid selection.${C_RESET}"
+                break
+                ;;
+        esac
+    done
 }
 
 # -------------------------------------------------------------------------------------------------------------------------
@@ -603,47 +732,34 @@ update_binary() {
 
 main_menu() {
     while true; do
-        active_cnt=$(get_active_service_count)
-        if [ "$active_cnt" -gt 0 ]; then
-            status_str="${C_GREEN}🟢 ACTIVE — ${active_cnt}/4 Services Running${C_RESET}"
-            opt5_badge="${C_GREEN}[${active_cnt} Active]${C_RESET}"
-            opt6_badge="${C_RED}[Kill Active]${C_RESET}"
-        else
-            status_str="${C_GRAY}⚪ INACTIVE${C_RESET}"
-            opt5_badge="${C_GRAY}[0 Active]${C_RESET}"
-            opt6_badge="${C_GRAY}[Idle]${C_RESET}"
-        fi
+        clear_screen
 
         b_ssh=$(get_service_badge "SSH")
         b_recv=$(get_service_badge "RECV")
         b_files=$(get_service_badge "FILES")
         b_web=$(get_service_badge "WEBGUI")
+        b_ver=$(get_binary_version)
 
-        draw_cat
+        draw_header
 
-        printf "%b%b========================================================================%b\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
-        printf "  %bTailCat-Merlin v%s%b — Ephemeral WireGuard Tunnel Manager\n" "$C_BOLD" "${VERSION}" "$C_RESET"
-        printf "  Status: %b\n" "${status_str}"
-        printf "%b========================================================================%b\n\n" "$C_CYAN" "$C_RESET"
+        if [ -n "${FLASH_MSG:-}" ]; then
+            printf "  %b\n\n" "$FLASH_MSG"
+            FLASH_MSG=""
+        fi
 
-        printf "  %b1.%b 🆘 Start Remote Shell           %bInstant Support, No Password/Key%b  %b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET" "$b_ssh"
-        printf "  %b2.%b 📥 Receive Files / DropBox      %bDirect P2P File Drop to Router%b    %b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET" "$b_recv"
-        printf "  %b3.%b 📁 Share Directory (SFTP)       %bRead-Only / Read-Write Share%b      %b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET" "$b_files"
-        printf "  %b4.%b 🌐 Expose Router WebGUI         %bInstant Web Administration Tunnel%b %b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET" "$b_web"
-
-        printf "  %b------------------------------------------------------------------------%b\n\n" "$C_CYAN" "$C_RESET"
-
-        printf "  %b5.%b 👁️ View Active Sessions         %bInstant Token & QR Viewer%b        %b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET" "${opt5_badge}"
-        printf "  %b6.%b 🛑 Stop Active Sessions         %bTerminate Running Services%b       %b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET" "${opt6_badge}"
+        printf "  %b1.%b 🆘 Start Remote Shell           %b%-34s%b %b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "Instant SSH session" "$C_RESET" "$b_ssh"
+        printf "  %b2.%b 📥 Receive Files                %b%-34s%b %b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "Direct P2P file transfer" "$C_RESET" "$b_recv"
+        printf "  %b3.%b 📁 Share Directory (SFTP)       %b%-34s%b %b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "Share a folder from your drive" "$C_RESET" "$b_files"
+        printf "  %b4.%b 🌐 Expose Router WebGUI         %b%-34s%b %b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "Access to router's web interface" "$C_RESET" "$b_web"
 
         printf "  %b------------------------------------------------------------------------%b\n\n" "$C_CYAN" "$C_RESET"
 
-        printf "  %b7.%b ⏱️ Configure Auto-Kill Timeout  %bCurrent: %s min%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "${TIMEOUT_MINUTES}" "$C_RESET"
-        printf "  %b8.%b 🔄 Reinstall / Update Binary    %bARMv7 / ARM64 Auto-Detect%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
-        printf "  %b9.%b 🗑️ Uninstall TailCat Addon     %bClean up all files%b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b5.%b ⏱️ Configure Default Timeout    %bCurrent: %s min%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "${TIMEOUT_MINUTES}" "$C_RESET"
+        printf "  %b6.%b 🔄 Reinstall/Update Tailcat     %bVersion: %s%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "${b_ver}" "$C_RESET"
+        printf "  %b7.%b ⚙️ Manage TailCat-Merlin        %bUpdate, reinstall, or remove%b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
 
-        printf "%b========================================================================%b\n\n" "$C_CYAN" "$C_RESET"
-        printf "  Actions: 1-9 Menu Selection  |  🛑 %bS%btop  |  ⏱️ %bT%bimeout  |  ↩️ %bE%bxit: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
+        printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
+        printf "  👁️ %bV%biew Sessions  |  🛑 %bS%btop  |  ↩️ %bE%bxit: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
         if ! read -r choice; then
             break
         fi
@@ -653,9 +769,11 @@ main_menu() {
                 start_tunnel "SSH" "serve no-auth-ssh" "🆘 Instant Remote Shell"
                 ;;
             2)
-                printf "\n%bSelect DropBox Destination:%b\n\n" "$C_CYAN" "$C_RESET"
+                clear_screen
+                draw_header
+                printf "  %b📥 Select DropBox Destination:%b\n\n" "$C_CYAN" "$C_RESET"
                 ram_free=$(get_free_space "/tmp")
-                printf "  1. ⚡ Volatile RAM:  /tmp/tailcat-inbox           (Free: %s) [Default]\n" "$ram_free"
+                printf "    1. ⚡ Volatile RAM:  /tmp/tailcat-inbox           (Free: %s) [Default]\n" "$ram_free"
                 usb_drive=""
                 for d in /tmp/mnt/*; do
                     if [ -d "$d" ] && [ "$d" != "/tmp/mnt/*" ]; then
@@ -665,12 +783,12 @@ main_menu() {
                 done
                 if [ -n "$usb_drive" ]; then
                     usb_free=$(get_free_space "$usb_drive")
-                    printf "  2. 💾 USB Storage:   %s/tailcat-inbox (Free: %s) [Persistent]\n" "$usb_drive" "$usb_free"
-                    printf "  3. 📂 Custom Directory Path\n\n"
-                    printf " Choice [1-3, Default 1, e to cancel]: "
+                    printf "    2. 💾 USB Storage:   %s/tailcat-inbox (Free: %s) [Persistent]\n" "$usb_drive" "$usb_free"
+                    printf "    3. 📂 Custom Directory Path\n\n"
+                    printf "   Choice [1-3, Default 1, e to cancel]: "
                 else
-                    printf "  2. 📂 Custom Directory Path\n\n"
-                    printf " Choice [1-2, Default 1, e to cancel]: "
+                    printf "    2. 📂 Custom Directory Path\n\n"
+                    printf "   Choice [1-2, Default 1, e to cancel]: "
                 fi
 
                 if ! read -r d_choice; then
@@ -679,7 +797,7 @@ main_menu() {
                 target_dir="/tmp/tailcat-inbox"
                 case "$d_choice" in
                     [eE]|[bB]|cancel|exit)
-                        printf "\n%b[*] Operation cancelled.%b\n" "$C_YELLOW" "$C_RESET"
+                        FLASH_MSG="${C_YELLOW}[*] Operation cancelled.${C_RESET}"
                         continue
                         ;;
                     1|'')
@@ -689,13 +807,16 @@ main_menu() {
                         if [ -n "$usb_drive" ]; then
                             target_dir="${usb_drive}/tailcat-inbox"
                         else
-                            printf "\n Enter custom destination directory (or e to cancel): "
+                            clear_screen
+                            draw_header
+                            printf "  %b📂 Custom Destination Directory:%b\n\n" "$C_CYAN" "$C_RESET"
+                            printf "   Enter custom directory path (or e to cancel): "
                             if ! read -r user_dir; then
                                 continue
                             fi
                             case "$user_dir" in
                                 [eE]|[bB]|cancel|exit)
-                                    printf "\n%b[*] Operation cancelled.%b\n" "$C_YELLOW" "$C_RESET"
+                                    FLASH_MSG="${C_YELLOW}[*] Operation cancelled.${C_RESET}"
                                     continue
                                     ;;
                                 '')
@@ -709,13 +830,16 @@ main_menu() {
                         ;;
                     3)
                         if [ -n "$usb_drive" ]; then
-                            printf "\n Enter custom destination directory (or e to cancel): "
+                            clear_screen
+                            draw_header
+                            printf "  %b📂 Custom Destination Directory:%b\n\n" "$C_CYAN" "$C_RESET"
+                            printf "   Enter custom directory path (or e to cancel): "
                             if ! read -r user_dir; then
                                 continue
                             fi
                             case "$user_dir" in
                                 [eE]|[bB]|cancel|exit)
-                                    printf "\n%b[*] Operation cancelled.%b\n" "$C_YELLOW" "$C_RESET"
+                                    FLASH_MSG="${C_YELLOW}[*] Operation cancelled.${C_RESET}"
                                     continue
                                     ;;
                                 '')
@@ -726,12 +850,12 @@ main_menu() {
                                     ;;
                             esac
                         else
-                            printf "\n%b[!] Invalid selection. Operation cancelled.%b\n" "$C_RED" "$C_RESET"
+                            FLASH_MSG="${C_RED}[!] Invalid selection.${C_RESET}"
                             continue
                         fi
                         ;;
                     *)
-                        printf "\n%b[!] Invalid selection. Operation cancelled.%b\n" "$C_RED" "$C_RESET"
+                        FLASH_MSG="${C_RED}[!] Invalid selection.${C_RESET}"
                         continue
                         ;;
                 esac
@@ -739,13 +863,16 @@ main_menu() {
                 start_tunnel "RECV" "recv ${target_dir}" "📥 Encrypted File DropBox" "${target_dir}"
                 ;;
             3)
-                printf "\n Enter directory path to serve [/jffs, or e to cancel]: "
+                clear_screen
+                draw_header
+                printf "  %b📁 Share Directory (SFTP):%b\n\n" "$C_CYAN" "$C_RESET"
+                printf "   Enter directory path to serve [/jffs, or e to cancel]: "
                 if ! read -r s_dir; then
                     continue
                 fi
                 case "$s_dir" in
                     [eE]|[bB]|cancel|exit)
-                        printf "\n%b[*] Operation cancelled.%b\n" "$C_YELLOW" "$C_RESET"
+                        FLASH_MSG="${C_YELLOW}[*] Operation cancelled.${C_RESET}"
                         continue
                         ;;
                     '')
@@ -753,16 +880,16 @@ main_menu() {
                         ;;
                 esac
                 if [ ! -d "$s_dir" ]; then
-                    printf "\n%b[!] Directory %s does not exist.%b\n" "$C_RED" "$s_dir" "$C_RESET"
+                    FLASH_MSG="${C_RED}[!] Directory ${s_dir} does not exist.${C_RESET}"
                     continue
                 fi
-                printf "\n Permission mode [1=Read-Only (ro), 2=Read-Write (rw), default 1, e to cancel]: "
+                printf "\n   Permission mode [1=Read-Only (ro), 2=Read-Write (rw), default 1, e to cancel]: "
                 if ! read -r p_choice; then
                     continue
                 fi
                 case "$p_choice" in
                     [eE]|[bB]|cancel|exit)
-                        printf "\n%b[*] Operation cancelled.%b\n" "$C_YELLOW" "$C_RESET"
+                        FLASH_MSG="${C_YELLOW}[*] Operation cancelled.${C_RESET}"
                         continue
                         ;;
                     2)
@@ -781,42 +908,32 @@ main_menu() {
                 [ -z "$http_port" ] && http_port=80
                 start_tunnel "WEBGUI" "serve ${https_port},${http_port}" "🌐 Router WebGUI (Ports ${https_port}, ${http_port})" "HTTPS: ${https_port}, HTTP: ${http_port}"
                 ;;
-            5|[vV])
-                interactive_session_card "ALL"
-                ;;
-            6)
-                stop_sessions_menu
-                ;;
-            [sS])
-                stop_all_sessions
-                ;;
-            7|[tT])
+            5|[tT])
                 set_timeout_config
                 ;;
-            8|[uU])
+            6|[uU])
                 update_binary
                 ;;
-            9)
-                printf "\n Are you sure you want to completely remove TailCat? [y/N]: "
-                read -r confirm_un
-                case "$confirm_un" in
-                    [yY]*)
-                        stop_all_sessions
-                        if [ -f "/jffs/scripts/init-start" ]; then
-                            sed -i '/tailcat/d' /jffs/scripts/init-start 2>/dev/null || true
-                        fi
-                        rm -rf "$CONFIG_DIR" "$SESSIONS_DIR" /jffs/scripts/tailcat /jffs/addons/amtm/tailcat.mod 2>/dev/null || true
-                        printf "\n%b[+] TailCat-Merlin has been uninstalled.%b\n" "$C_GREEN" "$C_RESET"
-                        exit 0
-                        ;;
-                esac
+            7|[mM])
+                manage_tailcat_menu
+                ;;
+            [vV])
+                if has_any_active_session; then
+                    interactive_session_card "ALL"
+                else
+                    FLASH_MSG="${C_YELLOW}[!] No active TailCat sessions are currently running.${C_RESET}"
+                fi
+                ;;
+            [sS])
+                stop_sessions_with_confirmation
                 ;;
             [eE])
+                clear_screen
                 printf "\n%bGoodbye!%b\n\n" "$C_CYAN" "$C_RESET"
                 exit 0
                 ;;
             *)
-                printf "\n%b[!] Invalid selection.%b\n" "$C_RED" "$C_RESET"
+                FLASH_MSG="${C_RED}[!] Invalid selection.${C_RESET}"
                 ;;
         esac
     done

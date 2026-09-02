@@ -7,35 +7,27 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
 ---
 
 ```text
-                            ╱|、
-                          (˚ˎ 。7  
-                           |、˜〵          
-                          じしˍ,)ノ
+  TailCat-Merlin v1.3.0            ╱|、
+                                 (˚ˎ 。7  
+                                  |、˜〵          
+  Instant Tunnel Manager         じしˍ,)ノ
 
 ========================================================================
-  TailCat-Merlin v1.3.0 — Ephemeral WireGuard Tunnel Manager
-  Status: 🟢 ACTIVE — 2/4 Services Running
-========================================================================
 
-  1. 🆘 Start Remote Shell           Instant Support, No Password/Key  [🟢 Active: 28m]
-  2. 📥 Receive Files / DropBox      Direct P2P File Drop to Router    [⚪ Inactive]
-  3. 📁 Share Directory (SFTP)       Read-Only / Read-Write Share      [🟢 Active: 28m]
-  4. 🌐 Expose Router WebGUI         Instant Web Administration Tunnel [⚪ Inactive]
+  1. 🆘 Start Remote Shell           Instant SSH session               [🟢 Active: 28m]
+  2. 📥 Receive Files                Direct P2P file transfer          [⚪ Inactive]
+  3. 📁 Share Directory (SFTP)       Share a folder from your drive    [🟢 Active: 28m]
+  4. 🌐 Expose Router WebGUI         Access to router's web interface  [⚪ Inactive]
 
   ------------------------------------------------------------------------
 
-  5. 👁️ View Active Sessions         Instant Token & QR Viewer         [2 Active]
-  6. 🛑 Stop Active Sessions         Terminate Running Services        [Kill Active]
-
-  ------------------------------------------------------------------------
-
-  7. ⏱️ Configure Auto-Kill Timeout  Current: 30 min
-  8. 🔄 Reinstall / Update Binary    ARMv7 / ARM64 Auto-Detect
-  9. 🗑️ Uninstall TailCat Addon     Clean up all files
+  5. ⏱️ Configure Default Timeout    Current: 30 min
+  6. 🔄 Reinstall/Update Tailcat     Version: v0.4.0
+  7. ⚙️ Manage TailCat-Merlin        Update, reinstall, or remove
 
 ========================================================================
 
-  Actions: 1-9 Menu Selection  |  🛑 Stop  |  ⏱️ Timeout  |  ↩️ Exit: 
+  👁️ View Sessions  |  🛑 Stop  |  ↩️ Exit: 
 ```
 
 ---

@@ -9,13 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.3.0] - 2026-09-02
 
-### 🚀 Multi-Service Concurrency & Aesthetic ASCII Cat Branding
+### 🚀 Multi-Service Concurrency, Side-by-Side ASCII Cat Header & Interactive TUI Management
 
 * **⚡ Multi-Service Concurrent Management:** Full concurrent execution and management across all 4 services (Remote Shell, File DropBox, SFTP Directory Share, and Router WebGUI). Multiple tunnels can run simultaneously with independent WireGuard userspace nodes, tokens, and watchdog auto-kill timers in `/tmp/tailcat_sessions/`.
-* **📋 Multi-Service Active Dashboard:** Overview card displaying all running services, individual connect commands, copy-paste snippets, and fast 1-key switching/stopping.
-* **🐱 Aesthetic Minimalist ASCII Cat Header:** Added a sleek, minimalist Japanese ASCII cat (`╱|、`) header in high-contrast cyan.
-* **🧹 Clean Menu Typography:** Stripped outer parentheses from descriptions for streamlined column readability.
-* **📐 Unified Bottom Action Bars:** Aligned the Main Menu bottom prompt (`Actions: 1-9 Menu Selection | 🛑 Stop | ⏱️ Timeout | ↩️ Exit:`) with the Active Session card format.
+* **🐱 Side-by-Side ASCII Cat Header:** Compact, elegant side-by-side Japanese ASCII cat (`╱|、`) and project title/description layout.
+* **📋 Streamlined 7-Item Menu Architecture:** Restructured main menu into 7 focused options, moving global actions into a clean bottom hotkey bar.
+* **⚙️ Dedicated "Manage TailCat-Merlin" Submenu:** Interactive management menu (Option 7) allowing users to update the Go engine binary, perform a fresh reinstall, or execute a complete uninstallation with clean init hook removal.
+* **🛑 Selective & Batch Process Killer:** Stop action (`S`) lists all running services with PIDs and remaining time, allowing users to stop specific individual processes or all tunnels simultaneously.
+* **✨ Flicker-Free Clean Canvas & Toast Banners:** Integrated VT100 screen-clearing (`clear_screen`) and transient `FLASH_MSG` toast banners across all menus and cancellations to prevent dirty terminal scrolling.
+* **🔤 Natural Underlined Hotkey Styling:** Clean single-character underlined hotkeys (`<u>V</u>iew Sessions | 🛑 <u>S</u>top | ↩️ <u>E</u>xit: `) without redundant `=` symbols.
 
 ---
 
