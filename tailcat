@@ -96,13 +96,13 @@ start_tunnel() {
     extra_info="${4:-}"
 
     if is_session_active; then
-        printf "%b[!] A TailCat session is already active. Stop it first (Option 8).%b\n" "$C_RED" "$C_RESET"
+        printf "%b[!] A TailCat session is already active. Stop it first (Option 6).%b\n" "$C_RED" "$C_RESET"
         return 1
     fi
 
     if [ ! -x "$TAILCAT_BIN" ]; then
         printf "%b[!] TailCat binary not found at %s.%b\n" "$C_RED" "$TAILCAT_BIN" "$C_RESET"
-        printf "%b[*] Please run Option 10 to download/reinstall the binary.%b\n" "$C_YELLOW" "$C_RESET"
+        printf "%b[*] Please run Option 8 to download/reinstall the binary.%b\n" "$C_YELLOW" "$C_RESET"
         return 1
     fi
 
@@ -205,13 +205,6 @@ display_session_info() {
             printf "    %btailcat socks %s curl -k https://router.tailcat:%s/%b\n" "$C_CYAN" "${TOKEN}" "${EXTRA_INFO:-8443}" "$C_RESET"
             printf "    %b# Or forward: tailcat %s %s (Open https://localhost:%s)%b\n" "$C_GRAY" "${TOKEN}" "${EXTRA_INFO:-8443}" "${EXTRA_INFO:-8443}" "$C_RESET"
             ;;
-        "PORT")
-            printf "    %btailcat %s %s%b\n" "$C_CYAN" "${TOKEN}" "${EXTRA_INFO}" "$C_RESET"
-            ;;
-        "EXITNODE")
-            printf "    %btailcat socks %s curl https://ifconfig.me%b\n" "$C_CYAN" "${TOKEN}" "$C_RESET"
-            printf "    %b# Routes external client traffic through your router's WAN connection%b\n" "$C_GRAY" "$C_RESET"
-            ;;
         *)
             printf "    %btailcat %s%b\n" "$C_CYAN" "${TOKEN}" "$C_RESET"
             ;;
@@ -273,7 +266,7 @@ update_binary() {
 }
 
 # -------------------------------------------------------------------------------------------------------------------------
-# Interactive Menu Loop
+# Interactive Menu Loop (KISS Principles)
 
 main_menu() {
     while true; do
@@ -289,20 +282,18 @@ main_menu() {
         printf "  %bTailCat-Merlin v%s%b — Ephemeral WireGuard Tunnel Manager\n" "$C_BOLD" "${VERSION}" "$C_RESET"
         printf "  Status: %b\n" "${status_str}"
         printf "%b========================================================================%b\n" "$C_CYAN" "$C_RESET"
-        printf "  %b1.%b 🆘 Start Remote Shell           %b(Instant Access, No Password/Key)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
-        printf "  %b2.%b 📥 Receive Files / DropBox      %b(Drop to RAM /tmp or USB Storage)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
-        printf "  %b3.%b 📤 Serve Directory (SFTP)       %b(Read-Only / Read-Write Share)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
-        printf "  %b4.%b 🌐 Expose Router WebGUI         %b(HTTPS / HTTP Admin Web Interface)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
-        printf "  %b5.%b 🔌 Custom Port Forwarder        %b(Any TCP Port or Range)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
-        printf "  %b6.%b 🛡️ Ephemeral Exit Node          %b(Route client traffic via router)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
-        printf "  %b7.%b 👁️ View Active Session Token    %b(Display connect command)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
-        printf "  %b8.%b 🛑 Stop Active Session          %b(Kill active tunnel)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b1.%b 🆘 Start Remote Shell           %b(Instant Support, No Password/Key)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b2.%b 📥 Receive Files / DropBox      %b(Direct P2P File Drop to Router)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b3.%b 📤 Share Directory (SFTP)       %b(Read-Only / Read-Write Share)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b4.%b 🌐 Expose Router WebGUI         %b(Instant Web Administration Tunnel)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b5.%b 👁️ View Active Session Token    %b(Display connect instructions)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b6.%b 🛑 Stop Active Session          %b(Kill active tunnel)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
         printf "  %b------------------------------------------------------------------------%b\n" "$C_CYAN" "$C_RESET"
-        printf "  %b9.%b ⏱️ Configure Auto-Kill Timeout  %b(Current: %s min)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "${TIMEOUT_MINUTES}" "$C_RESET"
-        printf " %b10.%b 🔄 Reinstall / Update Binary    %b(Download latest v0.4.0)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
-        printf " %b11.%b 🗑️ Uninstall TailCat Addon     %b(Clean up all files)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b7.%b ⏱️ Configure Auto-Kill Timeout  %b(Current: %s min)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "${TIMEOUT_MINUTES}" "$C_RESET"
+        printf "  %b8.%b 🔄 Reinstall / Update Binary    %b(Download latest v0.4.0)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b9.%b 🗑️ Uninstall TailCat Addon     %b(Clean up all files)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
         printf "%b========================================================================%b\n" "$C_CYAN" "$C_RESET"
-        printf " Enter selection [1-11, e=Exit]: "
+        printf " Enter selection [1-9, e=Exit]: "
         read -r choice
 
         case "$choice" in
@@ -367,36 +358,18 @@ main_menu() {
                 start_tunnel "WEBGUI" "serve ${https_port},${http_port}" "Router WebGUI (Ports ${https_port}, ${http_port})" "HTTPS: ${https_port}, HTTP: ${http_port}"
                 ;;
             5)
-                printf " Enter TCP port(s) to forward (e.g. 80, 8080, 3000-3005): "
-                read -r p_ports
-                case "$p_ports" in
-                    *[!0-9,-]*)
-                        printf "%b[!] Invalid port syntax. Use numbers, commas, or hyphens.%b\n" "$C_RED" "$C_RESET"
-                        ;;
-                    '')
-                        printf "%b[!] Port cannot be empty.%b\n" "$C_RED" "$C_RESET"
-                        ;;
-                    *)
-                        start_tunnel "PORT" "serve $p_ports" "Custom Port Forward (${p_ports})" "Ports: ${p_ports}"
-                        ;;
-                esac
-                ;;
-            6)
-                start_tunnel "EXITNODE" "serve exit-node" "Ephemeral Exit Node Gateway"
-                ;;
-            7)
                 display_session_info
                 ;;
-            8)
+            6)
                 stop_session
                 ;;
-            9)
+            7)
                 set_timeout_config
                 ;;
-            10)
+            8)
                 update_binary
                 ;;
-            11)
+            9)
                 printf " Are you sure you want to completely remove TailCat? [y/N]: "
                 read -r confirm_un
                 case "$confirm_un" in

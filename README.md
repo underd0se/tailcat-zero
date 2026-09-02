@@ -11,20 +11,18 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
   TailCat-Merlin v1.0.0 — Ephemeral WireGuard Tunnel Manager
   Status: [ ACTIVE: SSH | 26m remaining ]
 ========================================================================
-  1. 🆘 Start Remote Shell           (Instant Access, No Password/Key)
-  2. 📥 Receive Files / DropBox      (Drop to /tmp/tailcat-inbox)
-  3. 📤 Serve Directory (SFTP)       (Read-Only File Sharing)
-  4. 🌐 Expose Router WebGUI         (Port 8443 Tunnel)
-  5. 🔌 Custom Port Forwarder        (Any TCP Port or Range)
-  6. 🛡️ Ephemeral Exit Node          (Route client traffic via router)
-  7. 👁️ View Active Session Token    (Display connect command)
-  8. 🛑 Stop Active Session          (Kill active tunnel)
+  1. 🆘 Start Remote Shell           (Instant Support, No Password/Key)
+  2. 📥 Receive Files / DropBox      (Direct P2P File Drop to Router)
+  3. 📤 Share Directory (SFTP)       (Read-Only / Read-Write Share)
+  4. 🌐 Expose Router WebGUI         (Instant Web Administration Tunnel)
+  5. 👁️ View Active Session Token    (Display connect instructions)
+  6. 🛑 Stop Active Session          (Kill active tunnel)
   ------------------------------------------------------------------------
-  9. ⏱️ Configure Auto-Kill Timeout  (Current: 30 min)
- 10. 🔄 Reinstall / Update Binary    (Download latest v0.4.0)
- 11. 🗑️ Uninstall TailCat Addon     (Clean up all files)
+  7. ⏱️ Configure Auto-Kill Timeout  (Current: 30 min)
+  8. 🔄 Reinstall / Update Binary    (Download latest v0.4.0)
+  9. 🗑️ Uninstall TailCat Addon     (Clean up all files)
 ========================================================================
- Enter selection [1-11, e=Exit]: 
+ Enter selection [1-9, e=Exit]: 
 ```
 
 ---
@@ -99,7 +97,7 @@ tailcat ls tcXXXXXXXXX
 
 ## 🗑️ Uninstallation
 
-Launch `tailcat` and select **Option 11**, or run:
+Launch `tailcat` and select **Option 9**, or run:
 ```sh
 rm -rf /jffs/addons/tailcat /jffs/scripts/tailcat /jffs/addons/amtm/tailcat.mod
 ```
