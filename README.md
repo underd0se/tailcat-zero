@@ -11,7 +11,7 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
   TailCat-Merlin v1.0.0 — Ephemeral WireGuard Tunnel Manager
   Status: [ ACTIVE: SSH | 26m remaining ]
 ========================================================================
-  1. 🆘 Start Remote SSH Tunnel      (Port 22, Password/Key Required)
+  1. 🆘 Start Remote Shell           (Instant Access, No Password/Key)
   2. 📥 Receive Files / DropBox      (Drop to /tmp/tailcat-inbox)
   3. 📤 Serve Directory (SFTP)       (Read-Only File Sharing)
   4. 🌐 Expose Router WebGUI         (Port 8443 Tunnel)
@@ -46,9 +46,9 @@ tailcat
 
 ## 🌟 Key Features
 
-* **🆘 Emergency Remote SSH:**
-  * Spawns an encrypted P2P WireGuard tunnel directly to your router's Dropbear SSH port (22).
-  * **Strictly Protected:** Requires your router's standard SSH password or public key (no unauthenticated root backdoors).
+* **🆘 Instant Remote Shell (Passwordless Support Access):**
+  * Spawns an encrypted P2P WireGuard shell powered by TailCat's built-in SSH runtime.
+  * **Zero Friction:** Share the token with any assistant or administrator — they connect immediately (`tailcat ssh <token>`) with **zero passwords to disclose and zero SSH keys to manage**.
 * **📥 Encrypted File DropBox:**
   * Turn your router into a secure drop box (`/tmp/tailcat-inbox`).
   * Send firmware images or JFFS backups from any PC: `tailcat cp backup.tar.gz <token>:`
@@ -67,8 +67,8 @@ tailcat
 
 | Security Measure | Implementation |
 |---|---|
+| **Capability-Based Tokens** | 256-bit cryptographically secure ephemeral tokens. Possession is permission. |
 | **No WAN Ports Open** | Uses DERP relays and UDP NAT hole-punching. Zero incoming firewall holes opened. |
-| **Enforced Authentication** | Remote SSH proxies to local port 22, enforcing standard router credentials. |
 | **Mandatory Auto-Kill** | Background watchdog subshell automatically kills tunnels when the timer expires. |
 | **Clean Reboot Teardown** | Session locks and state are stored in volatile memory (`/tmp`) and cleaned up on reboot. |
 

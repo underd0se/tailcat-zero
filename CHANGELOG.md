@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🚀 Initial Release: Ephemeral WireGuard Tunnel & DropBox Manager
 
-* **🆘 Authenticated Remote SSH Tunneling:** Ephemeral WireGuard tunnel directly proxied to Dropbear SSH (Port 22) with password/key authentication enforced.
+* **🆘 Instant Remote Shell (Passwordless):** Ephemeral WireGuard shell powered by TailCat's native SSH server with capability-based token access (no passwords or SSH keys to configure).
 * **📥 Encrypted File DropBox:** Write-only peer-to-peer file drop receiver into `/tmp/tailcat-inbox`.
 * **📤 SFTP File Share:** Read-only directory serving with native SFTP path confinement.
 * **🌐 WebGUI Remote Port Forwarder:** Securely forward local router management WebUI (port 8443).
