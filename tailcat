@@ -7,7 +7,7 @@
 
 set -eu
 
-VERSION="1.0.0"
+VERSION="1.1.0"
 CONFIG_DIR="/jffs/addons/tailcat"
 CONFIG_FILE="${CONFIG_DIR}/tailcat.cfg"
 BIN_DIR="${CONFIG_DIR}/bin"
@@ -96,7 +96,7 @@ start_tunnel() {
     extra_info="${4:-}"
 
     if is_session_active; then
-        printf "%b[!] A TailCat session is already active. Stop it first (Option 6).%b\n" "$C_RED" "$C_RESET"
+        printf "%b[!] A TailCat session is already active. Stop it first (Option 6 or 's').%b\n" "$C_RED" "$C_RESET"
         return 1
     fi
 
@@ -161,55 +161,111 @@ TIMEOUT_MINUTES=${TIMEOUT_MINUTES}
 EOF
 
     log_msg "TailCat session started: ${service_type} (Auto-kill: ${TIMEOUT_MINUTES}m)"
-    display_session_info
+    interactive_session_card
 }
 
-display_session_info() {
+get_client_connect_cmd() {
+    s_type="$1"
+    s_token="$2"
+    s_extra="${3:-}"
+
+    case "$s_type" in
+        "SSH")
+            printf "tailcat ssh %s" "$s_token"
+            ;;
+        "RECV")
+            printf "tailcat cp <file_or_dir> %s:" "$s_token"
+            ;;
+        "FILES")
+            printf "tailcat ls -l %s" "$s_token"
+            ;;
+        "WEBGUI")
+            printf "tailcat socks %s curl -k https://router.tailcat:%s/" "$s_token" "${s_extra:-8443}"
+            ;;
+        *)
+            printf "tailcat %s" "$s_token"
+            ;;
+    esac
+}
+
+render_session_card() {
+    show_qr="${1:-0}"
     if ! is_session_active; then
         printf "\n%b[!] No active TailCat session.%b\n" "$C_YELLOW" "$C_RESET"
-        return
+        return 1
     fi
 
     # shellcheck disable=SC1090,SC2153
     . "$SESSION_FILE"
     time_left=$(get_time_left)
+    cmd=$(get_client_connect_cmd "$SERVICE" "$TOKEN" "${EXTRA_INFO:-}")
 
-    printf "\n%b%b========================================================================%b\n" "$C_GREEN" "$C_BOLD" "$C_RESET"
-    printf "  %b%b🐱 Active TailCat Session Details%b\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
-    printf "%b%b========================================================================%b\n" "$C_GREEN" "$C_BOLD" "$C_RESET"
-    printf "  %bService:%b     %b%s%b\n" "$C_BOLD" "$C_RESET" "$C_MAGENTA" "${DESC}" "$C_RESET"
+    printf "\n%b┌────────────────────────────────────────────────────────────────────────┐%b\n" "$C_GREEN" "$C_RESET"
+    printf "%b│  %b🐱 TailCat-Merlin — Live Active Session Card%b%b                          │%b\n" "$C_GREEN" "$C_BOLD" "$C_RESET" "$C_GREEN" "$C_RESET"
+    printf "%b├────────────────────────────────────────────────────────────────────────┤%b\n" "$C_GREEN" "$C_RESET"
+    printf "  %bService:%b       %b%s%b\n" "$C_BOLD" "$C_RESET" "$C_MAGENTA" "${DESC}" "$C_RESET"
     if [ -n "${EXTRA_INFO:-}" ]; then
-        printf "  %bDetails:%b     %s\n" "$C_BOLD" "$C_RESET" "${EXTRA_INFO}"
+        printf "  %bDestination:%b   %s\n" "$C_BOLD" "$C_RESET" "${EXTRA_INFO}"
     fi
-    printf "  %bTime Left:%b   %b%s (Limit: %s min)%b\n" "$C_BOLD" "$C_RESET" "$C_YELLOW" "${time_left}" "${TIMEOUT_MINUTES}" "$C_RESET"
-    printf "  %bSecurity:%b    %bWireGuard Point-to-Point (No WAN ports open)%b\n" "$C_BOLD" "$C_RESET" "$C_GREEN" "$C_RESET"
-    printf "  %bAddress Token:%b\n" "$C_BOLD" "$C_RESET"
-    printf "    %b%b%s%b\n" "$C_BOLD" "$C_YELLOW" "${TOKEN}" "$C_RESET"
-    printf "%b------------------------------------------------------------------------%b\n" "$C_GREEN" "$C_RESET"
-    printf "  %bClient Connect Instructions (from any Mac, Linux, PC):%b\n" "$C_BOLD" "$C_RESET"
+    printf "  %bAuto-Kill:%b     %b⏱️  %s (Configured Limit: %s min)%b\n" "$C_BOLD" "$C_RESET" "$C_YELLOW" "${time_left}" "${TIMEOUT_MINUTES}" "$C_RESET"
+    printf "  %bSecurity:%b      %b🔒 WireGuard P2P Encrypted (Zero WAN Ports Open)%b\n\n" "$C_BOLD" "$C_RESET" "$C_GREEN" "$C_RESET"
+    printf "  %bShareable Capability Token:%b\n" "$C_BOLD" "$C_RESET"
+    printf "  %b%b%s%b\n\n" "$C_BOLD" "$C_YELLOW" "${TOKEN}" "$C_RESET"
+    printf "  %bClient Connect Command:%b\n" "$C_BOLD" "$C_RESET"
+    printf "  %b👉 %s%b\n\n" "$C_CYAN" "$cmd" "$C_RESET"
 
-    case "$SERVICE" in
-        "SSH")
-            printf "    %btailcat ssh %s%b\n" "$C_CYAN" "${TOKEN}" "$C_RESET"
-            printf "    %b# Instant terminal shell — zero passwords or SSH keys required%b\n" "$C_GRAY" "$C_RESET"
-            ;;
-        "RECV")
-            printf "    %btailcat cp <file_or_dir> %s:%b\n" "$C_CYAN" "${TOKEN}" "$C_RESET"
-            printf "    %b# Drops files into %s%b\n" "$C_GRAY" "${EXTRA_INFO:-/tmp/tailcat-inbox}" "$C_RESET"
-            ;;
-        "FILES")
-            printf "    %btailcat ls -l %s%b\n" "$C_CYAN" "${TOKEN}" "$C_RESET"
-            printf "    %btailcat cp %s:<remote_file> ./local_file%b\n" "$C_CYAN" "${TOKEN}" "$C_RESET"
-            ;;
-        "WEBGUI")
-            printf "    %btailcat socks %s curl -k https://router.tailcat:%s/%b\n" "$C_CYAN" "${TOKEN}" "${EXTRA_INFO:-8443}" "$C_RESET"
-            printf "    %b# Or forward: tailcat %s %s (Open https://localhost:%s)%b\n" "$C_GRAY" "${TOKEN}" "${EXTRA_INFO:-8443}" "${EXTRA_INFO:-8443}" "$C_RESET"
-            ;;
-        *)
-            printf "    %btailcat %s%b\n" "$C_CYAN" "${TOKEN}" "$C_RESET"
-            ;;
-    esac
-    printf "%b%b========================================================================%b\n\n" "$C_GREEN" "$C_BOLD" "$C_RESET"
+    # Chat Invite Snippet
+    printf "  %b💬 Copy & Paste to Friend / Admin Support:%b\n" "$C_BOLD" "$C_RESET"
+    printf "  %b┌────────────────────────────────────────────────────────────────────┐%b\n" "$C_GRAY" "$C_RESET"
+    printf "  %b│ Hey, I've opened a temporary TailCat session on my router (%s).  │%b\n" "$C_GRAY" "${time_left}" "$C_RESET"
+    printf "  %b│ Run: %-60s │%b\n" "$C_GRAY" "$cmd" "$C_RESET"
+    printf "  %b└────────────────────────────────────────────────────────────────────┘%b\n" "$C_GRAY" "$C_RESET"
+
+    # ASCII QR Code if qrencode exists and requested/supported
+    if [ "$show_qr" = "1" ] && [ -x "/usr/sbin/qrencode" ]; then
+        printf "\n  %b📱 Scan QR Code on Mobile / Laptop:%b\n" "$C_BOLD" "$C_RESET"
+        /usr/sbin/qrencode -t UTF8 -m 1 "$cmd" 2>/dev/null || /usr/sbin/qrencode -t ASCII -m 1 "$cmd" 2>/dev/null || true
+    fi
+
+    printf "%b└────────────────────────────────────────────────────────────────────────┘%b\n" "$C_GREEN" "$C_RESET"
+    return 0
+}
+
+interactive_session_card() {
+    show_qr=0
+    while is_session_active; do
+        render_session_card "$show_qr"
+        qr_hint="[q] 📱 Show QR"
+        [ "$show_qr" = "1" ] && qr_hint="[q] 📱 Hide QR"
+
+        printf "  %bActions:%b [s] 🛑 Stop Session  |  [r] 🔄 Refresh  |  %s  |  [b] ↩️ Main Menu\n" "$C_BOLD" "$C_RESET" "$qr_hint"
+        printf "  Select action [s/r/q/b, default b]: "
+        if ! read -r s_action; then
+            break
+        fi
+        case "$s_action" in
+            [sS])
+                stop_session
+                break
+                ;;
+            [rR])
+                # Refreshes card in loop
+                ;;
+            [qQ])
+                if [ "$show_qr" = "1" ]; then
+                    show_qr=0
+                else
+                    show_qr=1
+                fi
+                ;;
+            [bB]|''|[eE])
+                break
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
 }
 
 set_timeout_config() {
@@ -266,7 +322,7 @@ update_binary() {
 }
 
 # -------------------------------------------------------------------------------------------------------------------------
-# Interactive Menu Loop (KISS Principles)
+# Interactive Menu Loop (KISS & Modern UX)
 
 main_menu() {
     while true; do
@@ -275,7 +331,7 @@ main_menu() {
             # shellcheck disable=SC1090
             . "$SESSION_FILE"
             tl=$(get_time_left)
-            status_str="${C_GREEN}[ ACTIVE: ${SERVICE} | ${tl} ]${C_RESET}"
+            status_str="${C_GREEN}[ ACTIVE: ${SERVICE} | ${tl} ] [Press '5' or 's']${C_RESET}"
         fi
 
         printf "\n%b%b========================================================================%b\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
@@ -286,15 +342,17 @@ main_menu() {
         printf "  %b2.%b 📥 Receive Files / DropBox      %b(Direct P2P File Drop to Router)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
         printf "  %b3.%b 📤 Share Directory (SFTP)       %b(Read-Only / Read-Write Share)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
         printf "  %b4.%b 🌐 Expose Router WebGUI         %b(Instant Web Administration Tunnel)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
-        printf "  %b5.%b 👁️ View Active Session Token    %b(Display connect instructions)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b5.%b 👁️ View Active Session Card    %b(Live Timer, QR Code & Chat Snippet)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
         printf "  %b6.%b 🛑 Stop Active Session          %b(Kill active tunnel)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
         printf "  %b------------------------------------------------------------------------%b\n" "$C_CYAN" "$C_RESET"
         printf "  %b7.%b ⏱️ Configure Auto-Kill Timeout  %b(Current: %s min)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "${TIMEOUT_MINUTES}" "$C_RESET"
         printf "  %b8.%b 🔄 Reinstall / Update Binary    %b(Download latest v0.4.0)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
         printf "  %b9.%b 🗑️ Uninstall TailCat Addon     %b(Clean up all files)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
         printf "%b========================================================================%b\n" "$C_CYAN" "$C_RESET"
-        printf " Enter selection [1-9, e=Exit]: "
-        read -r choice
+        printf " Enter selection [1-9, s=Stop, t=Timeout, e=Exit]: "
+        if ! read -r choice; then
+            break
+        fi
 
         case "$choice" in
             1)
@@ -357,16 +415,16 @@ main_menu() {
                 [ -z "$http_port" ] && http_port=80
                 start_tunnel "WEBGUI" "serve ${https_port},${http_port}" "Router WebGUI (Ports ${https_port}, ${http_port})" "HTTPS: ${https_port}, HTTP: ${http_port}"
                 ;;
-            5)
-                display_session_info
+            5|[vV])
+                interactive_session_card
                 ;;
-            6)
+            6|[sS])
                 stop_session
                 ;;
-            7)
+            7|[tT])
                 set_timeout_config
                 ;;
-            8)
+            8|[uU])
                 update_binary
                 ;;
             9)
@@ -384,7 +442,7 @@ main_menu() {
                         ;;
                 esac
                 ;;
-            [eE]|q|Q)
+            [eE])
                 printf "%bGoodbye!%b\n" "$C_CYAN" "$C_RESET"
                 exit 0
                 ;;
