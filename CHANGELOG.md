@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.2] - 2026-09-02
+
+### 🧹 UI Cleanup, Anti-Bleed Dividers & Underline Hotkeys
+
+* **🧹 Active Session Header:** Renamed card header to concise `Active Session`.
+* **✂️ Cleaner Status Details:** Removed redundant explanations from Auto-Kill and Security metadata rows.
+* **🛡️ Anti-Bleed Snippet Dividers:** Replaced fixed-width closed boxes with horizontal rule dividers (`───`) so long tokens and commands naturally flow without line-wrap border corruption.
+* **📁 Folder Icon Alignment:** Updated SFTP Directory Sharing icon to `📁` (Folder) for improved visual metaphor.
+
+---
+
 ## [1.1.1] - 2026-09-02
 
 ### 🎨 High-Contrast Terminal Color Refinements

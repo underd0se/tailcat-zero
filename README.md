@@ -8,14 +8,14 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
 
 ```text
 ========================================================================
-  TailCat-Merlin v1.1.1 — Ephemeral WireGuard Tunnel Manager
+  TailCat-Merlin v1.1.2 — Ephemeral WireGuard Tunnel Manager
   Status: [ ACTIVE: SSH | 28m remaining ] [Press '5' or 's']
 ========================================================================
   1. 🆘 Start Remote Shell           (Instant Support, No Password/Key)
   2. 📥 Receive Files / DropBox      (Direct P2P File Drop to Router)
-  3. 📤 Share Directory (SFTP)       (Read-Only / Read-Write Share)
+  3. 📁 Share Directory (SFTP)       (Read-Only / Read-Write Share)
   4. 🌐 Expose Router WebGUI         (Instant Web Administration Tunnel)
-  5. 👁️ View Active Session Card    (Live Timer, QR Code & Chat Snippet)
+  5. 👁️ View Active Session          (Live Timer, QR Code & Chat Snippet)
   6. 🛑 Stop Active Session          (Kill active tunnel)
   ------------------------------------------------------------------------
   7. ⏱️ Configure Auto-Kill Timeout  (Current: 30 min)
@@ -56,7 +56,7 @@ tailcat
 * **📥 Encrypted File DropBox:**
   * Turn your router into a secure drop box (`/tmp/tailcat-inbox` or mounted USB storage).
   * Send firmware images or JFFS backups from any PC: `tailcat cp backup.tar.gz <token>:`
-* **📤 SFTP Directory Share:**
+* **📁 SFTP Directory Share:**
   * Serve any router directory (e.g. `/jffs` or USB mount) read-only or read-write to remote clients using native SFTP.
 * **🌐 WebGUI Remote Access:**
   * Expose local WebUI (port 8443 / 80) over a secure token without opening WAN firewall ports.
@@ -111,6 +111,12 @@ rm -rf /jffs/addons/tailcat /jffs/scripts/tailcat /jffs/addons/amtm/tailcat.mod
 ---
 
 ## 📝 Changelog
+
+### [v1.1.2] - 2026-09-02
+* **🧹 Active Session Header:** Renamed card header to concise `Active Session`.
+* **✂️ Cleaner Status Details:** Removed redundant explanations from Auto-Kill and Security metadata rows.
+* **🛡️ Anti-Bleed Snippet Dividers:** Replaced fixed-width closed boxes with horizontal rule dividers (`───`) so long tokens and commands naturally flow without line-wrap border corruption.
+* **⌨️ Integrated Bold Underline Hotkeys:** Replaced bracketed keys with in-word highlighted hotkeys (**S**top Session, **R**efresh, **Q**R, **M**ain Menu) and merged the prompt into a single inline action bar.
 
 ### [v1.1.1] - 2026-09-02
 * **🎨 High-Contrast Terminal Color Refinements:** Upgraded Chat Invite Snippets to high-contrast crisp white (`C_WHITE`) and cyan borders (`C_CYAN`) with highlighted yellow commands (`C_YELLOW`), ensuring pristine visibility across dark-background terminals.
