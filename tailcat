@@ -136,9 +136,11 @@ stop_single_session() {
         . "$s_file"
         if [ -n "${PID:-}" ]; then
             kill -9 "$PID" 2>/dev/null || true
+            wait "$PID" 2>/dev/null || true
         fi
         if [ -n "${WATCHDOG_PID:-}" ]; then
             kill -9 "$WATCHDOG_PID" 2>/dev/null || true
+            wait "$WATCHDOG_PID" 2>/dev/null || true
         fi
         rm -f "$s_file" "$addr_file"
         log_msg "TailCat session stopped: ${s_id}"
@@ -305,9 +307,9 @@ start_tunnel() {
 
     printf "\n%b[*] Starting %s...%b\n" "$C_CYAN" "$desc" "$C_RESET"
 
-    # Start tailcat in background with address output file
+    # Start tailcat in background with address output file and guaranteed ephemeral key
     # shellcheck disable=SC2086
-    TAILCAT_ADDR_FILE="$addr_file" "$TAILCAT_BIN" $subcmd >/dev/null 2>&1 &
+    TAILCAT_ADDR_FILE="$addr_file" "$TAILCAT_BIN" --key=new $subcmd >/dev/null 2>&1 &
     tailcat_pid=$!
 
     # Wait up to 10 seconds for address file
