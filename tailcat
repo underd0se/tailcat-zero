@@ -1,0 +1,375 @@
+#!/bin/sh
+# =========================================================================================================================
+# TailCat-Merlin — Ephemeral WireGuard Tunnel & File Drop Manager for Asuswrt-Merlin
+# Managed by AMTM standard conventions.
+# =========================================================================================================================
+# shellcheck disable=SC2153
+
+set -eu
+
+VERSION="1.0.0"
+CONFIG_DIR="/jffs/addons/tailcat"
+CONFIG_FILE="${CONFIG_DIR}/tailcat.cfg"
+BIN_DIR="${CONFIG_DIR}/bin"
+TAILCAT_BIN="${BIN_DIR}/tailcat"
+SESSION_FILE="/tmp/tailcat_session.env"
+ADDR_FILE="/tmp/tailcat_addr.txt"
+LOG_TAG="tailcat-merlin"
+
+# ANSI Color Palette
+C_RESET="\033[0m"
+C_BOLD="\033[1m"
+C_GREEN="\033[1;32m"
+C_CYAN="\033[1;36m"
+C_YELLOW="\033[1;33m"
+C_RED="\033[1;31m"
+C_GRAY="\033[1;30m"
+C_MAGENTA="\033[1;35m"
+
+# Default Configuration
+DEFAULT_TIMEOUT=30 # 30 minutes
+DERP_URL="https://tailcat.dev/derpmap.json"
+export DERP_URL
+
+# Load Config if exists
+if [ -f "$CONFIG_FILE" ]; then
+    # shellcheck disable=SC1090
+    . "$CONFIG_FILE"
+fi
+
+TIMEOUT_MINUTES="${TIMEOUT_MINUTES:-$DEFAULT_TIMEOUT}"
+
+# -------------------------------------------------------------------------------------------------------------------------
+# Helper Functions
+
+log_msg() {
+    logger -t "$LOG_TAG" "$*"
+}
+
+is_session_active() {
+    if [ -f "$SESSION_FILE" ]; then
+        # shellcheck disable=SC1090
+        . "$SESSION_FILE"
+        if [ -n "${PID:-}" ] && kill -0 "$PID" 2>/dev/null; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+get_time_left() {
+    if is_session_active; then
+        # shellcheck disable=SC1090
+        . "$SESSION_FILE"
+        now=$(date +%s)
+        if [ "$now" -lt "${EXPIRE_EPOCH:-0}" ]; then
+            remaining=$(( (EXPIRE_EPOCH - now) / 60 ))
+            printf "%sm remaining" "$remaining"
+            return
+        fi
+    fi
+    printf "Expired"
+}
+
+stop_session() {
+    if is_session_active; then
+        # shellcheck disable=SC1090
+        . "$SESSION_FILE"
+        if [ -n "${PID:-}" ]; then
+            kill -9 "$PID" 2>/dev/null || true
+        fi
+        if [ -n "${WATCHDOG_PID:-}" ]; then
+            kill -9 "$WATCHDOG_PID" 2>/dev/null || true
+        fi
+        rm -f "$SESSION_FILE" "$ADDR_FILE"
+        log_msg "TailCat session stopped: ${SERVICE:-unknown}"
+        printf "%b[+] Active TailCat session has been stopped.%b\n" "$C_GREEN" "$C_RESET"
+    else
+        printf "%b[!] No active TailCat session found.%b\n" "$C_YELLOW" "$C_RESET"
+    fi
+}
+
+start_tunnel() {
+    service_type="$1"
+    serve_args="$2"
+    desc="$3"
+
+    if is_session_active; then
+        printf "%b[!] A TailCat session is already active. Stop it first (Option 8).%b\n" "$C_RED" "$C_RESET"
+        return 1
+    fi
+
+    if [ ! -x "$TAILCAT_BIN" ]; then
+        printf "%b[!] TailCat binary not found at %s.%b\n" "$C_RED" "$TAILCAT_BIN" "$C_RESET"
+        printf "%b[*] Please run Option 10 to download/reinstall the binary.%b\n" "$C_YELLOW" "$C_RESET"
+        return 1
+    fi
+
+    printf "\n%b[*] Starting %s...%b\n" "$C_CYAN" "$desc" "$C_RESET"
+    rm -f "$ADDR_FILE"
+
+    # Start tailcat in background with address output file
+    # shellcheck disable=SC2086
+    TAILCAT_ADDR_FILE="$ADDR_FILE" "$TAILCAT_BIN" serve $serve_args >/dev/null 2>&1 &
+    tailcat_pid=$!
+
+    # Wait up to 10 seconds for address file
+    count=0
+    while [ $count -lt 10 ]; do
+        if [ -s "$ADDR_FILE" ]; then
+            break
+        fi
+        sleep 1
+        count=$((count + 1))
+    done
+
+    if [ ! -s "$ADDR_FILE" ] || ! kill -0 "$tailcat_pid" 2>/dev/null; then
+        printf "%b[-] Failed to start TailCat session.%b\n" "$C_RED" "$C_RESET"
+        kill -9 "$tailcat_pid" 2>/dev/null || true
+        rm -f "$ADDR_FILE"
+        return 1
+    fi
+
+    token=$(tr -d '\r\n' < "$ADDR_FILE")
+    now=$(date +%s)
+    timeout_sec=$(( TIMEOUT_MINUTES * 60 ))
+    expire_epoch=$(( now + timeout_sec ))
+
+    # Launch Auto-Kill Watcher Subshell
+    (
+        sleep "$timeout_sec"
+        if kill -0 "$tailcat_pid" 2>/dev/null; then
+            kill -9 "$tailcat_pid" 2>/dev/null || true
+            rm -f "$SESSION_FILE" "$ADDR_FILE"
+            logger -t "$LOG_TAG" "Session ${service_type} auto-expired after ${TIMEOUT_MINUTES}m"
+        fi
+    ) &
+    watchdog_pid=$!
+
+    # Save Session State
+    cat <<EOF > "$SESSION_FILE"
+PID=${tailcat_pid}
+WATCHDOG_PID=${watchdog_pid}
+SERVICE="${service_type}"
+DESC="${desc}"
+TOKEN="${token}"
+START_EPOCH=${now}
+EXPIRE_EPOCH=${expire_epoch}
+TIMEOUT_MINUTES=${TIMEOUT_MINUTES}
+EOF
+
+    log_msg "TailCat session started: ${service_type} (Auto-kill: ${TIMEOUT_MINUTES}m)"
+    display_session_info
+}
+
+display_session_info() {
+    if ! is_session_active; then
+        printf "\n%b[!] No active TailCat session.%b\n" "$C_YELLOW" "$C_RESET"
+        return
+    fi
+
+    # shellcheck disable=SC1090,SC2153
+    . "$SESSION_FILE"
+    time_left=$(get_time_left)
+
+    printf "\n%b%b========================================================================%b\n" "$C_GREEN" "$C_BOLD" "$C_RESET"
+    printf "  %b%b🐱 Active TailCat Session Details%b\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
+    printf "%b%b========================================================================%b\n" "$C_GREEN" "$C_BOLD" "$C_RESET"
+    printf "  %bService:%b     %b%s%b\n" "$C_BOLD" "$C_RESET" "$C_MAGENTA" "${DESC}" "$C_RESET"
+    printf "  %bTime Left:%b   %b%s (Limit: %s min)%b\n" "$C_BOLD" "$C_RESET" "$C_YELLOW" "${time_left}" "${TIMEOUT_MINUTES}" "$C_RESET"
+    printf "  %bSecurity:%b    %bWireGuard Point-to-Point (No WAN ports open)%b\n" "$C_BOLD" "$C_RESET" "$C_GREEN" "$C_RESET"
+    printf "  %bAddress Token:%b\n" "$C_BOLD" "$C_RESET"
+    printf "    %b%b%s%b\n" "$C_BOLD" "$C_YELLOW" "${TOKEN}" "$C_RESET"
+    printf "%b------------------------------------------------------------------------%b\n" "$C_GREEN" "$C_RESET"
+    printf "  %bClient Connect Instructions (from any Mac, Linux, PC):%b\n" "$C_BOLD" "$C_RESET"
+
+    case "$SERVICE" in
+        "SSH")
+            printf "    %btailcat ssh %s%b\n" "$C_CYAN" "${TOKEN}" "$C_RESET"
+            printf "    %b# Requires your router's standard SSH password/key%b\n" "$C_GRAY" "$C_RESET"
+            ;;
+        "RECV")
+            printf "    %btailcat cp <file_or_dir> %s:%b\n" "$C_CYAN" "${TOKEN}" "$C_RESET"
+            printf "    %b# Drops files into /tmp/tailcat-inbox on your router%b\n" "$C_GRAY" "$C_RESET"
+            ;;
+        "FILES")
+            printf "    %btailcat ls %s%b\n" "$C_CYAN" "${TOKEN}" "$C_RESET"
+            printf "    %btailcat cp %s:<file> ./local_file%b\n" "$C_CYAN" "${TOKEN}" "$C_RESET"
+            ;;
+        "WEBGUI")
+            printf "    %btailcat %s 8443%b\n" "$C_CYAN" "${TOKEN}" "$C_RESET"
+            printf "    %b# Or SOCKS5: tailcat socks curl -k https://%s:8443%b\n" "$C_GRAY" "${TOKEN}" "$C_RESET"
+            ;;
+        "PORT")
+            printf "    %btailcat %s <port>%b\n" "$C_CYAN" "${TOKEN}" "$C_RESET"
+            ;;
+        "EXITNODE")
+            printf "    %btailcat socks %s curl https://ifconfig.me%b\n" "$C_CYAN" "${TOKEN}" "$C_RESET"
+            ;;
+        *)
+            printf "    %btailcat %s%b\n" "$C_CYAN" "${TOKEN}" "$C_RESET"
+            ;;
+    esac
+    printf "%b%b========================================================================%b\n\n" "$C_GREEN" "$C_BOLD" "$C_RESET"
+}
+
+set_timeout_config() {
+    printf "\n%bConfigure Session Auto-Kill Timeout%b\n" "$C_CYAN" "$C_RESET"
+    printf "Current Timeout: %b%s minutes%b\n\n" "$C_BOLD" "${TIMEOUT_MINUTES}" "$C_RESET"
+    printf "Enter new timeout in minutes [5-240] (default 30): "
+    read -r user_t
+    case "$user_t" in
+        ''|*[!0-9]*)
+            if [ -z "$user_t" ]; then
+                user_t=30
+            else
+                printf "%b[!] Invalid number. Setting unchanged.%b\n" "$C_RED" "$C_RESET"
+                return
+            fi
+            ;;
+    esac
+
+    if [ "$user_t" -lt 5 ] || [ "$user_t" -gt 240 ]; then
+        printf "%b[!] Timeout must be between 5 and 240 minutes.%b\n" "$C_RED" "$C_RESET"
+        return
+    fi
+
+    TIMEOUT_MINUTES="$user_t"
+    mkdir -p "$CONFIG_DIR"
+    echo "TIMEOUT_MINUTES=${TIMEOUT_MINUTES}" > "$CONFIG_FILE"
+    printf "%b[+] Timeout updated to %s minutes.%b\n" "$C_GREEN" "${TIMEOUT_MINUTES}" "$C_RESET"
+}
+
+update_binary() {
+    printf "\n%b[*] Checking router architecture & downloading official TailCat binary...%b\n" "$C_CYAN" "$C_RESET"
+    arch=$(uname -m)
+    pkg_arch=""
+    case "$arch" in
+        armv7*|armv6*|arm) pkg_arch="armv7" ;;
+        aarch64*|arm64*)  pkg_arch="arm64" ;;
+        *)
+            printf "%b[!] Unsupported router architecture: %s%b\n" "$C_RED" "${arch}" "$C_RESET"
+            return 1
+            ;;
+    esac
+
+    mkdir -p "$BIN_DIR"
+    download_url="https://github.com/tailscale/tailcat/releases/download/v0.4.0/tailcat_0.4.0_linux_${pkg_arch}.tar.gz"
+    printf "%b[*] Downloading %s...%b\n" "$C_CYAN" "${download_url}" "$C_RESET"
+
+    if curl -fsSL "$download_url" | tar -xz -C "$BIN_DIR" tailcat; then
+        chmod 755 "$TAILCAT_BIN"
+        printf "%b[+] TailCat binary installed successfully (%s).%b\n" "$C_GREEN" "${pkg_arch}" "$C_RESET"
+    else
+        printf "%b[-] Failed to download TailCat binary.%b\n" "$C_RED" "$C_RESET"
+        return 1
+    fi
+}
+
+# -------------------------------------------------------------------------------------------------------------------------
+# Interactive Menu Loop
+
+main_menu() {
+    while true; do
+        status_str="${C_GRAY}[ INACTIVE ]${C_RESET}"
+        if is_session_active; then
+            # shellcheck disable=SC1090
+            . "$SESSION_FILE"
+            tl=$(get_time_left)
+            status_str="${C_GREEN}[ ACTIVE: ${SERVICE} | ${tl} ]${C_RESET}"
+        fi
+
+        printf "\n%b%b========================================================================%b\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
+        printf "  %bTailCat-Merlin v%s%b — Ephemeral WireGuard Tunnel Manager\n" "$C_BOLD" "${VERSION}" "$C_RESET"
+        printf "  Status: %b\n" "${status_str}"
+        printf "%b========================================================================%b\n" "$C_CYAN" "$C_RESET"
+        printf "  %b1.%b 🆘 Start Remote SSH Tunnel      %b(Port 22, Password/Key Required)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b2.%b 📥 Receive Files / DropBox      %b(Drop to /tmp/tailcat-inbox)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b3.%b 📤 Serve Directory (SFTP)       %b(Read-Only File Sharing)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b4.%b 🌐 Expose Router WebGUI         %b(Port 8443 Tunnel)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b5.%b 🔌 Custom Port Forwarder        %b(Any TCP Port or Range)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b6.%b 🛡️ Ephemeral Exit Node          %b(Route client traffic via router)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b7.%b 👁️ View Active Session Token    %b(Display connect command)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b8.%b 🛑 Stop Active Session          %b(Kill active tunnel)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b------------------------------------------------------------------------%b\n" "$C_CYAN" "$C_RESET"
+        printf "  %b9.%b ⏱️ Configure Auto-Kill Timeout  %b(Current: %s min)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "${TIMEOUT_MINUTES}" "$C_RESET"
+        printf " %b10.%b 🔄 Reinstall / Update Binary    %b(Download latest v0.4.0)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf " %b11.%b 🗑️ Uninstall TailCat Addon     %b(Clean up all files)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "%b========================================================================%b\n" "$C_CYAN" "$C_RESET"
+        printf " Enter selection [1-11, e=Exit]: "
+        read -r choice
+
+        case "$choice" in
+            1)
+                start_tunnel "SSH" "22" "Remote SSH Tunnel (Port 22)"
+                ;;
+            2)
+                mkdir -p /tmp/tailcat-inbox
+                start_tunnel "RECV" "recv /tmp/tailcat-inbox" "Encrypted File DropBox (/tmp/tailcat-inbox)"
+                ;;
+            3)
+                printf " Enter directory path to serve [/jffs]: "
+                read -r s_dir
+                s_dir="${s_dir:-/jffs}"
+                if [ ! -d "$s_dir" ]; then
+                    printf "%b[!] Directory %s does not exist.%b\n" "$C_RED" "$s_dir" "$C_RESET"
+                else
+                    start_tunnel "FILES" "serve --files=${s_dir}:ro files" "SFTP File Share (${s_dir})"
+                fi
+                ;;
+            4)
+                start_tunnel "WEBGUI" "8443" "Router WebGUI (Port 8443)"
+                ;;
+            5)
+                printf " Enter TCP port(s) to forward (e.g. 80, 8080, 3000-3005): "
+                read -r p_ports
+                if [ -z "$p_ports" ]; then
+                    printf "%b[!] Port cannot be empty.%b\n" "$C_RED" "$C_RESET"
+                else
+                    start_tunnel "PORT" "$p_ports" "Custom Port Forward (${p_ports})"
+                fi
+                ;;
+            6)
+                start_tunnel "EXITNODE" "exit-node" "Ephemeral Exit Node Gateway"
+                ;;
+            7)
+                display_session_info
+                ;;
+            8)
+                stop_session
+                ;;
+            9)
+                set_timeout_config
+                ;;
+            10)
+                update_binary
+                ;;
+            11)
+                printf " Are you sure you want to completely remove TailCat? [y/N]: "
+                read -r confirm_un
+                case "$confirm_un" in
+                    [yY]*)
+                        stop_session
+                        rm -rf "$CONFIG_DIR" /jffs/scripts/tailcat /jffs/addons/amtm/tailcat.mod 2>/dev/null || true
+                        printf "%b[+] TailCat-Merlin has been uninstalled.%b\n" "$C_GREEN" "$C_RESET"
+                        exit 0
+                        ;;
+                esac
+                ;;
+            [eE]|q|Q)
+                printf "%bGoodbye!%b\n" "$C_CYAN" "$C_RESET"
+                exit 0
+                ;;
+            *)
+                printf "%b[!] Invalid selection.%b\n" "$C_RED" "$C_RESET"
+                ;;
+        esac
+    done
+}
+
+# Ensure binary exists on first run
+if [ ! -x "$TAILCAT_BIN" ] && [ "${1:-}" != "--help" ] && [ "${1:-}" != "-h" ]; then
+    update_binary || true
+fi
+
+main_menu
