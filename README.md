@@ -22,8 +22,7 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
   ------------------------------------------------------------------------
 
   5. ⏱️ Configure Default Timeout    Current: 30 min
-  6. 🔄 Reinstall/Update Tailcat     Version: v0.4.0
-  7. ⚙️ Manage TailCat-Merlin        Update, reinstall, or remove
+  6. ⚙️ Manage TailCat-Merlin        Update, reinstall, or remove
 
 ========================================================================
 

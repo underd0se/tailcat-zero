@@ -617,7 +617,7 @@ set_timeout_config() {
 update_binary() {
     clear_screen
     draw_header
-    printf "  %b[*] Checking router architecture & downloading official TailCat binary...%b\n\n" "$C_CYAN" "$C_RESET"
+    printf "  %b[*] Checking router architecture & downloading official TailCat engine binary...%b\n\n" "$C_CYAN" "$C_RESET"
     arch=$(uname -m)
     pkg_arch=""
     case "$arch" in
@@ -635,11 +635,38 @@ update_binary() {
 
     if curl -fsSL "$download_url" | tar -xz -C "$BIN_DIR" tailcat; then
         chmod 755 "$TAILCAT_BIN"
-        FLASH_MSG="${C_GREEN}[+] TailCat binary installed successfully (${pkg_arch}).${C_RESET}"
+        FLASH_MSG="${C_GREEN}[+] TailCat engine binary updated successfully (${pkg_arch}).${C_RESET}"
     else
-        FLASH_MSG="${C_RED}[-] Failed to download TailCat binary.${C_RESET}"
+        FLASH_MSG="${C_RED}[-] Failed to download TailCat engine binary.${C_RESET}"
         return 1
     fi
+}
+
+update_tailcat_all() {
+    clear_screen
+    draw_header
+    printf "  %b[*] Checking for TailCat-Merlin script & engine updates...%b\n\n" "$C_CYAN" "$C_RESET"
+
+    # 1. Update Bash Script from GitHub
+    tmp_script="/tmp/tailcat.update"
+    rm -f "$tmp_script"
+    printf "  %b[*] Fetching latest TailCat-Merlin CLI script from GitHub...%b\n" "$C_CYAN" "$C_RESET"
+    if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-merlin/main/tailcat" -o "$tmp_script" 2>/dev/null; then
+        chmod 755 "$tmp_script"
+        mv -f "$tmp_script" /jffs/scripts/tailcat
+        ln -sf /jffs/scripts/tailcat /jffs/scripts/tailcat-merlin 2>/dev/null || true
+        if [ -d "/opt/bin" ]; then
+            ln -sf /jffs/scripts/tailcat /opt/bin/tailcat-merlin 2>/dev/null || true
+            ln -sf /jffs/scripts/tailcat /opt/bin/tailcat 2>/dev/null || true
+        fi
+        printf "  %b[+] TailCat-Merlin script updated successfully.%b\n\n" "$C_GREEN" "$C_RESET"
+    else
+        printf "  %b[!] Could not reach GitHub. Keeping current script.%b\n\n" "$C_YELLOW" "$C_RESET"
+    fi
+
+    # 2. Update Engine Binary
+    update_binary || true
+    FLASH_MSG="${C_GREEN}[+] TailCat-Merlin (script & engine) updated successfully.${C_RESET}"
 }
 
 reinstall_tailcat() {
@@ -702,8 +729,8 @@ manage_tailcat_menu() {
         b_ver=$(get_binary_version)
 
         printf "  %b%b⚙️  Manage TailCat-Merlin:%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
-        printf "  %b1.%b 🔄 Update Binary               %bCheck & update engine (%s)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "${b_ver}" "$C_RESET"
-        printf "  %b2.%b ⚡ Reinstall TailCat-Merlin     %bFresh download of script & binary%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b1.%b 🔄 Check & Update TailCat-Merlin %bUpdate script & engine (v%s / %s)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "${VERSION}" "${b_ver}" "$C_RESET"
+        printf "  %b2.%b ⚡ Force Reinstall TailCat-Merlin %bFresh download of script & binary%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
         printf "  %b3.%b 🗑️ Complete Uninstall           %bRemove addon, configs & init hooks%b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
 
         printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
@@ -715,7 +742,7 @@ manage_tailcat_menu() {
 
         case "$m_choice" in
             1)
-                update_binary
+                update_tailcat_all
                 break
                 ;;
             2)
@@ -749,7 +776,6 @@ main_menu() {
         b_recv=$(get_service_badge "RECV")
         b_files=$(get_service_badge "FILES")
         b_web=$(get_service_badge "WEBGUI")
-        b_ver=$(get_binary_version)
 
         draw_header
 
@@ -766,8 +792,7 @@ main_menu() {
         printf "  %b------------------------------------------------------------------------%b\n\n" "$C_CYAN" "$C_RESET"
 
         printf "  %b5.%b ⏱️ Configure Default Timeout    %bCurrent: %s min%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "${TIMEOUT_MINUTES}" "$C_RESET"
-        printf "  %b6.%b 🔄 Reinstall/Update Tailcat     %bVersion: %s%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "${b_ver}" "$C_RESET"
-        printf "  %b7.%b ⚙️ Manage TailCat-Merlin        %bUpdate, reinstall, or remove%b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b6.%b ⚙️ Manage TailCat-Merlin        %bUpdate, reinstall, or remove%b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
 
         printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
         printf "  👁️ %bV%biew Sessions  |  🛑 %bS%btop  |  ↩️ %bE%bxit: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
@@ -922,10 +947,7 @@ main_menu() {
             5|[tT])
                 set_timeout_config
                 ;;
-            6|[uU])
-                update_binary
-                ;;
-            7|[mM])
+            6|[mM]|[uU])
                 manage_tailcat_menu
                 ;;
             [vV])
@@ -1030,7 +1052,7 @@ if [ $# -gt 0 ]; then
             exit 0
             ;;
         update)
-            update_binary
+            update_tailcat_all
             exit 0
             ;;
         -v|--version|version)
