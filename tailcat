@@ -689,7 +689,7 @@ update_tailcat_all() {
     tmp_script="/tmp/tailcat.update"
     rm -f "$tmp_script"
     printf "  %b[*] Fetching latest TAILCAT ZER0 CLI script from GitHub...%b\n" "$C_CYAN" "$C_RESET"
-    if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-merlin/main/tailcat" -o "$tmp_script" 2>/dev/null; then
+    if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcat" -o "$tmp_script" 2>/dev/null; then
         chmod 755 "$tmp_script"
         mv -f "$tmp_script" /jffs/scripts/tailcat
         ln -sf /jffs/scripts/tailcat /jffs/scripts/tailcatZero 2>/dev/null || true
@@ -717,7 +717,7 @@ reinstall_tailcat() {
     printf "  %b⚡ Reinstalling TAILCAT ZER0...%b\n\n" "$C_CYAN" "$C_RESET"
     update_binary || true
     printf "  %b[*] Updating /jffs/scripts/tailcat...%b\n" "$C_CYAN" "$C_RESET"
-    if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-merlin/main/tailcat" -o /jffs/scripts/tailcat.tmp 2>/dev/null; then
+    if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcat" -o /jffs/scripts/tailcat.tmp 2>/dev/null; then
         chmod 755 /jffs/scripts/tailcat.tmp
         mv -f /jffs/scripts/tailcat.tmp /jffs/scripts/tailcat
         ln -sf /jffs/scripts/tailcat /jffs/scripts/tailcatZero 2>/dev/null || true

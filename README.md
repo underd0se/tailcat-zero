@@ -36,7 +36,7 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
 Run this command directly in your router SSH terminal:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/underd0se/tailcat-merlin/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/underd0se/tailcat-zero/main/install.sh | sh
 ```
 
 ### 🖥️ Usage

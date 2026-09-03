@@ -1,14 +1,14 @@
 #!/bin/sh
 # =========================================================================================================================
 # TAILCAT ZER0 Installer for Asuswrt-Merlin
-# https://github.com/underd0se/tailcat-merlin
+# https://github.com/underd0se/tailcat-zero
 # =========================================================================================================================
 
 set -eu
 
 VERSION="v1.4.0"
 TAILCAT_VER="v0.4.0"
-REPO_RAW_URL="https://raw.githubusercontent.com/underd0se/tailcat-merlin/main"
+REPO_RAW_URL="https://raw.githubusercontent.com/underd0se/tailcat-zero/main"
 
 # ANSI Colors
 C_RESET="\033[0m"
