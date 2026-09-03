@@ -7,7 +7,7 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
 ---
 
 ```text
-  TailCat-Merlin v1.3.0            ╱|、
+  TailCat-Merlin v1.4.0            ╱|、
                                  (˚ˎ 。7  
                                   |、˜〵          
   Instant Tunnel Manager         じしˍ,)ノ
@@ -132,10 +132,16 @@ rm -rf /jffs/addons/tailcat /jffs/scripts/tailcat /jffs/scripts/tailcat-merlin /
 
 ## 📝 Changelog
 
+### [v1.4.0] - 2026-09-03
+* **🖥️ Non-Interactive CLI Dispatcher:** Added `tailcat-merlin` / `tailcat` command-line subcommands (`status`, `stop [all|SVC]`, `ssh`, `webgui`, `update`, `-v`, `-h`) for seamless headless automation and scripting.
+* **⏱️ Persistent Mode & Custom Timeout:** Enter `0` (or `persistent`) for non-expiring tunnels without background watchdog overhead, or specify any custom minute duration with interactive in-place input validation.
+* **🔑 Guaranteed Ephemeral Tokens (`--key=new`):** Enforces `--key=new` on every session spawn to guarantee fresh, unique cryptographic keys and prevent token reuse.
+* **🔄 Dual Script & Engine Updater:** Option 6 (`manage_tailcat_menu`) and `tailcat-merlin update` cleanly update both the shell script from GitHub and the official Go engine binary.
+* **📋 Streamlined 6-Item Menu:** Consolidated configuration and maintenance under a dedicated management submenu with active badges and hotkey bar.
+
 ### [v1.3.0] - 2026-09-02
 * **⚡ Multi-Service Concurrency:** Full concurrent execution across SSH, DropBox, SFTP, and WebGUI with independent WireGuard userspace nodes.
 * **🐱 Side-by-Side ASCII Cat Header:** Clean Japanese minimalist ASCII cat (`╱|、`) paired with project title and subtitle.
-* **📋 Streamlined 6-Item Menu Architecture:** Focused 6-item layout with global actions in the bottom hotkey bar.
 * **⚙️ Dedicated Management Submenu:** Interactive menu for updating binaries, reinstalling from GitHub, or cleanly uninstalling.
 * **🛑 Selective & Batch Process Killer:** Interactive process list to terminate specific individual sessions or all active tunnels.
 * **✨ Flicker-Free Clean Canvas:** VT100 screen clearing with non-intrusive toast notifications.

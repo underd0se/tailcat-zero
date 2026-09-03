@@ -7,17 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.4.0] - 2026-09-03
+
+### 🚀 Non-Interactive CLI Interface, Persistent Mode & Dual Script/Engine Self-Updater
+
+* **🖥️ Dedicated Non-Interactive CLI Dispatcher:** Full command-line interface accessible via `tailcat-merlin` and `tailcat` across `/jffs/scripts/` and `/opt/bin/`. Supports subcommands (`status`, `stop [all|SVC]`, `ssh`, `webgui`, `update`, `-v`, `-h`) for headless automation and non-interactive SSH sessions.
+* **⏱️ Persistent Mode & Custom Timeout:** Users can specify any custom auto-kill duration in minutes or enter `0` (or `persistent`) for persistent tunnels that run until manually stopped without spawning background sleep watchdog processes.
+* **🔁 Interactive In-Place Input Validation:** Timeout configuration now features an interactive retry loop that reprompts on non-digit or invalid input without dropping the user back to the main menu.
+* **🔄 Dual Script & Engine Self-Updater:** Option 6 (`manage_tailcat_menu`) and `tailcat-merlin update` fetch both the latest CLI script from GitHub (`underd0se/tailcat-merlin`) and the official Go engine binary for the router architecture.
+* **🔑 Guaranteed Ephemeral Tokens (`--key=new`):** Enforces `--key=new` across all tunnel spawns so every session generates a fresh, unique cryptographic WireGuard keypair and address token, preventing token reuse.
+* **📋 Streamlined 6-Item Menu:** Consolidated configuration, update, reinstall, and uninstall options into a dedicated management submenu with active status badges.
+
+---
+
 ## [1.3.0] - 2026-09-02
 
 ### 🚀 Multi-Service Concurrency, Side-by-Side ASCII Cat Header & Interactive TUI Management
 
 * **⚡ Multi-Service Concurrent Management:** Full concurrent execution and management across all 4 services (Remote Shell, File DropBox, SFTP Directory Share, and Router WebGUI). Multiple tunnels can run simultaneously with independent WireGuard userspace nodes, tokens, and watchdog auto-kill timers in `/tmp/tailcat_sessions/`.
 * **🐱 Side-by-Side ASCII Cat Header:** Compact, elegant side-by-side Japanese ASCII cat (`╱|、`) and project title/description layout.
-* **📋 Streamlined 7-Item Menu Architecture:** Restructured main menu into 7 focused options, moving global actions into a clean bottom hotkey bar.
-* **⚙️ Dedicated "Manage TailCat-Merlin" Submenu:** Interactive management menu (Option 7) allowing users to update the Go engine binary, perform a fresh reinstall, or execute a complete uninstallation with clean init hook removal.
+* **⚙️ Dedicated Management Submenu:** Interactive management menu allowing users to update the Go engine binary, perform a fresh reinstall, or execute a complete uninstallation with clean init hook removal.
 * **🛑 Selective & Batch Process Killer:** Stop action (`S`) lists all running services with PIDs and remaining time, allowing users to stop specific individual processes or all tunnels simultaneously.
-* **⏱️ Custom Timeout & Persistent Mode (`0`):** Users can specify any custom auto-kill duration in minutes or enter `0` (or `persistent`) for persistent tunnels that run until manually stopped without spawning background sleep processes.
-* **🔑 Guaranteed Ephemeral Tokens (`--key=new`):** Enforces `--key=new` across all tunnel spawns so every session generates a brand-new, unique WireGuard key and address token, preventing token reuse.
 * **✨ Flicker-Free Clean Canvas & Toast Banners:** Integrated VT100 screen-clearing (`clear_screen`) and transient `FLASH_MSG` toast banners across all menus and cancellations to prevent dirty terminal scrolling.
 * **🔤 Natural Underlined Hotkey Styling:** Clean single-character underlined hotkeys (`<u>V</u>iew Sessions | 🛑 <u>S</u>top | ↩️ <u>E</u>xit: `) without redundant `=` symbols.
 

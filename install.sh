@@ -6,7 +6,7 @@
 
 set -eu
 
-VERSION="v1.3.0"
+VERSION="v1.4.0"
 TAILCAT_VER="v0.4.0"
 REPO_RAW_URL="https://raw.githubusercontent.com/underd0se/tailcat-merlin/main"
 
