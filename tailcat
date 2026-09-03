@@ -1,6 +1,6 @@
 #!/bin/sh
 # =========================================================================================================================
-# TailCat-Merlin — Ephemeral WireGuard Tunnel & Multi-Service Manager for Asuswrt-Merlin
+# TAILCAT ZER0 — Ephemeral WireGuard Tunnel & Multi-Service Manager for Asuswrt-Merlin
 # =========================================================================================================================
 # shellcheck disable=SC2153
 
@@ -12,7 +12,7 @@ CONFIG_FILE="${CONFIG_DIR}/tailcat.cfg"
 BIN_DIR="${CONFIG_DIR}/bin"
 TAILCAT_BIN="${BIN_DIR}/tailcat"
 SESSIONS_DIR="/tmp/tailcat_sessions"
-LOG_TAG="tailcat-merlin"
+LOG_TAG="tailcatzero"
 
 # ANSI Color Palette
 C_RESET="\033[0m"
@@ -255,7 +255,7 @@ get_binary_version() {
 }
 
 draw_header() {
-    printf "  %b%bTailCat-Merlin v%s%b            %b╱|、%b\n" "$C_CYAN" "$C_BOLD" "${VERSION}" "$C_RESET" "$C_CYAN" "$C_RESET"
+    printf "  %b%bTAILCAT ZER0 v%s%b              %b╱|、%b\n" "$C_CYAN" "$C_BOLD" "${VERSION}" "$C_RESET" "$C_CYAN" "$C_RESET"
     printf "                                 %b(˚ˎ 。7%b\n" "$C_CYAN" "$C_RESET"
     printf "                                  %b|、˜〵%b\n" "$C_CYAN" "$C_RESET"
     printf "  %bInstant Tunnel Manager%b         %bじしˍ,)ノ%b\n\n" "$C_GRAY" "$C_RESET" "$C_CYAN" "$C_RESET"
@@ -400,7 +400,7 @@ render_multi_session_overview() {
     draw_header
     cnt=$(get_active_service_count)
     printf "%b%b========================================================================%b\n" "$C_GREEN" "$C_BOLD" "$C_RESET"
-    printf "  %b%b🐱 TailCat-Merlin — Active Sessions (%d Running)%b\n" "$C_CYAN" "$C_BOLD" "$cnt" "$C_RESET"
+    printf "  %b%b🐱 TAILCAT ZER0 — Active Sessions (%d Running)%b\n" "$C_CYAN" "$C_BOLD" "$cnt" "$C_RESET"
     printf "%b========================================================================%b\n\n" "$C_GREEN" "$C_RESET"
 
     idx=1
@@ -452,7 +452,7 @@ render_single_session_card() {
     draw_header
 
     printf "%b%b========================================================================%b\n" "$C_GREEN" "$C_BOLD" "$C_RESET"
-    printf "  %b%b🐱 TailCat-Merlin — Active Session%b\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
+    printf "  %b%b🐱 TAILCAT ZER0 — Active Session%b\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
     printf "%b========================================================================%b\n\n" "$C_GREEN" "$C_RESET"
 
     printf "  %bService:%b     %b%s%b\n" "$C_BOLD" "$C_RESET" "$C_MAGENTA" "${DESC}" "$C_RESET"
@@ -683,62 +683,74 @@ update_binary() {
 update_tailcat_all() {
     clear_screen
     draw_header
-    printf "  %b[*] Checking for TailCat-Merlin script & engine updates...%b\n\n" "$C_CYAN" "$C_RESET"
+    printf "  %b[*] Checking for TAILCAT ZER0 script & engine updates...%b\n\n" "$C_CYAN" "$C_RESET"
 
     # 1. Update Bash Script from GitHub
     tmp_script="/tmp/tailcat.update"
     rm -f "$tmp_script"
-    printf "  %b[*] Fetching latest TailCat-Merlin CLI script from GitHub...%b\n" "$C_CYAN" "$C_RESET"
+    printf "  %b[*] Fetching latest TAILCAT ZER0 CLI script from GitHub...%b\n" "$C_CYAN" "$C_RESET"
     if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-merlin/main/tailcat" -o "$tmp_script" 2>/dev/null; then
         chmod 755 "$tmp_script"
         mv -f "$tmp_script" /jffs/scripts/tailcat
-        ln -sf /jffs/scripts/tailcat /jffs/scripts/tailcat-merlin 2>/dev/null || true
+        ln -sf /jffs/scripts/tailcat /jffs/scripts/tailcatZero 2>/dev/null || true
+        ln -sf /jffs/scripts/tailcat /jffs/scripts/tailcatzero 2>/dev/null || true
+        rm -f /jffs/scripts/tailcat-merlin 2>/dev/null || true
         if [ -d "/opt/bin" ]; then
-            ln -sf /jffs/scripts/tailcat /opt/bin/tailcat-merlin 2>/dev/null || true
+            ln -sf /jffs/scripts/tailcat /opt/bin/tailcatZero 2>/dev/null || true
+            ln -sf /jffs/scripts/tailcat /opt/bin/tailcatzero 2>/dev/null || true
             ln -sf /jffs/scripts/tailcat /opt/bin/tailcat 2>/dev/null || true
+            rm -f /opt/bin/tailcat-merlin 2>/dev/null || true
         fi
-        printf "  %b[+] TailCat-Merlin script updated successfully.%b\n\n" "$C_GREEN" "$C_RESET"
+        printf "  %b[+] TAILCAT ZER0 script updated successfully.%b\n\n" "$C_GREEN" "$C_RESET"
     else
         printf "  %b[!] Could not reach GitHub. Keeping current script.%b\n\n" "$C_YELLOW" "$C_RESET"
     fi
 
     # 2. Update Engine Binary
     update_binary || true
-    FLASH_MSG="${C_GREEN}[+] TailCat-Merlin (script & engine) updated successfully.${C_RESET}"
+    FLASH_MSG="${C_GREEN}[+] TAILCAT ZER0 (script & engine) updated successfully.${C_RESET}"
 }
 
 reinstall_tailcat() {
     clear_screen
     draw_header
-    printf "  %b⚡ Reinstalling TailCat-Merlin...%b\n\n" "$C_CYAN" "$C_RESET"
+    printf "  %b⚡ Reinstalling TAILCAT ZER0...%b\n\n" "$C_CYAN" "$C_RESET"
     update_binary || true
     printf "  %b[*] Updating /jffs/scripts/tailcat...%b\n" "$C_CYAN" "$C_RESET"
     if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-merlin/main/tailcat" -o /jffs/scripts/tailcat.tmp 2>/dev/null; then
         chmod 755 /jffs/scripts/tailcat.tmp
         mv -f /jffs/scripts/tailcat.tmp /jffs/scripts/tailcat
-        ln -sf /jffs/scripts/tailcat /jffs/scripts/tailcat-merlin 2>/dev/null || true
+        ln -sf /jffs/scripts/tailcat /jffs/scripts/tailcatZero 2>/dev/null || true
+        ln -sf /jffs/scripts/tailcat /jffs/scripts/tailcatzero 2>/dev/null || true
+        rm -f /jffs/scripts/tailcat-merlin 2>/dev/null || true
         if [ -d "/opt/bin" ]; then
-            ln -sf /jffs/scripts/tailcat /opt/bin/tailcat-merlin 2>/dev/null || true
+            ln -sf /jffs/scripts/tailcat /opt/bin/tailcatZero 2>/dev/null || true
+            ln -sf /jffs/scripts/tailcat /opt/bin/tailcatzero 2>/dev/null || true
             ln -sf /jffs/scripts/tailcat /opt/bin/tailcat 2>/dev/null || true
+            rm -f /opt/bin/tailcat-merlin 2>/dev/null || true
         fi
         printf "  %b[+] Script updated from GitHub.%b\n\n" "$C_GREEN" "$C_RESET"
     else
-        ln -sf /jffs/scripts/tailcat /jffs/scripts/tailcat-merlin 2>/dev/null || true
+        ln -sf /jffs/scripts/tailcat /jffs/scripts/tailcatZero 2>/dev/null || true
+        ln -sf /jffs/scripts/tailcat /jffs/scripts/tailcatzero 2>/dev/null || true
+        rm -f /jffs/scripts/tailcat-merlin 2>/dev/null || true
         if [ -d "/opt/bin" ]; then
-            ln -sf /jffs/scripts/tailcat /opt/bin/tailcat-merlin 2>/dev/null || true
+            ln -sf /jffs/scripts/tailcat /opt/bin/tailcatZero 2>/dev/null || true
+            ln -sf /jffs/scripts/tailcat /opt/bin/tailcatzero 2>/dev/null || true
             ln -sf /jffs/scripts/tailcat /opt/bin/tailcat 2>/dev/null || true
+            rm -f /opt/bin/tailcat-merlin 2>/dev/null || true
         fi
         printf "  %b[*] Keeping current script version.%b\n\n" "$C_GRAY" "$C_RESET"
     fi
-    FLASH_MSG="${C_GREEN}[+] TailCat-Merlin reinstalled successfully.${C_RESET}"
+    FLASH_MSG="${C_GREEN}[+] TAILCAT ZER0 reinstalled successfully.${C_RESET}"
 }
 
 uninstall_tailcat() {
     clear_screen
     draw_header
-    printf "  %b🗑️  Uninstall TailCat-Merlin%b\n\n" "$C_RED" "$C_RESET"
+    printf "  %b🗑️  Uninstall TAILCAT ZER0%b\n\n" "$C_RED" "$C_RESET"
     printf "  This will terminate all active sessions and clean up all TailCat files.\n\n"
-    printf "   Are you sure you want to completely remove TailCat? [y/N]: "
+    printf "   Are you sure you want to completely remove TAILCAT ZER0? [y/N]: "
     if ! read -r confirm_un; then
         FLASH_MSG="${C_YELLOW}[*] Uninstall cancelled.${C_RESET}"
         return
@@ -749,9 +761,9 @@ uninstall_tailcat() {
             if [ -f "/jffs/scripts/init-start" ]; then
                 sed -i '/tailcat/d' /jffs/scripts/init-start 2>/dev/null || true
             fi
-            rm -rf "$CONFIG_DIR" "$SESSIONS_DIR" /jffs/scripts/tailcat /jffs/scripts/tailcat-merlin /opt/bin/tailcat /opt/bin/tailcat-merlin 2>/dev/null || true
+            rm -rf "$CONFIG_DIR" "$SESSIONS_DIR" /jffs/scripts/tailcat /jffs/scripts/tailcatZero /jffs/scripts/tailcatzero /jffs/scripts/tailcat-merlin /opt/bin/tailcat /opt/bin/tailcatZero /opt/bin/tailcatzero /opt/bin/tailcat-merlin 2>/dev/null || true
             clear_screen
-            printf "\n%b[+] TailCat-Merlin has been completely uninstalled.%b\n\n" "$C_GREEN" "$C_RESET"
+            printf "\n%b[+] TAILCAT ZER0 has been completely uninstalled.%b\n\n" "$C_GREEN" "$C_RESET"
             exit 0
             ;;
         *)
@@ -766,9 +778,9 @@ manage_tailcat_menu() {
         draw_header
         b_ver=$(get_binary_version)
 
-        printf "  %b%b⚙️  Manage TailCat-Merlin:%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
-        printf "  %b1.%b 🔄 Check & Update TailCat-Merlin %bUpdate script & engine (v%s / %s)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "${VERSION}" "${b_ver}" "$C_RESET"
-        printf "  %b2.%b ⚡ Force Reinstall TailCat-Merlin %bFresh download of script & binary%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b%b⚙️  Manage TAILCAT ZER0:%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
+        printf "  %b1.%b 🔄 Check & Update TAILCAT ZER0  %bUpdate script & engine (v%s / %s)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "${VERSION}" "${b_ver}" "$C_RESET"
+        printf "  %b2.%b ⚡ Force Reinstall TAILCAT ZER0 %bFresh download of script & binary%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
         printf "  %b3.%b 🗑️ Complete Uninstall           %bRemove addon, configs & init hooks%b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
 
         printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
@@ -835,7 +847,7 @@ main_menu() {
             t_display="${TIMEOUT_MINUTES} min"
         fi
         printf "  %b5.%b ⏱️ Configure Default Timeout    %bCurrent: %s%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "${t_display}" "$C_RESET"
-        printf "  %b6.%b ⚙️ Manage TailCat-Merlin        %bUpdate, reinstall, or remove%b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b6.%b ⚙️ Manage TAILCAT ZER0          %bUpdate, reinstall, or remove%b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
 
         printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
         printf "  👁️ %bV%biew Sessions  |  🛑 %bS%btop  |  ↩️ %bE%bxit: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
@@ -1019,25 +1031,26 @@ main_menu() {
 # CLI Command-Line Interface Dispatcher
 
 cli_help() {
-    printf "%bTailCat-Merlin v%s%b — Ephemeral WireGuard Tunnel & Multi-Service Manager\n\n" "$C_BOLD" "${VERSION}" "$C_RESET"
+    printf "%bTAILCAT ZER0 v%s%b — Ephemeral WireGuard Tunnel & Multi-Service Manager\n\n" "$C_BOLD" "${VERSION}" "$C_RESET"
     printf "Usage:\n"
-    printf "  %btailcat-merlin%b                     Launch interactive TUI dashboard (default)\n" "$C_CYAN" "$C_RESET"
-    printf "  %btailcat-merlin status%b              Display running sessions and connect tokens\n" "$C_CYAN" "$C_RESET"
-    printf "  %btailcat-merlin stop [all|SVC]%b      Stop all sessions or a specific service (SSH, RECV, FILES, WEBGUI)\n" "$C_CYAN" "$C_RESET"
-    printf "  %btailcat-merlin ssh%b                 Start instant remote shell tunnel\n" "$C_CYAN" "$C_RESET"
-    printf "  %btailcat-merlin webgui%b              Start router WebGUI tunnel\n" "$C_CYAN" "$C_RESET"
-    printf "  %btailcat-merlin update%b              Update TailCat binary to latest release\n" "$C_CYAN" "$C_RESET"
-    printf "  %btailcat-merlin -v, --version%b       Show version\n" "$C_CYAN" "$C_RESET"
-    printf "  %btailcat-merlin -h, --help%b          Show this help message\n\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatZero%b                     Launch interactive TUI dashboard (default)\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatZero status%b              Display running sessions and connect tokens\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatZero stop [all|SVC]%b      Stop all sessions or a specific service (SSH, RECV, FILES, WEBGUI)\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatZero ssh%b                 Start instant remote shell tunnel\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatZero webgui%b              Start router WebGUI tunnel\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatZero update%b              Update TAILCAT ZER0 script & engine\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatZero -v, --version%b       Show version\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatZero -h, --help%b          Show this help message\n\n" "$C_CYAN" "$C_RESET"
+    printf "Aliases: %btailcatzero%b, %btailcat%b\n\n" "$C_GRAY" "$C_RESET" "$C_GRAY" "$C_RESET"
 }
 
 cli_status() {
     cnt=$(get_active_service_count)
     if [ "$cnt" -eq 0 ]; then
-        printf "%b[⚪] No active TailCat sessions running.%b\n" "$C_GRAY" "$C_RESET"
+        printf "%b[⚪] No active TAILCAT ZER0 sessions running.%b\n" "$C_GRAY" "$C_RESET"
         return 0
     fi
-    printf "%b[🟢] Active TailCat Sessions (%d Running):%b\n\n" "$C_GREEN" "$cnt" "$C_RESET"
+    printf "%b[🟢] Active TAILCAT ZER0 Sessions (%d Running):%b\n\n" "$C_GREEN" "$cnt" "$C_RESET"
     for s in SSH RECV FILES WEBGUI; do
         if is_service_active "$s"; then
             s_file="${SESSIONS_DIR}/${s}.env"
@@ -1099,7 +1112,7 @@ if [ $# -gt 0 ]; then
             exit 0
             ;;
         -v|--version|version)
-            printf "TailCat-Merlin v%s (engine %s)\n" "$VERSION" "$(get_binary_version)"
+            printf "TAILCAT ZER0 v%s (engine %s)\n" "$VERSION" "$(get_binary_version)"
             exit 0
             ;;
         -h|--help|help)

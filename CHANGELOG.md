@@ -1,6 +1,6 @@
-# Changelog ─ TailCat-Merlin
+# Changelog ─ TAILCAT ZER0
 
-All notable changes to TailCat-Merlin are documented in this file.
+All notable changes to TAILCAT ZER0 are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -9,12 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.4.0] - 2026-09-03
 
-### 🚀 Non-Interactive CLI Interface, Persistent Mode & Dual Script/Engine Self-Updater
+### 🚀 Rebranding to TAILCAT ZER0, Non-Interactive CLI Interface (`tailcatZero`), Persistent Mode & Dual Self-Updater
 
-* **🖥️ Dedicated Non-Interactive CLI Dispatcher:** Full command-line interface accessible via `tailcat-merlin` and `tailcat` across `/jffs/scripts/` and `/opt/bin/`. Supports subcommands (`status`, `stop [all|SVC]`, `ssh`, `webgui`, `update`, `-v`, `-h`) for headless automation and non-interactive SSH sessions.
+* **🐱 Project Rebranding to TAILCAT ZER0:** Officially rebranded to **TAILCAT ZER0** with the primary CLI command `tailcatZero` (and aliases `tailcatzero` & `tailcat`).
+* **🖥️ Dedicated Non-Interactive CLI Dispatcher:** Full command-line interface accessible via `tailcatZero` (and aliases `tailcatzero`, `tailcat`) across `/jffs/scripts/` and `/opt/bin/`. Supports subcommands (`status`, `stop [all|SVC]`, `ssh`, `webgui`, `update`, `-v`, `-h`) for headless automation and non-interactive SSH sessions.
 * **⏱️ Persistent Mode & Custom Timeout:** Users can specify any custom auto-kill duration in minutes or enter `0` (or `persistent`) for persistent tunnels that run until manually stopped without spawning background sleep watchdog processes.
 * **🔁 Interactive In-Place Input Validation:** Timeout configuration now features an interactive retry loop that reprompts on non-digit or invalid input without dropping the user back to the main menu.
-* **🔄 Dual Script & Engine Self-Updater:** Option 6 (`manage_tailcat_menu`) and `tailcat-merlin update` fetch both the latest CLI script from GitHub (`underd0se/tailcat-merlin`) and the official Go engine binary for the router architecture.
+* **🔄 Dual Script & Engine Self-Updater:** Option 6 (`manage_tailcat_menu`) and `tailcatZero update` fetch both the latest CLI script from GitHub (`underd0se/tailcat-merlin`) and the official Go engine binary for the router architecture.
 * **🔑 Guaranteed Ephemeral Tokens (`--key=new`):** Enforces `--key=new` across all tunnel spawns so every session generates a fresh, unique cryptographic WireGuard keypair and address token, preventing token reuse.
 * **📋 Streamlined 6-Item Menu:** Consolidated configuration, update, reinstall, and uninstall options into a dedicated management submenu with active status badges.
 

@@ -1,6 +1,6 @@
 #!/bin/sh
 # =========================================================================================================================
-# TailCat-Merlin Installer for Asuswrt-Merlin
+# TAILCAT ZER0 Installer for Asuswrt-Merlin
 # https://github.com/underd0se/tailcat-merlin
 # =========================================================================================================================
 
@@ -24,7 +24,7 @@ TAILCAT_BIN="${BIN_DIR}/tailcat"
 CFG_FILE="${ADDON_DIR}/tailcat.cfg"
 
 printf "\n%b%b==============================================================%b\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
-printf "  %bTailCat-Merlin Installer %s%b\n" "$C_BOLD" "${VERSION}" "$C_RESET"
+printf "  %bTAILCAT ZER0 Installer %s%b\n" "$C_BOLD" "${VERSION}" "$C_RESET"
 printf "  Ephemeral WireGuard Tunnel & File Drop Manager\n"
 printf "%b==============================================================%b\n\n" "$C_CYAN" "$C_RESET"
 
@@ -62,7 +62,7 @@ else
     exit 1
 fi
 
-# 5. Install Main CLI Script & Register tailcat-merlin Command
+# 5. Install Main CLI Script & Register tailcatZero Command
 printf "%b[*] Installing CLI script to %s...%b\n" "$C_CYAN" "$INSTALL_SCRIPT" "$C_RESET"
 if [ -f "./tailcat" ]; then
     cp -f "./tailcat" "$INSTALL_SCRIPT"
@@ -71,13 +71,18 @@ else
 fi
 chmod 755 "$INSTALL_SCRIPT"
 
-# Create tailcat-merlin symlinks for universal command line access
-ln -sf "$INSTALL_SCRIPT" "/jffs/scripts/tailcat-merlin"
+# Create tailcatZero symlinks for universal command line access
+ln -sf "$INSTALL_SCRIPT" "/jffs/scripts/tailcatZero"
+ln -sf "$INSTALL_SCRIPT" "/jffs/scripts/tailcatzero"
+ln -sf "$INSTALL_SCRIPT" "/jffs/scripts/tailcat"
+rm -f "/jffs/scripts/tailcat-merlin" 2>/dev/null || true
 if [ -d "/opt/bin" ]; then
-    ln -sf "$INSTALL_SCRIPT" "/opt/bin/tailcat-merlin"
+    ln -sf "$INSTALL_SCRIPT" "/opt/bin/tailcatZero"
+    ln -sf "$INSTALL_SCRIPT" "/opt/bin/tailcatzero"
     ln -sf "$INSTALL_SCRIPT" "/opt/bin/tailcat"
+    rm -f "/opt/bin/tailcat-merlin" 2>/dev/null || true
 fi
-printf "%b[+] Registered command: %b%s%b (alias: %s)\n" "$C_GREEN" "$C_BOLD" "tailcat-merlin" "$C_RESET" "tailcat"
+printf "%b[+] Registered command: %b%s%b (aliases: %s, %s)\n" "$C_GREEN" "$C_BOLD" "tailcatZero" "$C_RESET" "tailcatzero" "tailcat"
 
 # 6. Default Configuration
 if [ ! -f "$CFG_FILE" ]; then
@@ -96,8 +101,8 @@ if [ -f "/jffs/scripts/init-start" ]; then
 fi
 
 printf "\n%b%b==============================================================%b\n" "$C_GREEN" "$C_BOLD" "$C_RESET"
-printf "  %b🎉 TailCat-Merlin Successfully Installed!%b\n" "$C_BOLD" "$C_RESET"
+printf "  %b🎉 TAILCAT ZER0 Successfully Installed!%b\n" "$C_BOLD" "$C_RESET"
 printf "%b==============================================================%b\n" "$C_GREEN" "$C_RESET"
-printf "  To launch the TailCat Manager, simply run:\n"
-printf "    %b%btailcat-merlin%b  or  %b%btailcat%b\n" "$C_CYAN" "$C_BOLD" "$C_RESET" "$C_CYAN" "$C_BOLD" "$C_RESET"
+printf "  To launch the TAILCAT ZER0 Manager, simply run:\n"
+printf "    %b%btailcatZero%b  or  %b%btailcat%b\n" "$C_CYAN" "$C_BOLD" "$C_RESET" "$C_CYAN" "$C_BOLD" "$C_RESET"
 printf "%b==============================================================%b\n\n" "$C_GREEN" "$C_RESET"

@@ -1,4 +1,4 @@
-# 🐱 TailCat-Merlin
+# 🐱 TAILCAT ZER0
 
 > **Ephemeral WireGuard Tunnels, Remote Support Shells & Encrypted DropBoxes for Asuswrt-Merlin Routers**
 
@@ -7,7 +7,7 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
 ---
 
 ```text
-  TailCat-Merlin v1.4.0            ╱|、
+  TAILCAT ZER0 v1.4.0              ╱|、
                                  (˚ˎ 。7  
                                   |、˜〵          
   Instant Tunnel Manager         じしˍ,)ノ
@@ -22,7 +22,7 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
   ------------------------------------------------------------------------
 
   5. ⏱️ Configure Default Timeout    Current: 30 min
-  6. ⚙️ Manage TailCat-Merlin        Update, reinstall, or remove
+  6. ⚙️ Manage TAILCAT ZER0          Update, reinstall, or remove
 
 ========================================================================
 
@@ -43,23 +43,24 @@ curl -fsSL https://raw.githubusercontent.com/underd0se/tailcat-merlin/main/insta
 
 Launch the interactive TUI dashboard:
 ```sh
-tailcat-merlin
-# or
+tailcatZero
+# or aliases:
+tailcatzero
 tailcat
 ```
 
 ### ⚙️ Non-Interactive CLI Commands
 
-TailCat-Merlin can also be run directly from scripts or the command line:
+TAILCAT ZER0 can also be run directly from scripts or the command line:
 
 ```sh
-tailcat-merlin status            # Display running sessions and connect tokens
-tailcat-merlin ssh               # Start instant remote shell tunnel
-tailcat-merlin webgui            # Start router WebGUI tunnel
-tailcat-merlin stop all          # Stop all active sessions
-tailcat-merlin stop SSH          # Stop specific service (SSH, RECV, FILES, WEBGUI)
-tailcat-merlin update            # Update TailCat binary engine
-tailcat-merlin --version         # Display version
+tailcatZero status            # Display running sessions and connect tokens
+tailcatZero ssh               # Start instant remote shell tunnel
+tailcatZero webgui            # Start router WebGUI tunnel
+tailcatZero stop all          # Stop all active sessions
+tailcatZero stop SSH          # Stop specific service (SSH, RECV, FILES, WEBGUI)
+tailcatZero update            # Update TAILCAT ZER0 script & engine
+tailcatZero --version         # Display version
 ```
 
 ---
@@ -123,9 +124,9 @@ tailcat ls tcXXXXXXXXX
 
 ## 🗑️ Uninstallation
 
-Launch `tailcat` and select **Option 6 (Manage TailCat-Merlin) ➔ Option 3 (Complete Uninstall)**, or run:
+Launch `tailcatZero` and select **Option 6 (Manage TAILCAT ZER0) ➔ Option 3 (Complete Uninstall)**, or run:
 ```sh
-rm -rf /jffs/addons/tailcat /jffs/scripts/tailcat /jffs/scripts/tailcat-merlin /opt/bin/tailcat /opt/bin/tailcat-merlin
+rm -rf /jffs/addons/tailcat /jffs/scripts/tailcat /jffs/scripts/tailcatZero /jffs/scripts/tailcatzero /opt/bin/tailcat /opt/bin/tailcatZero /opt/bin/tailcatzero
 ```
 
 ---
@@ -133,10 +134,11 @@ rm -rf /jffs/addons/tailcat /jffs/scripts/tailcat /jffs/scripts/tailcat-merlin /
 ## 📝 Changelog
 
 ### [v1.4.0] - 2026-09-03
-* **🖥️ Non-Interactive CLI Dispatcher:** Added `tailcat-merlin` / `tailcat` command-line subcommands (`status`, `stop [all|SVC]`, `ssh`, `webgui`, `update`, `-v`, `-h`) for seamless headless automation and scripting.
+* **🐱 Project Rebranding to TAILCAT ZER0:** Officially rebranded to **TAILCAT ZER0** with the primary CLI command `tailcatZero` (and aliases `tailcatzero` & `tailcat`).
+* **🖥️ Non-Interactive CLI Dispatcher:** Added `tailcatZero` command-line subcommands (`status`, `stop [all|SVC]`, `ssh`, `webgui`, `update`, `-v`, `-h`) for seamless headless automation and scripting.
 * **⏱️ Persistent Mode & Custom Timeout:** Enter `0` (or `persistent`) for non-expiring tunnels without background watchdog overhead, or specify any custom minute duration with interactive in-place input validation.
 * **🔑 Guaranteed Ephemeral Tokens (`--key=new`):** Enforces `--key=new` on every session spawn to guarantee fresh, unique cryptographic keys and prevent token reuse.
-* **🔄 Dual Script & Engine Updater:** Option 6 (`manage_tailcat_menu`) and `tailcat-merlin update` cleanly update both the shell script from GitHub and the official Go engine binary.
+* **🔄 Dual Script & Engine Updater:** Option 6 (`manage_tailcat_menu`) and `tailcatZero update` cleanly update both the shell script from GitHub and the official Go engine binary.
 * **📋 Streamlined 6-Item Menu:** Consolidated configuration and maintenance under a dedicated management submenu with active badges and hotkey bar.
 
 ### [v1.3.0] - 2026-09-02
