@@ -43,10 +43,7 @@ curl -fsSL https://raw.githubusercontent.com/underd0se/tailcat-zero/main/install
 
 Launch the interactive TUI dashboard:
 ```sh
-tailcatZero
-# or aliases:
 tailcatzero
-tailcat
 ```
 
 ### ⚙️ Non-Interactive CLI Commands
@@ -54,13 +51,13 @@ tailcat
 TAILCAT ZER0 can also be run directly from scripts or the command line:
 
 ```sh
-tailcatZero status            # Display running sessions and connect tokens
-tailcatZero ssh               # Start instant remote shell tunnel
-tailcatZero webgui            # Start router WebGUI tunnel
-tailcatZero stop all          # Stop all active sessions
-tailcatZero stop SSH          # Stop specific service (SSH, RECV, FILES, WEBGUI)
-tailcatZero update            # Update TAILCAT ZER0 script & engine
-tailcatZero --version         # Display version
+tailcatzero status            # Display running sessions and connect tokens
+tailcatzero ssh               # Start instant remote shell tunnel
+tailcatzero webgui            # Start router WebGUI tunnel
+tailcatzero stop all          # Stop all active sessions
+tailcatzero stop SSH          # Stop specific service (SSH, RECV, FILES, WEBGUI)
+tailcatzero update            # Update TAILCAT ZER0 script & engine
+tailcatzero --version         # Display version
 ```
 
 ---
@@ -124,9 +121,9 @@ tailcat ls tcXXXXXXXXX
 
 ## 🗑️ Uninstallation
 
-Launch `tailcatZero` and select **Option 6 (Manage TAILCAT ZER0) ➔ Option 3 (Complete Uninstall)**, or run:
+Launch `tailcatzero` and select **Option 6 (Manage TAILCAT ZER0) ➔ Option 3 (Complete Uninstall)**, or run:
 ```sh
-rm -rf /jffs/addons/tailcat /jffs/scripts/tailcat /jffs/scripts/tailcatZero /jffs/scripts/tailcatzero /opt/bin/tailcat /opt/bin/tailcatZero /opt/bin/tailcatzero
+rm -rf /jffs/addons/tailcat /jffs/scripts/tailcat /jffs/scripts/tailcatzero /opt/bin/tailcatzero
 ```
 
 ---
@@ -134,11 +131,11 @@ rm -rf /jffs/addons/tailcat /jffs/scripts/tailcat /jffs/scripts/tailcatZero /jff
 ## 📝 Changelog
 
 ### [v1.4.0] - 2026-09-03
-* **🐱 Project Rebranding to TAILCAT ZER0:** Officially rebranded to **TAILCAT ZER0** with the primary CLI command `tailcatZero` (and aliases `tailcatzero` & `tailcat`).
-* **🖥️ Non-Interactive CLI Dispatcher:** Added `tailcatZero` command-line subcommands (`status`, `stop [all|SVC]`, `ssh`, `webgui`, `update`, `-v`, `-h`) for seamless headless automation and scripting.
+* **🐱 Project Rebranding to TAILCAT ZER0:** Officially rebranded to **TAILCAT ZER0** with the dedicated CLI command `tailcatzero`.
+* **🖥️ Non-Interactive CLI Dispatcher:** Added `tailcatzero` command-line subcommands (`status`, `stop [all|SVC]`, `ssh`, `webgui`, `update`, `-v`, `-h`) for seamless headless automation and scripting.
 * **⏱️ Persistent Mode & Custom Timeout:** Enter `0` (or `persistent`) for non-expiring tunnels without background watchdog overhead, or specify any custom minute duration with interactive in-place input validation.
 * **🔑 Guaranteed Ephemeral Tokens (`--key=new`):** Enforces `--key=new` on every session spawn to guarantee fresh, unique cryptographic keys and prevent token reuse.
-* **🔄 Dual Script & Engine Updater:** Option 6 (`manage_tailcat_menu`) and `tailcatZero update` cleanly update both the shell script from GitHub and the official Go engine binary.
+* **🔄 Dual Script & Engine Updater:** Option 6 (`manage_tailcat_menu`) and `tailcatzero update` cleanly update both the shell script from GitHub and the official Go engine binary.
 * **📋 Streamlined 6-Item Menu:** Consolidated configuration and maintenance under a dedicated management submenu with active badges and hotkey bar.
 
 ### [v1.3.0] - 2026-09-02

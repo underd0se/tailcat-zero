@@ -9,13 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.4.0] - 2026-09-03
 
-### 🚀 Rebranding to TAILCAT ZER0, Non-Interactive CLI Interface (`tailcatZero`), Persistent Mode & Dual Self-Updater
+### 🚀 Rebranding to TAILCAT ZER0, Non-Interactive CLI Interface (`tailcatzero`), Persistent Mode & Dual Self-Updater
 
-* **🐱 Project Rebranding to TAILCAT ZER0:** Officially rebranded to **TAILCAT ZER0** with the primary CLI command `tailcatZero` (and aliases `tailcatzero` & `tailcat`).
-* **🖥️ Dedicated Non-Interactive CLI Dispatcher:** Full command-line interface accessible via `tailcatZero` (and aliases `tailcatzero`, `tailcat`) across `/jffs/scripts/` and `/opt/bin/`. Supports subcommands (`status`, `stop [all|SVC]`, `ssh`, `webgui`, `update`, `-v`, `-h`) for headless automation and non-interactive SSH sessions.
+* **🐱 Project Rebranding to TAILCAT ZER0:** Officially rebranded to **TAILCAT ZER0** with the dedicated CLI command `tailcatzero`.
+* **🖥️ Dedicated Non-Interactive CLI Dispatcher:** Full command-line interface accessible via `tailcatzero` across `/jffs/scripts/` and `/opt/bin/`. Supports subcommands (`status`, `stop [all|SVC]`, `ssh`, `webgui`, `update`, `-v`, `-h`) for headless automation and non-interactive SSH sessions.
 * **⏱️ Persistent Mode & Custom Timeout:** Users can specify any custom auto-kill duration in minutes or enter `0` (or `persistent`) for persistent tunnels that run until manually stopped without spawning background sleep watchdog processes.
 * **🔁 Interactive In-Place Input Validation:** Timeout configuration now features an interactive retry loop that reprompts on non-digit or invalid input without dropping the user back to the main menu.
-* **🔄 Dual Script & Engine Self-Updater:** Option 6 (`manage_tailcat_menu`) and `tailcatZero update` fetch both the latest CLI script from GitHub (`underd0se/tailcat-zero`) and the official Go engine binary for the router architecture.
+* **🔄 Dual Script & Engine Self-Updater:** Option 6 (`manage_tailcat_menu`) and `tailcatzero update` fetch both the latest CLI script from GitHub (`underd0se/tailcat-zero`) and the official Go engine binary for the router architecture.
 * **🔑 Guaranteed Ephemeral Tokens (`--key=new`):** Enforces `--key=new` across all tunnel spawns so every session generates a fresh, unique cryptographic WireGuard keypair and address token, preventing token reuse.
 * **📋 Streamlined 6-Item Menu:** Consolidated configuration, update, reinstall, and uninstall options into a dedicated management submenu with active status badges.
 

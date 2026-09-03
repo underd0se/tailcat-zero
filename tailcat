@@ -692,14 +692,11 @@ update_tailcat_all() {
     if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcat" -o "$tmp_script" 2>/dev/null; then
         chmod 755 "$tmp_script"
         mv -f "$tmp_script" /jffs/scripts/tailcat
-        ln -sf /jffs/scripts/tailcat /jffs/scripts/tailcatZero 2>/dev/null || true
         ln -sf /jffs/scripts/tailcat /jffs/scripts/tailcatzero 2>/dev/null || true
-        rm -f /jffs/scripts/tailcat-merlin 2>/dev/null || true
+        rm -f /jffs/scripts/tailcatZero /jffs/scripts/tailcat-merlin 2>/dev/null || true
         if [ -d "/opt/bin" ]; then
-            ln -sf /jffs/scripts/tailcat /opt/bin/tailcatZero 2>/dev/null || true
             ln -sf /jffs/scripts/tailcat /opt/bin/tailcatzero 2>/dev/null || true
-            ln -sf /jffs/scripts/tailcat /opt/bin/tailcat 2>/dev/null || true
-            rm -f /opt/bin/tailcat-merlin 2>/dev/null || true
+            rm -f /opt/bin/tailcat /opt/bin/tailcatZero /opt/bin/tailcat-merlin 2>/dev/null || true
         fi
         printf "  %b[+] TAILCAT ZER0 script updated successfully.%b\n\n" "$C_GREEN" "$C_RESET"
     else
@@ -720,25 +717,19 @@ reinstall_tailcat() {
     if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcat" -o /jffs/scripts/tailcat.tmp 2>/dev/null; then
         chmod 755 /jffs/scripts/tailcat.tmp
         mv -f /jffs/scripts/tailcat.tmp /jffs/scripts/tailcat
-        ln -sf /jffs/scripts/tailcat /jffs/scripts/tailcatZero 2>/dev/null || true
         ln -sf /jffs/scripts/tailcat /jffs/scripts/tailcatzero 2>/dev/null || true
-        rm -f /jffs/scripts/tailcat-merlin 2>/dev/null || true
+        rm -f /jffs/scripts/tailcatZero /jffs/scripts/tailcat-merlin 2>/dev/null || true
         if [ -d "/opt/bin" ]; then
-            ln -sf /jffs/scripts/tailcat /opt/bin/tailcatZero 2>/dev/null || true
             ln -sf /jffs/scripts/tailcat /opt/bin/tailcatzero 2>/dev/null || true
-            ln -sf /jffs/scripts/tailcat /opt/bin/tailcat 2>/dev/null || true
-            rm -f /opt/bin/tailcat-merlin 2>/dev/null || true
+            rm -f /opt/bin/tailcat /opt/bin/tailcatZero /opt/bin/tailcat-merlin 2>/dev/null || true
         fi
         printf "  %b[+] Script updated from GitHub.%b\n\n" "$C_GREEN" "$C_RESET"
     else
-        ln -sf /jffs/scripts/tailcat /jffs/scripts/tailcatZero 2>/dev/null || true
         ln -sf /jffs/scripts/tailcat /jffs/scripts/tailcatzero 2>/dev/null || true
-        rm -f /jffs/scripts/tailcat-merlin 2>/dev/null || true
+        rm -f /jffs/scripts/tailcatZero /jffs/scripts/tailcat-merlin 2>/dev/null || true
         if [ -d "/opt/bin" ]; then
-            ln -sf /jffs/scripts/tailcat /opt/bin/tailcatZero 2>/dev/null || true
             ln -sf /jffs/scripts/tailcat /opt/bin/tailcatzero 2>/dev/null || true
-            ln -sf /jffs/scripts/tailcat /opt/bin/tailcat 2>/dev/null || true
-            rm -f /opt/bin/tailcat-merlin 2>/dev/null || true
+            rm -f /opt/bin/tailcat /opt/bin/tailcatZero /opt/bin/tailcat-merlin 2>/dev/null || true
         fi
         printf "  %b[*] Keeping current script version.%b\n\n" "$C_GRAY" "$C_RESET"
     fi
@@ -761,7 +752,7 @@ uninstall_tailcat() {
             if [ -f "/jffs/scripts/init-start" ]; then
                 sed -i '/tailcat/d' /jffs/scripts/init-start 2>/dev/null || true
             fi
-            rm -rf "$CONFIG_DIR" "$SESSIONS_DIR" /jffs/scripts/tailcat /jffs/scripts/tailcatZero /jffs/scripts/tailcatzero /jffs/scripts/tailcat-merlin /opt/bin/tailcat /opt/bin/tailcatZero /opt/bin/tailcatzero /opt/bin/tailcat-merlin 2>/dev/null || true
+            rm -rf "$CONFIG_DIR" "$SESSIONS_DIR" /jffs/scripts/tailcat /jffs/scripts/tailcatZero /jffs/scripts/tailcatzero /jffs/scripts/tailcat-merlin /opt/bin/tailcatZero /opt/bin/tailcatzero /opt/bin/tailcat-merlin 2>/dev/null || true
             clear_screen
             printf "\n%b[+] TAILCAT ZER0 has been completely uninstalled.%b\n\n" "$C_GREEN" "$C_RESET"
             exit 0
@@ -1033,15 +1024,14 @@ main_menu() {
 cli_help() {
     printf "%bTAILCAT ZER0 v%s%b — Ephemeral WireGuard Tunnel & Multi-Service Manager\n\n" "$C_BOLD" "${VERSION}" "$C_RESET"
     printf "Usage:\n"
-    printf "  %btailcatZero%b                     Launch interactive TUI dashboard (default)\n" "$C_CYAN" "$C_RESET"
-    printf "  %btailcatZero status%b              Display running sessions and connect tokens\n" "$C_CYAN" "$C_RESET"
-    printf "  %btailcatZero stop [all|SVC]%b      Stop all sessions or a specific service (SSH, RECV, FILES, WEBGUI)\n" "$C_CYAN" "$C_RESET"
-    printf "  %btailcatZero ssh%b                 Start instant remote shell tunnel\n" "$C_CYAN" "$C_RESET"
-    printf "  %btailcatZero webgui%b              Start router WebGUI tunnel\n" "$C_CYAN" "$C_RESET"
-    printf "  %btailcatZero update%b              Update TAILCAT ZER0 script & engine\n" "$C_CYAN" "$C_RESET"
-    printf "  %btailcatZero -v, --version%b       Show version\n" "$C_CYAN" "$C_RESET"
-    printf "  %btailcatZero -h, --help%b          Show this help message\n\n" "$C_CYAN" "$C_RESET"
-    printf "Aliases: %btailcatzero%b, %btailcat%b\n\n" "$C_GRAY" "$C_RESET" "$C_GRAY" "$C_RESET"
+    printf "  %btailcatzero%b                     Launch interactive TUI dashboard (default)\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero status%b              Display running sessions and connect tokens\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero stop [all|SVC]%b      Stop all sessions or a specific service (SSH, RECV, FILES, WEBGUI)\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero ssh%b                 Start instant remote shell tunnel\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero webgui%b              Start router WebGUI tunnel\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero update%b              Update TAILCAT ZER0 script & engine\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero -v, --version%b       Show version\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero -h, --help%b          Show this help message\n\n" "$C_CYAN" "$C_RESET"
 }
 
 cli_status() {

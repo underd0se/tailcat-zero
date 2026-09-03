@@ -62,7 +62,7 @@ else
     exit 1
 fi
 
-# 5. Install Main CLI Script & Register tailcatZero Command
+# 5. Install Main CLI Script & Register tailcatzero Command
 printf "%b[*] Installing CLI script to %s...%b\n" "$C_CYAN" "$INSTALL_SCRIPT" "$C_RESET"
 if [ -f "./tailcat" ]; then
     cp -f "./tailcat" "$INSTALL_SCRIPT"
@@ -71,18 +71,14 @@ else
 fi
 chmod 755 "$INSTALL_SCRIPT"
 
-# Create tailcatZero symlinks for universal command line access
-ln -sf "$INSTALL_SCRIPT" "/jffs/scripts/tailcatZero"
+# Create tailcatzero symlinks for universal command line access
 ln -sf "$INSTALL_SCRIPT" "/jffs/scripts/tailcatzero"
-ln -sf "$INSTALL_SCRIPT" "/jffs/scripts/tailcat"
-rm -f "/jffs/scripts/tailcat-merlin" 2>/dev/null || true
+rm -f "/jffs/scripts/tailcatZero" "/jffs/scripts/tailcat-merlin" 2>/dev/null || true
 if [ -d "/opt/bin" ]; then
-    ln -sf "$INSTALL_SCRIPT" "/opt/bin/tailcatZero"
     ln -sf "$INSTALL_SCRIPT" "/opt/bin/tailcatzero"
-    ln -sf "$INSTALL_SCRIPT" "/opt/bin/tailcat"
-    rm -f "/opt/bin/tailcat-merlin" 2>/dev/null || true
+    rm -f "/opt/bin/tailcat" "/opt/bin/tailcatZero" "/opt/bin/tailcat-merlin" 2>/dev/null || true
 fi
-printf "%b[+] Registered command: %b%s%b (aliases: %s, %s)\n" "$C_GREEN" "$C_BOLD" "tailcatZero" "$C_RESET" "tailcatzero" "tailcat"
+printf "%b[+] Registered command: %b%s%b\n" "$C_GREEN" "$C_BOLD" "tailcatzero" "$C_RESET"
 
 # 6. Default Configuration
 if [ ! -f "$CFG_FILE" ]; then
@@ -104,5 +100,5 @@ printf "\n%b%b==============================================================%b\n
 printf "  %b🎉 TAILCAT ZER0 Successfully Installed!%b\n" "$C_BOLD" "$C_RESET"
 printf "%b==============================================================%b\n" "$C_GREEN" "$C_RESET"
 printf "  To launch the TAILCAT ZER0 Manager, simply run:\n"
-printf "    %b%btailcatZero%b  or  %b%btailcat%b\n" "$C_CYAN" "$C_BOLD" "$C_RESET" "$C_CYAN" "$C_BOLD" "$C_RESET"
+printf "    %b%btailcatzero%b\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
 printf "%b==============================================================%b\n\n" "$C_GREEN" "$C_RESET"
