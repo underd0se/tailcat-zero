@@ -101,6 +101,10 @@ get_service_time_left() {
     if is_service_active "$s_id"; then
         # shellcheck disable=SC1090
         . "$s_file"
+        if [ "${EXPIRE_EPOCH:-0}" -eq 0 ]; then
+            printf "Persistent"
+            return
+        fi
         now=$(date +%s)
         if [ "$now" -lt "${EXPIRE_EPOCH:-0}" ]; then
             diff=$(( EXPIRE_EPOCH - now ))
@@ -330,20 +334,28 @@ start_tunnel() {
 
     token=$(tr -d '\r\n' < "$addr_file")
     now=$(date +%s)
-    timeout_sec=$(( TIMEOUT_MINUTES * 60 ))
-    expire_epoch=$(( now + timeout_sec ))
     session_file="${SESSIONS_DIR}/${service_type}.env"
+    watchdog_pid=""
 
-    # Launch Auto-Kill Watcher Subshell for this specific service
-    (
-        sleep "$timeout_sec"
-        if kill -0 "$tailcat_pid" 2>/dev/null; then
-            kill -9 "$tailcat_pid" 2>/dev/null || true
-            rm -f "$session_file" "$addr_file"
-            logger -t "$LOG_TAG" "Session ${service_type} auto-expired after ${TIMEOUT_MINUTES}m"
-        fi
-    ) &
-    watchdog_pid=$!
+    if [ "$TIMEOUT_MINUTES" -gt 0 ]; then
+        timeout_sec=$(( TIMEOUT_MINUTES * 60 ))
+        expire_epoch=$(( now + timeout_sec ))
+
+        # Launch Auto-Kill Watcher Subshell for this specific service
+        (
+            sleep "$timeout_sec"
+            if kill -0 "$tailcat_pid" 2>/dev/null; then
+                kill -9 "$tailcat_pid" 2>/dev/null || true
+                rm -f "$session_file" "$addr_file"
+                logger -t "$LOG_TAG" "Session ${service_type} auto-expired after ${TIMEOUT_MINUTES}m"
+            fi
+        ) &
+        watchdog_pid=$!
+        log_msg "TailCat session started: ${service_type} (Auto-kill: ${TIMEOUT_MINUTES}m)"
+    else
+        expire_epoch=0
+        log_msg "TailCat session started: ${service_type} (Persistent / No Auto-Kill)"
+    fi
 
     # Save Session State
     cat <<EOF > "$session_file"
@@ -358,7 +370,6 @@ EXPIRE_EPOCH=${expire_epoch}
 TIMEOUT_MINUTES=${TIMEOUT_MINUTES}
 EOF
 
-    log_msg "TailCat session started: ${service_type} (Auto-kill: ${TIMEOUT_MINUTES}m)"
     interactive_session_card "$service_type"
 }
 
@@ -448,12 +459,19 @@ render_single_session_card() {
     if [ -n "${EXTRA_INFO:-}" ]; then
         printf "  %bDestination:%b %s\n" "$C_BOLD" "$C_RESET" "${EXTRA_INFO}"
     fi
-    printf "  %bAuto-Kill:%b   %b⏱️  %s%b\n" "$C_BOLD" "$C_RESET" "$C_YELLOW" "${time_left}" "$C_RESET"
+    if [ "${time_left}" = "Persistent" ]; then
+        auto_kill_str="Disabled (Persistent)"
+        invite_str="Hey, I've opened a secure TailCat session on my router."
+    else
+        auto_kill_str="${time_left}"
+        invite_str="Hey, I've opened a temporary TailCat session on my router (${time_left})."
+    fi
+    printf "  %bAuto-Kill:%b   %b⏱️  %s%b\n" "$C_BOLD" "$C_RESET" "$C_YELLOW" "${auto_kill_str}" "$C_RESET"
     printf "  %bSecurity:%b    %b🔒 WireGuard P2P Encrypted (Zero WAN Ports Open)%b\n\n" "$C_BOLD" "$C_RESET" "$C_GREEN" "$C_RESET"
 
     printf "  %b💬 Copy & Paste to Friend / Admin Support:%b\n" "$C_BOLD" "$C_RESET"
     printf "  %b────────────────────────────────────────────────────────────────────────%b\n" "$C_CYAN" "$C_RESET"
-    printf "  %bHey, I've opened a temporary TailCat session on my router (%s).%b\n" "$C_WHITE" "${time_left}" "$C_RESET"
+    printf "  %b%s%b\n" "$C_WHITE" "${invite_str}" "$C_RESET"
     if [ "$s_id" = "WEBGUI" ]; then
         web_port="8443"
         case "${EXTRA_INFO:-}" in
@@ -580,37 +598,58 @@ interactive_session_card() {
 }
 
 set_timeout_config() {
-    clear_screen
-    draw_header
-    printf "  %b⏱️ Configure Session Auto-Kill Timeout%b\n\n" "$C_CYAN" "$C_RESET"
-    printf "  Current Timeout: %b%s minutes%b\n\n" "$C_BOLD" "${TIMEOUT_MINUTES}" "$C_RESET"
-    printf "  Enter new timeout in minutes [5-240, default 30, e to cancel]: "
-    if ! read -r user_t; then
-        return
-    fi
-    case "$user_t" in
-        [eE]|[bB]|cancel|exit)
-            FLASH_MSG="${C_YELLOW}[*] Operation cancelled.${C_RESET}"
-            return
-            ;;
-        '')
-            user_t=30
-            ;;
-        *[!0-9]*)
-            FLASH_MSG="${C_RED}[!] Invalid number. Setting unchanged.${C_RESET}"
-            return
-            ;;
-    esac
+    t_err=""
+    while true; do
+        clear_screen
+        draw_header
+        printf "  %b⏱️ Configure Session Auto-Kill Timeout%b\n\n" "$C_CYAN" "$C_RESET"
+        if [ "${TIMEOUT_MINUTES}" -eq 0 ]; then
+            printf "  Current Timeout: %bDisabled (Persistent)%b\n\n" "$C_BOLD" "$C_RESET"
+        else
+            printf "  Current Timeout: %b%s minutes%b\n\n" "$C_BOLD" "${TIMEOUT_MINUTES}" "$C_RESET"
+        fi
 
-    if [ "$user_t" -lt 5 ] || [ "$user_t" -gt 240 ]; then
-        FLASH_MSG="${C_RED}[!] Timeout must be between 5 and 240 minutes.${C_RESET}"
-        return
-    fi
+        if [ -n "$t_err" ]; then
+            printf "  %b\n\n" "$t_err"
+            t_err=""
+        fi
 
-    TIMEOUT_MINUTES="$user_t"
-    mkdir -p "$CONFIG_DIR"
-    echo "TIMEOUT_MINUTES=${TIMEOUT_MINUTES}" > "$CONFIG_FILE"
-    FLASH_MSG="${C_GREEN}[+] Timeout updated to ${TIMEOUT_MINUTES} minutes.${C_RESET}"
+        printf "  Enter timeout in minutes [0 for Persistent, default 30, e to cancel]: "
+        if ! read -r user_t; then
+            return
+        fi
+        case "$user_t" in
+            [eE]|[bB]|cancel|exit)
+                FLASH_MSG="${C_YELLOW}[*] Operation cancelled.${C_RESET}"
+                return
+                ;;
+            [pP][eE][rR][sS][iI][sS][tT][eE][nN][tT]|[fF][oO][rR][eE][vV][eE][rR]|[uU][nN][lL][iI][mM][iI][tT][eE][dD])
+                user_t=0
+                ;;
+            '')
+                user_t=30
+                ;;
+            *[!0-9]*)
+                t_err="${C_RED}[!] Invalid number. Please enter digits only (or 'e' to cancel).${C_RESET}"
+                continue
+                ;;
+        esac
+
+        if [ "$user_t" -lt 0 ]; then
+            t_err="${C_RED}[!] Timeout cannot be negative.${C_RESET}"
+            continue
+        fi
+
+        TIMEOUT_MINUTES="$user_t"
+        mkdir -p "$CONFIG_DIR"
+        echo "TIMEOUT_MINUTES=${TIMEOUT_MINUTES}" > "$CONFIG_FILE"
+        if [ "$TIMEOUT_MINUTES" -eq 0 ]; then
+            FLASH_MSG="${C_GREEN}[+] Auto-kill disabled (Sessions will run persistently until stopped).${C_RESET}"
+        else
+            FLASH_MSG="${C_GREEN}[+] Timeout updated to ${TIMEOUT_MINUTES} minutes.${C_RESET}"
+        fi
+        return
+    done
 }
 
 update_binary() {
@@ -790,7 +829,12 @@ main_menu() {
 
         printf "  %b------------------------------------------------------------------------%b\n\n" "$C_CYAN" "$C_RESET"
 
-        printf "  %b5.%b ⏱️ Configure Default Timeout    %bCurrent: %s min%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "${TIMEOUT_MINUTES}" "$C_RESET"
+        if [ "${TIMEOUT_MINUTES}" -eq 0 ]; then
+            t_display="Disabled (Persistent)"
+        else
+            t_display="${TIMEOUT_MINUTES} min"
+        fi
+        printf "  %b5.%b ⏱️ Configure Default Timeout    %bCurrent: %s%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "${t_display}" "$C_RESET"
         printf "  %b6.%b ⚙️ Manage TailCat-Merlin        %bUpdate, reinstall, or remove%b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
 
         printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"

@@ -82,8 +82,8 @@ tailcat-merlin --version         # Display version
   * Serve any router directory (e.g. `/jffs` or USB mount) read-only or read-write to remote clients using native SFTP.
 * **🌐 WebGUI Remote Access:**
   * Expose local WebUI (port 8443 / 80) over a secure token without opening WAN firewall ports.
-* **⏱️ Built-In Auto-Kill Supervisor:**
-  * All tunnels automatically expire and kill themselves after a configurable timer (default: **30 minutes**).
+* **⏱️ Flexible Auto-Kill & Persistent Mode:**
+  * All tunnels support custom auto-kill countdown timers (default: **30 minutes**) or **`0` for Persistent mode** (runs until manually stopped).
 
 ---
 
@@ -93,7 +93,7 @@ tailcat-merlin --version         # Display version
 |---|---|
 | **Capability-Based Tokens** | 256-bit cryptographically secure ephemeral tokens. Possession is permission. |
 | **No WAN Ports Open** | Uses DERP relays and UDP NAT hole-punching. Zero incoming firewall holes opened. |
-| **Mandatory Auto-Kill** | Background watchdog subshell automatically kills tunnels when the timer expires. |
+| **Configurable Auto-Kill** | Background watchdog automatically kills tunnels on expiry, or persists when set to `0`. |
 | **Clean Reboot Teardown** | Session locks and state are stored in volatile memory (`/tmp`) and cleaned up on reboot. |
 
 ---
