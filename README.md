@@ -84,8 +84,6 @@ tailcat-merlin --version         # Display version
   * Expose local WebUI (port 8443 / 80) over a secure token without opening WAN firewall ports.
 * **⏱️ Built-In Auto-Kill Supervisor:**
   * All tunnels automatically expire and kill themselves after a configurable timer (default: **30 minutes**).
-* **amtm Integration:**
-  * Fully registered as an `amtm` menu addon.
 
 ---
 
@@ -125,9 +123,9 @@ tailcat ls tcXXXXXXXXX
 
 ## 🗑️ Uninstallation
 
-Launch `tailcat` and select **Option 7 (Manage TailCat-Merlin) ➔ Option 3 (Complete Uninstall)**, or run:
+Launch `tailcat` and select **Option 6 (Manage TailCat-Merlin) ➔ Option 3 (Complete Uninstall)**, or run:
 ```sh
-rm -rf /jffs/addons/tailcat /jffs/scripts/tailcat /jffs/addons/amtm/tailcat.mod
+rm -rf /jffs/addons/tailcat /jffs/scripts/tailcat /jffs/scripts/tailcat-merlin /opt/bin/tailcat /opt/bin/tailcat-merlin
 ```
 
 ---
@@ -137,7 +135,7 @@ rm -rf /jffs/addons/tailcat /jffs/scripts/tailcat /jffs/addons/amtm/tailcat.mod
 ### [v1.3.0] - 2026-09-02
 * **⚡ Multi-Service Concurrency:** Full concurrent execution across SSH, DropBox, SFTP, and WebGUI with independent WireGuard userspace nodes.
 * **🐱 Side-by-Side ASCII Cat Header:** Clean Japanese minimalist ASCII cat (`╱|、`) paired with project title and subtitle.
-* **📋 Streamlined 7-Item Menu Architecture:** Focused 7-item layout with global actions in the bottom hotkey bar.
+* **📋 Streamlined 6-Item Menu Architecture:** Focused 6-item layout with global actions in the bottom hotkey bar.
 * **⚙️ Dedicated Management Submenu:** Interactive menu for updating binaries, reinstalling from GitHub, or cleanly uninstalling.
 * **🛑 Selective & Batch Process Killer:** Interactive process list to terminate specific individual sessions or all active tunnels.
 * **✨ Flicker-Free Clean Canvas:** VT100 screen clearing with non-intrusive toast notifications.
@@ -169,7 +167,6 @@ rm -rf /jffs/addons/tailcat /jffs/scripts/tailcat /jffs/addons/amtm/tailcat.mod
 * **🌐 WebGUI Remote Port Forwarder:** Securely forward local router management WebUI (port 8443).
 * **⏱️ Automated 30-Minute Session Auto-Kill:** Background supervisor process automatically tears down active sessions when timer expires.
 * **📦 Universal ARMv7 & ARM64 Architecture Support:** Automatically fetches official `tailscale/tailcat` `v0.4.0` static binaries for all Asuswrt-Merlin routers.
-* **🛠️ amtm Integration:** Fully registered into the `amtm` menu hierarchy.
 
 See [CHANGELOG.md](./CHANGELOG.md) for full history.
 

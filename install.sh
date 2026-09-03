@@ -22,7 +22,6 @@ ADDON_DIR="/jffs/addons/tailcat"
 BIN_DIR="${ADDON_DIR}/bin"
 TAILCAT_BIN="${BIN_DIR}/tailcat"
 CFG_FILE="${ADDON_DIR}/tailcat.cfg"
-AMTM_MOD="/jffs/addons/amtm/tailcat.mod"
 
 printf "\n%b%b==============================================================%b\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
 printf "  %bTailCat-Merlin Installer %s%b\n" "$C_BOLD" "${VERSION}" "$C_RESET"
@@ -89,18 +88,7 @@ EOF
     printf "%b[+] Created default configuration: %s%b\n" "$C_GREEN" "$CFG_FILE" "$C_RESET"
 fi
 
-# 7. AMTM Menu Integration
-if [ -d "/jffs/addons/amtm" ]; then
-    cat <<'EOF' > "$AMTM_MOD"
-# tailcat.mod for amtm
-name="TailCat"
-desc="Ephemeral WireGuard Tunnels"
-exec="/jffs/scripts/tailcat-merlin"
-EOF
-    printf "%b[+] Registered TailCat into amtm menu.%b\n" "$C_GREEN" "$C_RESET"
-fi
-
-# 8. Reboot Teardown Hook in init-start
+# 7. Reboot Teardown Hook in init-start
 if [ -f "/jffs/scripts/init-start" ]; then
     if ! grep -q "tailcat_sessions" /jffs/scripts/init-start 2>/dev/null; then
         echo 'rm -rf /tmp/tailcat_sessions /tmp/tailcat_addr*.txt 2>/dev/null # TailCat cleanup' >> /jffs/scripts/init-start

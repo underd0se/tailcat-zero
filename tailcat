@@ -1,7 +1,6 @@
 #!/bin/sh
 # =========================================================================================================================
 # TailCat-Merlin — Ephemeral WireGuard Tunnel & Multi-Service Manager for Asuswrt-Merlin
-# Managed by AMTM standard conventions.
 # =========================================================================================================================
 # shellcheck disable=SC2153
 
@@ -711,7 +710,7 @@ uninstall_tailcat() {
             if [ -f "/jffs/scripts/init-start" ]; then
                 sed -i '/tailcat/d' /jffs/scripts/init-start 2>/dev/null || true
             fi
-            rm -rf "$CONFIG_DIR" "$SESSIONS_DIR" /jffs/scripts/tailcat /jffs/scripts/tailcat-merlin /jffs/addons/amtm/tailcat.mod /opt/bin/tailcat /opt/bin/tailcat-merlin 2>/dev/null || true
+            rm -rf "$CONFIG_DIR" "$SESSIONS_DIR" /jffs/scripts/tailcat /jffs/scripts/tailcat-merlin /opt/bin/tailcat /opt/bin/tailcat-merlin 2>/dev/null || true
             clear_screen
             printf "\n%b[+] TailCat-Merlin has been completely uninstalled.%b\n\n" "$C_GREEN" "$C_RESET"
             exit 0

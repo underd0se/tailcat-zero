@@ -84,4 +84,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **🌐 WebGUI Remote Port Forwarder:** Securely forward local router management WebUI (port 8443).
 * **⏱️ Automated 30-Minute Session Auto-Kill:** Background supervisor process automatically tears down active sessions when timer expires.
 * **📦 Universal ARMv7 & ARM64 Architecture Support:** Automatically fetches official `tailscale/tailcat` `v0.4.0` static binaries for all Asuswrt-Merlin routers.
-* **🛠️ amtm Integration:** Fully registered into the `amtm` menu hierarchy.
