@@ -7,7 +7,7 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
 ---
 
 ```text
-  TAILCAT ZER0 v1.5.0              ╱|、
+  TAILCAT ZER0 v1.6.0              ╱|、
                                  (˚ˎ 。7  
                                   |、˜〵          
   Instant Tunnel Manager         じしˍ,)ノ
@@ -139,6 +139,14 @@ rm -rf /jffs/addons/tailcat /jffs/scripts/tailcat /jffs/scripts/tailcatzero /opt
 ---
 
 ## 📝 Changelog
+
+### [v1.6.0] - 2026-09-04
+* **🔒 Restricted View-Only Diagnostic Shell (`tailcat-view-shell`):** Introduced a zero-trust, read-only remote support shell option (`Option 1 -> 2` or `tailcatzero view` / `tailcatzero ssh view`) for safe technical assistance without disclosing root write access.
+* **🛡️ Hardened Multi-Layer Security Sandbox:** Prohibits file redirections (`>`, `>>`, `<`), subshells (`` ` `` / `$()`), command chaining (`;`, `&&`, `||`), state-modifying binaries (`rm`, `mv`, `cp`, `touch`, `chmod`, `dd`), router state mutation (`nvram set/commit/unset`, `reboot`, `kill`), and package changes (`opkg install/remove/upgrade`).
+* **📦 Deep Entware & Asuswrt Diagnostics:** Permits extensive read-only tools across system health (`uptime`, `free`, `df`, `ps`, `top`, `dmesg`, `sysinfo`), network & WiFi (`ip addr/route`, `netstat`, `route`, `ping`, `mtr`, `wl`, `leases`, `wifi`, `ports`), NVRAM queries (`nvram get`, `nvram show`), text processing (`cat`, `head`, `tail`, `grep`, `rg`, `tree`, `sort`, `uniq`, `diff`), and Entware queries (`opkg list/info/find/status/search/depends`).
+* **⚡ Safe Unix Pipeline Execution:** Supports Unix pipelines (`|`) between allowed inspection tools (e.g. `ps | grep dnsmasq`, `nvram show | grep dhcp`, `opkg list-installed | grep python`).
+* **🆘 Remote Support Submenu (Option 1):** Main menu Option 1 now provides a clean choice between `1. Full Root Shell (Read-Write)` and `2. View-Only Diagnostic Shell (Read-Only)`, with dynamic badging (`[🟢 Root + 🔒 View]`).
+* **🖐️ 5-Slot Multi-Service Concurrency:** Extended active session slots and termination confirmation to support up to 5 concurrent tunnels (SSH Root, SSH View, DropBox, SFTP, and WebGUI) running simultaneously on independent WireGuard nodes.
 
 ### [v1.5.0] - 2026-09-04
 * **⏱️ CLI Timeout Management:** Added `tailcatzero timeout [min|persistent]` for non-interactive timeout inspection and configuration without opening the TUI.

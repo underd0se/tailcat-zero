@@ -7,14 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.5.0] - 2026-09-04
+## [1.6.0] - 2026-09-04
 
-### 🔒 Restricted View-Only Diagnostic Shell, CLI Timeout Management, Multi-Arch (`amd64`) & Resilience
+### 🔒 Restricted View-Only Diagnostic Shell, Entware Inspection & 5-Slot Multi-Service Concurrency
 
 * **🔒 Restricted View-Only Diagnostic Shell (`tailcat-view-shell`):** Introduced a zero-trust, read-only remote support shell option (`Option 1 -> 2` or `tailcatzero view` / `tailcatzero ssh view`). Clients connect using standard `tailcat ssh <token>` while the session is strictly restricted to safe diagnostic inspection.
 * **🛡️ Hardened Multi-Layer Security Sandbox:** Prohibits file redirections (`>`, `>>`, `<`), subshells (`` ` `` / `$()`), command chaining (`;`, `&&`, `||`), state-modifying binaries (`rm`, `mv`, `cp`, `touch`, `chmod`, `dd`), router configuration changes (`nvram set/commit/unset`, `reboot`, `kill`), and package mutations (`opkg install/remove/upgrade`).
 * **📦 Deep Entware & Asuswrt Diagnostics:** Permits comprehensive read-only tools across system health (`uptime`, `free`, `df`, `ps`, `top`, `dmesg`, `sysinfo`), networking & WiFi (`ip addr/route`, `netstat`, `route`, `ping`, `mtr`, `wl`, `leases`, `wifi`, `ports`), NVRAM queries (`nvram get`, `nvram show`), text processing (`cat`, `head`, `tail`, `grep`, `rg`, `tree`, `sort`, `uniq`, `diff`), and Entware queries (`opkg list/info/find/status/search/depends`).
 * **⚡ Safe Pipeline Execution:** Supports Unix pipelines (`|`) between allowed tools (e.g. `ps | grep dnsmasq`, `nvram show | grep dhcp`, `opkg list-installed | grep python`).
+* **🆘 Remote Support Shell Options Menu (Option 1):** Main dashboard Option 1 opens a clean submenu allowing admins to choose between `1. Full Root Shell (Read-Write)` and `2. View-Only Diagnostic Shell (Read-Only)`. Features dynamic visual badge indicators (`[🟢 Root + 🔒 View]`).
+* **🖐️ 5-Slot Multi-Service Concurrency:** Upgraded active session tracking, multi-session card overview, and selective kill confirmations to support 5 concurrent service slots (`svc_1` to `svc_5`).
+
+---
+
+## [1.5.0] - 2026-09-04
+
+### 🚀 CLI Timeout Management, Multi-Arch (`amd64`), DERP_URL Preservation & Self-Healing Resilience
+
 * **⏱️ CLI Timeout Management (`tailcatzero timeout`):** Direct command-line inspection and configuration of the auto-kill timeout (`tailcatzero timeout [min|persistent]`) without entering interactive TUI menus. Supports `persistent` or `0` for persistent mode.
 * **🛡️ DERP Map URL Preservation:** Implemented `save_timeout_config` helper to preserve existing `DERP_URL` definitions in `/jffs/addons/tailcat/tailcat.cfg` when updating session timeouts.
 * **💻 Universal Architecture Expansion (`amd64` / `x86_64`):** Added 64-bit x86 architecture detection to both `install.sh` and `update_binary`, downloading official `tailcat_linux_amd64` binaries for x86-based Asuswrt-Merlin environments, QEMU, and container testbeds.
