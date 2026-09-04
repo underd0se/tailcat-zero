@@ -26,6 +26,8 @@ C_GRAY="\033[0;37m" # Readable muted white/gray
 C_WHITE="\033[1;37m" # Crisp high-contrast white
 C_MAGENTA="\033[1;35m"
 
+trap 'printf "%b" "$C_RESET" 2>/dev/null || true' EXIT INT TERM
+
 # Default Configuration
 DEFAULT_TIMEOUT=30 # 30 minutes
 DERP_URL="https://tailcat.dev/derpmap.json"
@@ -245,7 +247,7 @@ stop_sessions_with_confirmation() {
 
 get_binary_version() {
     if [ -x "$TAILCAT_BIN" ]; then
-        b_ver=$("$TAILCAT_BIN" --version 2>/dev/null | head -n 1 | tr -d '\r\n')
+        b_ver=$("$TAILCAT_BIN" --version 2>/dev/null | head -n 1 | tr -d '\r\n' || true)
         if [ -n "$b_ver" ]; then
             printf "%s" "$b_ver"
             return
@@ -267,8 +269,14 @@ start_tunnel() {
     subcmd="$2"
     desc="$3"
     extra_info="${4:-}"
+    interactive_mode="${5:-1}"
 
     if is_service_active "$service_type"; then
+        if [ "$interactive_mode" = "0" ]; then
+            printf "\n%b[*] %s is already running.%b\n" "$C_YELLOW" "$desc" "$C_RESET"
+            render_single_session_card "$service_type" 0
+            return 0
+        fi
         clear_screen
         draw_header
         printf "  %b[*] %s is already running.%b\n\n" "$C_YELLOW" "$desc" "$C_RESET"
@@ -370,7 +378,11 @@ EXPIRE_EPOCH=${expire_epoch}
 TIMEOUT_MINUTES=${TIMEOUT_MINUTES}
 EOF
 
-    interactive_session_card "$service_type"
+    if [ "$interactive_mode" = "1" ]; then
+        interactive_session_card "$service_type"
+    else
+        render_single_session_card "$service_type" 0
+    fi
 }
 
 get_client_connect_cmd() {
@@ -984,11 +996,7 @@ main_menu() {
                 start_tunnel "FILES" "serve --files=${s_dir}:${perm_mode} files" "📁 SFTP File Share (${s_dir})" "Path: ${s_dir} (${perm_mode})"
                 ;;
             4)
-                https_port=$(nvram get https_lanport 2>/dev/null || echo 8443)
-                [ -z "$https_port" ] && https_port=8443
-                http_port=$(nvram get http_lanport 2>/dev/null || echo 80)
-                [ -z "$http_port" ] && http_port=80
-                start_tunnel "WEBGUI" "serve ${https_port},${http_port}" "🌐 Router WebGUI (Ports ${https_port}, ${http_port})" "HTTPS: ${https_port}, HTTP: ${http_port}"
+                start_webgui_tunnel
                 ;;
             5|[tT])
                 set_timeout_config
@@ -1018,20 +1026,44 @@ main_menu() {
     done
 }
 
+start_webgui_tunnel() {
+    interactive_mode="${1:-1}"
+    http_enable=$(nvram get http_enable 2>/dev/null || echo 1)
+    [ -z "$http_enable" ] && http_enable=1
+    https_port=$(nvram get https_lanport 2>/dev/null || echo 8443)
+    [ -z "$https_port" ] && https_port=8443
+    http_port=$(nvram get http_lanport 2>/dev/null || echo 80)
+    [ -z "$http_port" ] && http_port=80
+
+    if [ "$http_enable" = "0" ]; then
+        web_proto="http"
+        primary_port="$http_port"
+        serve_ports="$http_port"
+    else
+        web_proto="https"
+        primary_port="$https_port"
+        serve_ports="${https_port},${http_port}"
+    fi
+
+    start_tunnel "WEBGUI" "serve ${serve_ports}" "🌐 Router WebGUI (Port ${primary_port})" "${web_proto}://${primary_port} (Ports: ${serve_ports})" "$interactive_mode"
+}
+
 # -------------------------------------------------------------------------------------------------------------------------
 # CLI Command-Line Interface Dispatcher
 
 cli_help() {
     printf "%bTAILCAT ZER0 v%s%b — Ephemeral WireGuard Tunnel & Multi-Service Manager\n\n" "$C_BOLD" "${VERSION}" "$C_RESET"
     printf "Usage:\n"
-    printf "  %btailcatzero%b                     Launch interactive TUI dashboard (default)\n" "$C_CYAN" "$C_RESET"
-    printf "  %btailcatzero status%b              Display running sessions and connect tokens\n" "$C_CYAN" "$C_RESET"
-    printf "  %btailcatzero stop [all|SVC]%b      Stop all sessions or a specific service (SSH, RECV, FILES, WEBGUI)\n" "$C_CYAN" "$C_RESET"
-    printf "  %btailcatzero ssh%b                 Start instant remote shell tunnel\n" "$C_CYAN" "$C_RESET"
-    printf "  %btailcatzero webgui%b              Start router WebGUI tunnel\n" "$C_CYAN" "$C_RESET"
-    printf "  %btailcatzero update%b              Update TAILCAT ZER0 script & engine\n" "$C_CYAN" "$C_RESET"
-    printf "  %btailcatzero -v, --version%b       Show version\n" "$C_CYAN" "$C_RESET"
-    printf "  %btailcatzero -h, --help%b          Show this help message\n\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero%b                           Launch interactive TUI dashboard (default)\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero status%b                    Display running sessions and connect tokens\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero stop [all|SVC]%b            Stop all sessions or a specific service (SSH, RECV, FILES, WEBGUI)\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero ssh%b                       Start instant remote shell tunnel\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero recv [dir]%b                Start encrypted DropBox tunnel (default /tmp/tailcat-inbox)\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero files [dir] [ro|rw]%b       Start SFTP directory share (default /jffs ro)\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero webgui%b                    Start router WebGUI tunnel\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero update%b                    Update TAILCAT ZER0 script & engine\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero -v, --version%b             Show version\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero -h, --help%b                Show this help message\n\n" "$C_CYAN" "$C_RESET"
 }
 
 cli_status() {
@@ -1049,7 +1081,17 @@ cli_status() {
             tl=$(get_service_time_left "$s")
             cmd=$(get_client_connect_cmd "$s" "$TOKEN")
             printf "  • %b%-26s%b ⏱️  %-14s PID: %s\n" "$C_BOLD" "${DESC}" "$C_RESET" "$tl" "${PID:-unknown}"
-            printf "    Connect: %b%s%b\n\n" "$C_YELLOW" "$cmd" "$C_RESET"
+            if [ "$s" = "WEBGUI" ]; then
+                web_proto="https"
+                web_port="8443"
+                case "${EXTRA_INFO:-}" in
+                    http://*) web_proto="http"; web_port=$(echo "${EXTRA_INFO}" | grep -oE 'http://[0-9]+' | grep -oE '[0-9]+' || echo "80") ;;
+                    https://*) web_proto="https"; web_port=$(echo "${EXTRA_INFO}" | grep -oE 'https://[0-9]+' | grep -oE '[0-9]+' || echo "8443") ;;
+                esac
+                printf "    Connect: %b%s%b (Open %s://localhost:%s)\n\n" "$C_YELLOW" "$cmd" "$C_RESET" "${web_proto}" "${web_port}"
+            else
+                printf "    Connect: %b%s%b\n\n" "$C_YELLOW" "$cmd" "$C_RESET"
+            fi
         fi
     done
 }
@@ -1086,15 +1128,31 @@ if [ $# -gt 0 ]; then
             exit 0
             ;;
         ssh)
-            start_tunnel "SSH" "serve no-auth-ssh" "🆘 Instant Remote Shell"
+            start_tunnel "SSH" "serve no-auth-ssh" "🆘 Instant Remote Shell" "" 0
+            exit 0
+            ;;
+        recv)
+            target_dir="${2:-/tmp/tailcat-inbox}"
+            mkdir -p "$target_dir"
+            start_tunnel "RECV" "recv ${target_dir}" "📥 Encrypted File DropBox" "${target_dir}" 0
+            exit 0
+            ;;
+        files|sftp)
+            target_dir="${2:-/jffs}"
+            perm="${3:-ro}"
+            case "$perm" in
+                rw|write|2) perm="rw" ;;
+                *) perm="ro" ;;
+            esac
+            if [ ! -d "$target_dir" ]; then
+                printf "%b[!] Directory %s does not exist.%b\n" "$C_RED" "$target_dir" "$C_RESET"
+                exit 1
+            fi
+            start_tunnel "FILES" "serve --files=${target_dir}:${perm} files" "📁 SFTP File Share (${target_dir})" "Path: ${target_dir} (${perm})" 0
             exit 0
             ;;
         webgui|web)
-            https_port=$(nvram get https_lanport 2>/dev/null || echo 8443)
-            [ -z "$https_port" ] && https_port=8443
-            http_port=$(nvram get http_lanport 2>/dev/null || echo 80)
-            [ -z "$http_port" ] && http_port=80
-            start_tunnel "WEBGUI" "serve ${https_port},${http_port}" "🌐 Router WebGUI (Ports ${https_port}, ${http_port})" "HTTPS: ${https_port}, HTTP: ${http_port}"
+            start_webgui_tunnel 0
             exit 0
             ;;
         update)
