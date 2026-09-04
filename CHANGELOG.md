@@ -9,12 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.5.0] - 2026-09-04
 
-### 🚀 CLI Timeout Management, Multi-Arch (`amd64`), DERP_URL Preservation & Self-Healing Resilience
+### 🔒 Restricted View-Only Diagnostic Shell, CLI Timeout Management, Multi-Arch (`amd64`) & Resilience
 
+* **🔒 Restricted View-Only Diagnostic Shell (`tailcat-view-shell`):** Introduced a zero-trust, read-only remote support shell option (`Option 1 -> 2` or `tailcatzero view` / `tailcatzero ssh view`). Clients connect using standard `tailcat ssh <token>` while the session is strictly restricted to safe diagnostic inspection.
+* **🛡️ Hardened Multi-Layer Security Sandbox:** Prohibits file redirections (`>`, `>>`, `<`), subshells (`` ` `` / `$()`), command chaining (`;`, `&&`, `||`), state-modifying binaries (`rm`, `mv`, `cp`, `touch`, `chmod`, `dd`), router configuration changes (`nvram set/commit/unset`, `reboot`, `kill`), and package mutations (`opkg install/remove/upgrade`).
+* **📦 Deep Entware & Asuswrt Diagnostics:** Permits comprehensive read-only tools across system health (`uptime`, `free`, `df`, `ps`, `top`, `dmesg`, `sysinfo`), networking & WiFi (`ip addr/route`, `netstat`, `route`, `ping`, `mtr`, `wl`, `leases`, `wifi`, `ports`), NVRAM queries (`nvram get`, `nvram show`), text processing (`cat`, `head`, `tail`, `grep`, `rg`, `tree`, `sort`, `uniq`, `diff`), and Entware queries (`opkg list/info/find/status/search/depends`).
+* **⚡ Safe Pipeline Execution:** Supports Unix pipelines (`|`) between allowed tools (e.g. `ps | grep dnsmasq`, `nvram show | grep dhcp`, `opkg list-installed | grep python`).
 * **⏱️ CLI Timeout Management (`tailcatzero timeout`):** Direct command-line inspection and configuration of the auto-kill timeout (`tailcatzero timeout [min|persistent]`) without entering interactive TUI menus. Supports `persistent` or `0` for persistent mode.
 * **🛡️ DERP Map URL Preservation:** Implemented `save_timeout_config` helper to preserve existing `DERP_URL` definitions in `/jffs/addons/tailcat/tailcat.cfg` when updating session timeouts.
 * **💻 Universal Architecture Expansion (`amd64` / `x86_64`):** Added 64-bit x86 architecture detection to both `install.sh` and `update_binary`, downloading official `tailcat_linux_amd64` binaries for x86-based Asuswrt-Merlin environments, QEMU, and container testbeds.
-* **🩹 Self-Healing CLI Dependency Installation:** Invoking tunnel subcommands (`ssh`, `recv`, `files`, `webgui`) on systems missing the Go engine binary automatically downloads and sets up dependencies on-the-fly.
+* **🩹 Self-Healing CLI Dependency Installation:** Invoking tunnel subcommands (`ssh`, `view`, `recv`, `files`, `webgui`) on systems missing the Go engine binary or view shell automatically downloads and sets up dependencies on-the-fly.
 * **🧹 Self-Healing Dead Process & Watchdog Cleanup:** Enhanced `is_service_active` to detect externally terminated processes, auto-remove stale `.env` files and address dumps, and terminate orphaned watchdog subshells.
 * **🌐 Accurate Protocol & Port Extraction:** Unified `get_webgui_connect_info` across multi-session overview, single-session card, and `tailcatzero status` for seamless HTTP (port 80) and HTTPS (custom ports / 8443) WebGUI access.
 * **🗑️ Comprehensive Uninstaller Hardening:** Added removal of legacy `/opt/bin/tailcat` symlinks, address files, and POSIX case-insensitive `/jffs/scripts/init-start` cleanup.

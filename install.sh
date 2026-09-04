@@ -21,6 +21,7 @@ INSTALL_SCRIPT="/jffs/scripts/tailcat"
 ADDON_DIR="/jffs/addons/tailcat"
 BIN_DIR="${ADDON_DIR}/bin"
 TAILCAT_BIN="${BIN_DIR}/tailcat"
+VIEW_SHELL_BIN="${BIN_DIR}/tailcat-view-shell"
 CFG_FILE="${ADDON_DIR}/tailcat.cfg"
 
 printf "\n%b%b==============================================================%b\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
@@ -79,7 +80,7 @@ if [ -z "$qr_cmd" ] && [ -x "/opt/bin/opkg" ]; then
     /opt/bin/opkg install qrencode >/dev/null 2>&1 || true
 fi
 
-# 6. Install Main CLI Script & Register tailcatzero Command
+# 6. Install Main CLI Script & View-Only Shell
 printf "%b[*] Installing CLI script to %s...%b\n" "$C_CYAN" "$INSTALL_SCRIPT" "$C_RESET"
 if [ -f "./tailcat" ]; then
     cp -f "./tailcat" "$INSTALL_SCRIPT"
@@ -87,6 +88,13 @@ else
     curl -fsSL "${REPO_RAW_URL}/tailcat" -o "$INSTALL_SCRIPT"
 fi
 chmod 755 "$INSTALL_SCRIPT"
+
+if [ -f "./tailcat-view-shell" ]; then
+    cp -f "./tailcat-view-shell" "$VIEW_SHELL_BIN"
+else
+    curl -fsSL "${REPO_RAW_URL}/tailcat-view-shell" -o "$VIEW_SHELL_BIN"
+fi
+chmod 755 "$VIEW_SHELL_BIN"
 
 # Create tailcatzero symlinks for universal command line access
 ln -sf "$INSTALL_SCRIPT" "/jffs/scripts/tailcatzero"

@@ -14,7 +14,7 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
 
 ========================================================================
 
-  1. 🆘 Start Remote Shell           Instant SSH session               [🟢 Active: 28m]
+  1. 🆘 Remote Support Shell         Full root or view-only access     [🟢 Root + 🔒 View]
   2. 📥 Receive Files                Direct P2P file transfer          [⚪ Inactive]
   3. 📁 Share Directory (SFTP)       Share a folder from your drive    [🟢 Active: 28m]
   4. 🌐 Expose Router WebGUI         Access to router's web interface  [⚪ Inactive]
@@ -52,13 +52,14 @@ TAILCAT ZER0 can also be run directly from scripts or the command line:
 
 ```sh
 tailcatzero status                    # Display running sessions and connect tokens
-tailcatzero ssh                       # Start instant remote shell tunnel
+tailcatzero ssh [root|view]           # Start remote shell tunnel (default: root)
+tailcatzero view                      # Start restricted view-only diagnostic shell
 tailcatzero recv [/path/to/inbox]     # Start encrypted DropBox tunnel (default /tmp/tailcat-inbox)
 tailcatzero files [/path] [ro|rw]     # Start SFTP directory share (default /jffs ro)
 tailcatzero webgui                    # Start router WebGUI tunnel
 tailcatzero timeout [min|persistent]  # Query or configure default auto-kill session timeout
 tailcatzero stop all                  # Stop all active sessions
-tailcatzero stop SSH                  # Stop specific service (SSH, RECV, FILES, WEBGUI)
+tailcatzero stop [SSH|VIEW|RECV|FILES|WEBGUI] # Stop specific service
 tailcatzero update                    # Update TAILCAT ZER0 script & engine
 tailcatzero --version                 # Display version
 ```
@@ -67,6 +68,11 @@ tailcatzero --version                 # Display version
 
 ## 🌟 Key Features
 
+* **🔒 Restricted View-Only Diagnostic Shell:**
+  * Zero-trust, read-only inspection shell designed for untrusted assistance or safe remote triage.
+  * **Extensive Inspection Commands:** System health (`uptime`, `free`, `df`, `ps`, `top`, `dmesg`, `sysinfo`), networking & WiFi (`ip`, `netstat`, `route`, `ping`, `mtr`, `wl`, `leases`, `wifi`, `ports`), NVRAM queries (`nvram get`, `nvram show`, `logread`), text processing (`cat`, `head`, `tail`, `grep`, `rg`, `tree`, `sort`, `uniq`, `diff`), and Entware queries (`opkg list/info/find/status/search/depends`).
+  * **Strict Sandboxing:** Blocks file redirections (`>`, `>>`, `<`), subshells (`` ` `` / `$()`), command chaining (`;`, `&&`, `||`), mutating binaries (`rm`, `mv`, `cp`, `touch`, `chmod`, `dd`), state mutations (`nvram set/commit`, `reboot`, `kill`), and package changes (`opkg install/remove`).
+  * **Pipeline Support:** Supports Unix pipelines (`|`) between allowed tools (e.g. `ps | grep dnsmasq`, `nvram show | grep dhcp`).
 * **📱 Live Active Session Card:**
   * Dedicated interactive dashboard displaying a real-time auto-kill countdown, active service details, shareable capability token, and 1-key quick actions (`[s] Stop`, `[r] Refresh`, `[q] QR Code`, `[b] Back`).
 * **📷 Integrated ASCII QR Codes:**
@@ -93,6 +99,7 @@ tailcatzero --version                 # Display version
 | Security Measure | Implementation |
 |---|---|
 | **Capability-Based Tokens** | 256-bit cryptographically secure ephemeral tokens. Possession is permission. |
+| **Restricted View Shell** | Dedicated read-only shell wrapper blocking write binaries, redirections, subshells, chaining, and state mutation. |
 | **No WAN Ports Open** | Uses DERP relays and UDP NAT hole-punching. Zero incoming firewall holes opened. |
 | **Configurable Auto-Kill** | Background watchdog automatically kills tunnels on expiry, or persists when set to `0`. |
 | **Clean Reboot Teardown** | Session locks and state are stored in volatile memory (`/tmp`) and cleaned up on reboot. |
