@@ -7,7 +7,7 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
 ---
 
 ```text
-  TAILCAT ZER0 v1.4.0              ╱|、
+  TAILCAT ZER0 v1.5.0              ╱|、
                                  (˚ˎ 。7  
                                   |、˜〵          
   Instant Tunnel Manager         じしˍ,)ノ
@@ -132,6 +132,15 @@ rm -rf /jffs/addons/tailcat /jffs/scripts/tailcat /jffs/scripts/tailcatzero /opt
 ---
 
 ## 📝 Changelog
+
+### [v1.5.0] - 2026-09-04
+* **⏱️ CLI Timeout Management:** Added `tailcatzero timeout [min|persistent]` for non-interactive timeout inspection and configuration without opening the TUI.
+* **🛡️ DERP Map URL Preservation:** Preserves existing `DERP_URL` settings in `/jffs/addons/tailcat/tailcat.cfg` when adjusting timeout parameters.
+* **💻 64-Bit x86 Support (`amd64`):** Extended installer and updater to detect `x86_64` / `amd64`, enabling deployment on x86 Asuswrt-Merlin machines and virtualized testbeds.
+* **🩹 Self-Healing CLI Dependency Installation:** Invoking tunnel subcommands (`ssh`, `recv`, `files`, `webgui`) without pre-existing binaries automatically downloads and configures dependencies on-the-fly.
+* **🧹 Self-Healing Session & Watchdog Reaping:** Automatically clears dead process state files, dumps, and orphaned watchdog subshells.
+* **🌐 WebGUI Protocol & Port Accuracy:** Unified `get_webgui_connect_info` across overview, session cards, and CLI status for exact HTTP vs HTTPS port resolution.
+* **🗑️ Comprehensive Uninstaller:** Removes legacy `/opt/bin/tailcat` binaries and applies POSIX case-insensitive cleanup to `init-start`.
 
 ### [v1.4.0] - 2026-09-03
 * **🐱 Project Rebranding to TAILCAT ZER0:** Officially rebranded to **TAILCAT ZER0** with the dedicated CLI command `tailcatzero`.
