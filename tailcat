@@ -300,7 +300,7 @@ start_tunnel() {
     fi
 
     if [ ! -x "$TAILCAT_BIN" ]; then
-        FLASH_MSG="${C_RED}[!] TailCat binary not found. Please run Option 6 or 7 to install it.${C_RESET}"
+        FLASH_MSG="${C_RED}[!] TailCat engine binary not found. Please run Option 6 (Manage TAILCAT ZER0) to install it.${C_RESET}"
         return 1
     fi
 

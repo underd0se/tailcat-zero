@@ -90,10 +90,12 @@ EOF
 fi
 
 # 7. Reboot Teardown Hook in init-start
-if [ -f "/jffs/scripts/init-start" ]; then
-    if ! grep -q "tailcat_sessions" /jffs/scripts/init-start 2>/dev/null; then
-        echo 'rm -rf /tmp/tailcat_sessions /tmp/tailcat_addr*.txt 2>/dev/null # TailCat cleanup' >> /jffs/scripts/init-start
-    fi
+if [ ! -f "/jffs/scripts/init-start" ]; then
+    printf "#!/bin/sh\n\n" > "/jffs/scripts/init-start"
+    chmod 755 "/jffs/scripts/init-start"
+fi
+if ! grep -q "tailcat_sessions" /jffs/scripts/init-start 2>/dev/null; then
+    echo 'rm -rf /tmp/tailcat_sessions /tmp/tailcat_addr*.txt 2>/dev/null # TAILCAT ZER0 cleanup' >> /jffs/scripts/init-start
 fi
 
 printf "\n%b%b==============================================================%b\n" "$C_GREEN" "$C_BOLD" "$C_RESET"
