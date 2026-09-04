@@ -65,6 +65,10 @@ is_service_active() {
         if [ -n "${PID:-}" ] && kill -0 "$PID" 2>/dev/null; then
             return 0
         fi
+        if [ -n "${WATCHDOG_PID:-}" ]; then
+            kill -9 "$WATCHDOG_PID" 2>/dev/null || true
+        fi
+        rm -f "$s_file" "/tmp/tailcat_addr_${s_id}.txt" 2>/dev/null || true
     fi
     return 1
 }
@@ -334,8 +338,15 @@ start_tunnel() {
     fi
 
     if [ ! -x "$TAILCAT_BIN" ]; then
-        FLASH_MSG="${C_RED}[!] TailCat engine binary not found. Please run Option 6 (Manage TAILCAT ZER0) to install it.${C_RESET}"
-        return 1
+        ensure_dependencies
+        if [ ! -x "$TAILCAT_BIN" ]; then
+            if [ "$interactive_mode" = "0" ]; then
+                printf "%b[!] TailCat engine binary not found at %s. Please run 'tailcatzero update' or reinstall.%b\n" "$C_RED" "$TAILCAT_BIN" "$C_RESET"
+            else
+                FLASH_MSG="${C_RED}[!] TailCat engine binary not found. Please run Option 6 (Manage TAILCAT ZER0) to install it.${C_RESET}"
+            fi
+            return 1
+        fi
     fi
 
     mkdir -p "$SESSIONS_DIR"
@@ -345,8 +356,12 @@ start_tunnel() {
     printf "\n%b[*] Starting %s...%b\n" "$C_CYAN" "$desc" "$C_RESET"
 
     # Start tailcat in background with address output file and guaranteed ephemeral key
-    # shellcheck disable=SC2086
-    TAILCAT_ADDR_FILE="$addr_file" "$TAILCAT_BIN" --key=new $subcmd >/dev/null 2>&1 &
+    if [ "$service_type" = "RECV" ]; then
+        TAILCAT_ADDR_FILE="$addr_file" "$TAILCAT_BIN" --key=new recv "$extra_info" >/dev/null 2>&1 &
+    else
+        # shellcheck disable=SC2086
+        TAILCAT_ADDR_FILE="$addr_file" "$TAILCAT_BIN" --key=new $subcmd >/dev/null 2>&1 &
+    fi
     tailcat_pid=$!
 
     # Wait up to 10 seconds for address file
@@ -434,6 +449,29 @@ get_client_connect_cmd() {
     esac
 }
 
+get_webgui_connect_info() {
+    w_info="${1:-}"
+    w_proto="https"
+    w_port="8443"
+    case "$w_info" in
+        http://*)
+            w_proto="http"
+            w_port=$(echo "$w_info" | sed -n 's|http://\([0-9]*\).*|\1|p')
+            [ -z "$w_port" ] && w_port="80"
+            ;;
+        https://*)
+            w_proto="https"
+            w_port=$(echo "$w_info" | sed -n 's|https://\([0-9]*\).*|\1|p')
+            [ -z "$w_port" ] && w_port="8443"
+            ;;
+        *)
+            w_port=$(echo "$w_info" | grep -oE '[0-9]+' | head -n1 || echo "8443")
+            [ -z "$w_port" ] && w_port="8443"
+            ;;
+    esac
+    printf "%s %s\n" "$w_proto" "$w_port"
+}
+
 render_multi_session_overview() {
     draw_header
     cnt=$(get_active_service_count)
@@ -462,7 +500,10 @@ render_multi_session_overview() {
             . "$s_file"
             cmd=$(get_client_connect_cmd "$s" "$TOKEN")
             if [ "$s" = "WEBGUI" ]; then
-                printf "  • %bWebGUI:%b  %btailcat socks %s%b (Open https://localhost:8443)\n" "$C_BOLD" "$C_RESET" "$C_YELLOW" "$TOKEN" "$C_RESET"
+                read -r wp_proto wp_port <<EOF
+$(get_webgui_connect_info "${EXTRA_INFO:-}")
+EOF
+                printf "  • %bWebGUI:%b  %btailcat socks %s%b (Open %s://localhost:%s)\n" "$C_BOLD" "$C_RESET" "$C_YELLOW" "$TOKEN" "$C_RESET" "$wp_proto" "$wp_port"
             else
                 printf "  • %b%-7s%b %b%s%b\n" "$C_BOLD" "${s}:" "$C_RESET" "$C_YELLOW" "$cmd" "$C_RESET"
             fi
@@ -511,13 +552,11 @@ render_single_session_card() {
     printf "  %b────────────────────────────────────────────────────────────────────────%b\n" "$C_CYAN" "$C_RESET"
     printf "  %b%s%b\n" "$C_WHITE" "${invite_str}" "$C_RESET"
     if [ "$s_id" = "WEBGUI" ]; then
-        web_port="8443"
-        case "${EXTRA_INFO:-}" in
-            *HTTPS:\ 8443*|*8443*) web_port="8443" ;;
-            *HTTPS:\ *|*HTTP:\ *) web_port=$(echo "${EXTRA_INFO}" | grep -oE '[0-9]+' | head -n1 || echo "8443") ;;
-        esac
+        read -r wp_proto wp_port <<EOF
+$(get_webgui_connect_info "${EXTRA_INFO:-}")
+EOF
         printf "  %b1. Run: %btailcat socks %s%b\n" "$C_WHITE" "$C_YELLOW" "$TOKEN" "$C_RESET"
-        printf "  %b2. Open browser: %bhttps://localhost:%s%b\n" "$C_WHITE" "$C_CYAN" "${web_port}" "$C_RESET"
+        printf "  %b2. Open browser: %b%s://localhost:%s%b\n" "$C_WHITE" "$C_CYAN" "$wp_proto" "$wp_port" "$C_RESET"
     else
         printf "  %bRun: %b%s%b\n" "$C_WHITE" "$C_YELLOW" "$cmd" "$C_RESET"
     fi
@@ -640,6 +679,22 @@ interactive_session_card() {
     done
 }
 
+save_timeout_config() {
+    new_timeout="$1"
+    mkdir -p "$CONFIG_DIR"
+    existing_derp=""
+    if [ -f "$CONFIG_FILE" ]; then
+        existing_derp=$(grep '^DERP_URL=' "$CONFIG_FILE" 2>/dev/null || true)
+    fi
+    {
+        echo "TIMEOUT_MINUTES=${new_timeout}"
+        if [ -n "$existing_derp" ]; then
+            echo "$existing_derp"
+        fi
+    } > "$CONFIG_FILE"
+    TIMEOUT_MINUTES="$new_timeout"
+}
+
 set_timeout_config() {
     t_err=""
     while true; do
@@ -683,9 +738,7 @@ set_timeout_config() {
             continue
         fi
 
-        TIMEOUT_MINUTES="$user_t"
-        mkdir -p "$CONFIG_DIR"
-        echo "TIMEOUT_MINUTES=${TIMEOUT_MINUTES}" > "$CONFIG_FILE"
+        save_timeout_config "$user_t"
         if [ "$TIMEOUT_MINUTES" -eq 0 ]; then
             FLASH_MSG="${C_GREEN}[+] Auto-kill disabled (Sessions will run persistently until stopped).${C_RESET}"
         else
@@ -704,6 +757,7 @@ update_binary() {
     case "$arch" in
         armv7*|armv6*|arm) pkg_arch="armv7" ;;
         aarch64*|arm64*)  pkg_arch="arm64" ;;
+        x86_64*|amd64*)   pkg_arch="amd64" ;;
         *)
             FLASH_MSG="${C_RED}[!] Unsupported router architecture: ${arch}${C_RESET}"
             return 1
@@ -793,9 +847,9 @@ uninstall_tailcat() {
         [yY]*)
             stop_all_sessions
             if [ -f "/jffs/scripts/init-start" ]; then
-                sed -i '/tailcat/d' /jffs/scripts/init-start 2>/dev/null || true
+                sed -i '/[tT][aA][iI][lL][cC][aA][tT]/d' /jffs/scripts/init-start 2>/dev/null || true
             fi
-            rm -rf "$CONFIG_DIR" "$SESSIONS_DIR" /jffs/scripts/tailcat /jffs/scripts/tailcatZero /jffs/scripts/tailcatzero /jffs/scripts/tailcat-merlin /opt/bin/tailcatZero /opt/bin/tailcatzero /opt/bin/tailcat-merlin 2>/dev/null || true
+            rm -rf "$CONFIG_DIR" "$SESSIONS_DIR" /jffs/scripts/tailcat /jffs/scripts/tailcatZero /jffs/scripts/tailcatzero /jffs/scripts/tailcat-merlin /opt/bin/tailcat /opt/bin/tailcatZero /opt/bin/tailcatzero /opt/bin/tailcat-merlin /tmp/tailcat_addr*.txt 2>/dev/null || true
             clear_screen
             printf "\n%b[+] TAILCAT ZER0 has been completely uninstalled.%b\n\n" "$C_GREEN" "$C_RESET"
             exit 0
@@ -1095,6 +1149,7 @@ cli_help() {
     printf "  %btailcatzero recv [dir]%b                Start encrypted DropBox tunnel (default /tmp/tailcat-inbox)\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero files [dir] [ro|rw]%b       Start SFTP directory share (default /jffs ro)\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero webgui%b                    Start router WebGUI tunnel\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero timeout [min|persistent]%b  Get or configure default auto-kill session timeout\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero update%b                    Update TAILCAT ZER0 script & engine\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero -v, --version%b             Show version\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero -h, --help%b                Show this help message\n\n" "$C_CYAN" "$C_RESET"
@@ -1116,13 +1171,10 @@ cli_status() {
             cmd=$(get_client_connect_cmd "$s" "$TOKEN")
             printf "  • %b%-26s%b ⏱️  %-14s PID: %s\n" "$C_BOLD" "${DESC}" "$C_RESET" "$tl" "${PID:-unknown}"
             if [ "$s" = "WEBGUI" ]; then
-                web_proto="https"
-                web_port="8443"
-                case "${EXTRA_INFO:-}" in
-                    http://*) web_proto="http"; web_port=$(echo "${EXTRA_INFO}" | grep -oE 'http://[0-9]+' | grep -oE '[0-9]+' || echo "80") ;;
-                    https://*) web_proto="https"; web_port=$(echo "${EXTRA_INFO}" | grep -oE 'https://[0-9]+' | grep -oE '[0-9]+' || echo "8443") ;;
-                esac
-                printf "    Connect: %b%s%b (Open %s://localhost:%s)\n\n" "$C_YELLOW" "$cmd" "$C_RESET" "${web_proto}" "${web_port}"
+                read -r wp_proto wp_port <<EOF
+$(get_webgui_connect_info "${EXTRA_INFO:-}")
+EOF
+                printf "    Connect: %b%s%b (Open %s://localhost:%s)\n\n" "$C_YELLOW" "$cmd" "$C_RESET" "${wp_proto}" "${wp_port}"
             else
                 printf "    Connect: %b%s%b\n\n" "$C_YELLOW" "$cmd" "$C_RESET"
             fi
@@ -1187,6 +1239,32 @@ if [ $# -gt 0 ]; then
             ;;
         webgui|web)
             start_webgui_tunnel 0
+            exit 0
+            ;;
+        timeout)
+            if [ -z "${2:-}" ]; then
+                if [ "${TIMEOUT_MINUTES}" -eq 0 ]; then
+                    printf "Default Timeout: %bDisabled (Persistent)%b\n" "$C_BOLD" "$C_RESET"
+                else
+                    printf "Default Timeout: %b%s minutes%b\n" "$C_BOLD" "${TIMEOUT_MINUTES}" "$C_RESET"
+                fi
+                exit 0
+            fi
+            val="$2"
+            case "$val" in
+                [pP][eE][rR][sS][iI][sS][tT][eE][nN][tT]|[fF][oO][rR][eE][vV][eE][rR]|[uU][nN][lL][iI][mM][iI][tT][eE][dD]|0)
+                    save_timeout_config 0
+                    printf "%b[+] Default session timeout set to Persistent (auto-kill disabled).%b\n" "$C_GREEN" "$C_RESET"
+                    ;;
+                *[!0-9]*)
+                    printf "%b[!] Invalid timeout: %s. Must be digits (minutes) or 'persistent'.%b\n" "$C_RED" "$val" "$C_RESET"
+                    exit 1
+                    ;;
+                *)
+                    save_timeout_config "$val"
+                    printf "%b[+] Default session timeout set to %s minutes.%b\n" "$C_GREEN" "$val" "$C_RESET"
+                    ;;
+            esac
             exit 0
             ;;
         update)

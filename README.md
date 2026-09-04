@@ -56,6 +56,7 @@ tailcatzero ssh                       # Start instant remote shell tunnel
 tailcatzero recv [/path/to/inbox]     # Start encrypted DropBox tunnel (default /tmp/tailcat-inbox)
 tailcatzero files [/path] [ro|rw]     # Start SFTP directory share (default /jffs ro)
 tailcatzero webgui                    # Start router WebGUI tunnel
+tailcatzero timeout [min|persistent]  # Query or configure default auto-kill session timeout
 tailcatzero stop all                  # Stop all active sessions
 tailcatzero stop SSH                  # Stop specific service (SSH, RECV, FILES, WEBGUI)
 tailcatzero update                    # Update TAILCAT ZER0 script & engine

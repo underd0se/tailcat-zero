@@ -41,6 +41,7 @@ pkg_arch=""
 case "$arch" in
     armv7*|armv6*|arm) pkg_arch="armv7" ;;
     aarch64*|arm64*)  pkg_arch="arm64" ;;
+    x86_64*|amd64*)   pkg_arch="amd64" ;;
     *)
         printf "%b[!] Unsupported router CPU architecture: %s%b\n" "$C_RED" "${arch}" "$C_RESET"
         exit 1
