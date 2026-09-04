@@ -62,7 +62,23 @@ else
     exit 1
 fi
 
-# 5. Install Main CLI Script & Register tailcatzero Command
+# 5. Dependency Verification (qrencode via firmware or Entware)
+qr_cmd=""
+if command -v qrencode >/dev/null 2>&1; then
+    qr_cmd="qrencode"
+elif [ -x "/usr/sbin/qrencode" ]; then
+    qr_cmd="/usr/sbin/qrencode"
+elif [ -x "/opt/bin/qrencode" ]; then
+    qr_cmd="/opt/bin/qrencode"
+fi
+
+if [ -z "$qr_cmd" ] && [ -x "/opt/bin/opkg" ]; then
+    printf "%b[*] Installing qrencode via Entware (opkg)...%b\n" "$C_CYAN" "$C_RESET"
+    /opt/bin/opkg update >/dev/null 2>&1 || true
+    /opt/bin/opkg install qrencode >/dev/null 2>&1 || true
+fi
+
+# 6. Install Main CLI Script & Register tailcatzero Command
 printf "%b[*] Installing CLI script to %s...%b\n" "$C_CYAN" "$INSTALL_SCRIPT" "$C_RESET"
 if [ -f "./tailcat" ]; then
     cp -f "./tailcat" "$INSTALL_SCRIPT"
@@ -80,7 +96,7 @@ if [ -d "/opt/bin" ]; then
 fi
 printf "%b[+] Registered command: %b%s%b\n" "$C_GREEN" "$C_BOLD" "tailcatzero" "$C_RESET"
 
-# 6. Default Configuration
+# 7. Default Configuration
 if [ ! -f "$CFG_FILE" ]; then
     cat <<EOF > "$CFG_FILE"
 TIMEOUT_MINUTES=30
@@ -89,7 +105,7 @@ EOF
     printf "%b[+] Created default configuration: %s%b\n" "$C_GREEN" "$CFG_FILE" "$C_RESET"
 fi
 
-# 7. Reboot Teardown Hook in init-start
+# 8. Reboot Teardown Hook in init-start
 if [ ! -f "/jffs/scripts/init-start" ]; then
     printf "#!/bin/sh\n\n" > "/jffs/scripts/init-start"
     chmod 755 "/jffs/scripts/init-start"

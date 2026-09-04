@@ -245,6 +245,32 @@ stop_sessions_with_confirmation() {
     esac
 }
 
+get_qrencode_cmd() {
+    if command -v qrencode >/dev/null 2>&1; then
+        echo "qrencode"
+    elif [ -x "/usr/sbin/qrencode" ]; then
+        echo "/usr/sbin/qrencode"
+    elif [ -x "/opt/bin/qrencode" ]; then
+        echo "/opt/bin/qrencode"
+    else
+        echo ""
+    fi
+}
+
+ensure_dependencies() {
+    # 1. Engine binary
+    if [ ! -x "$TAILCAT_BIN" ]; then
+        update_binary || true
+    fi
+
+    # 2. QR code engine (auto-install if opkg available)
+    qr_bin=$(get_qrencode_cmd)
+    if [ -z "$qr_bin" ] && [ -x "/opt/bin/opkg" ]; then
+        /opt/bin/opkg update >/dev/null 2>&1 || true
+        /opt/bin/opkg install qrencode >/dev/null 2>&1 || true
+    fi
+}
+
 get_binary_version() {
     if [ -x "$TAILCAT_BIN" ]; then
         b_ver=$("$TAILCAT_BIN" --version 2>/dev/null | head -n 1 | tr -d '\r\n' || true)
@@ -497,10 +523,15 @@ render_single_session_card() {
     fi
     printf "  %b────────────────────────────────────────────────────────────────────────%b\n\n" "$C_CYAN" "$C_RESET"
 
-    if [ "$show_qr" = "1" ] && [ -x "/usr/sbin/qrencode" ]; then
-        printf "  %b📱 Scan QR Code on Mobile / Laptop:%b\n\n" "$C_BOLD" "$C_RESET"
-        /usr/sbin/qrencode -t UTF8 -m 1 "$cmd" 2>/dev/null || /usr/sbin/qrencode -t ASCII -m 1 "$cmd" 2>/dev/null || true
-        printf "\n"
+    qr_bin=$(get_qrencode_cmd)
+    if [ "$show_qr" = "1" ]; then
+        if [ -n "$qr_bin" ]; then
+            printf "  %b📱 Scan QR Code on Mobile / Laptop:%b\n\n" "$C_BOLD" "$C_RESET"
+            "$qr_bin" -t UTF8 -m 1 "$cmd" 2>/dev/null || "$qr_bin" -t ASCII -m 1 "$cmd" 2>/dev/null || true
+            printf "\n"
+        else
+            printf "  %b[!] 'qrencode' not found. Install via Entware: 'opkg install qrencode'%b\n\n" "$C_YELLOW" "$C_RESET"
+        fi
     fi
 
     printf "%b========================================================================%b\n\n" "$C_GREEN" "$C_RESET"
@@ -953,7 +984,10 @@ main_menu() {
                         continue
                         ;;
                 esac
-                mkdir -p "$target_dir"
+                if ! mkdir -p "$target_dir" 2>/dev/null; then
+                    FLASH_MSG="${C_RED}[!] Could not create destination directory: ${target_dir}${C_RESET}"
+                    continue
+                fi
                 start_tunnel "RECV" "recv ${target_dir}" "📥 Encrypted File DropBox" "${target_dir}"
                 ;;
             3)
@@ -1175,9 +1209,7 @@ if [ $# -gt 0 ]; then
     esac
 fi
 
-# Ensure binary exists on first run
-if [ ! -x "$TAILCAT_BIN" ]; then
-    update_binary || true
-fi
+# Ensure engine binary and dependencies exist on first run
+ensure_dependencies
 
 main_menu
