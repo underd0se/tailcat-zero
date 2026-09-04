@@ -370,14 +370,21 @@ start_tunnel() {
         if [ -s "$addr_file" ]; then
             break
         fi
+        if ! kill -0 "$tailcat_pid" 2>/dev/null; then
+            break
+        fi
         sleep 1
         count=$((count + 1))
     done
 
     if [ ! -s "$addr_file" ] || ! kill -0 "$tailcat_pid" 2>/dev/null; then
-        printf "\n%b[-] Failed to start %s.%b\n" "$C_RED" "$desc" "$C_RESET"
         kill -9 "$tailcat_pid" 2>/dev/null || true
         rm -f "$addr_file"
+        if [ "$interactive_mode" = "0" ]; then
+            printf "\n%b[-] Failed to start %s.%b\n" "$C_RED" "$desc" "$C_RESET"
+        else
+            FLASH_MSG="${C_RED}[-] Failed to start ${desc}.${C_RESET}"
+        fi
         return 1
     fi
 
@@ -628,7 +635,6 @@ interactive_session_card() {
                     done
                     ;;
                 *)
-                    break
                     ;;
             esac
         else
@@ -672,7 +678,6 @@ interactive_session_card() {
                     break
                     ;;
                 *)
-                    break
                     ;;
             esac
         fi
@@ -684,7 +689,7 @@ save_timeout_config() {
     mkdir -p "$CONFIG_DIR"
     existing_derp=""
     if [ -f "$CONFIG_FILE" ]; then
-        existing_derp=$(grep '^DERP_URL=' "$CONFIG_FILE" 2>/dev/null || true)
+        existing_derp=$(grep '^DERP_URL=' "$CONFIG_FILE" 2>/dev/null | head -n 1 || true)
     fi
     {
         echo "TIMEOUT_MINUTES=${new_timeout}"
@@ -783,6 +788,7 @@ update_tailcat_all() {
     printf "  %b[*] Checking for TAILCAT ZER0 script & engine updates...%b\n\n" "$C_CYAN" "$C_RESET"
 
     # 1. Update Bash Script from GitHub
+    script_ok=0
     tmp_script="/tmp/tailcat.update"
     rm -f "$tmp_script"
     printf "  %b[*] Fetching latest TAILCAT ZER0 CLI script from GitHub...%b\n" "$C_CYAN" "$C_RESET"
@@ -796,20 +802,39 @@ update_tailcat_all() {
             rm -f /opt/bin/tailcat /opt/bin/tailcatZero /opt/bin/tailcat-merlin 2>/dev/null || true
         fi
         printf "  %b[+] TAILCAT ZER0 script updated successfully.%b\n\n" "$C_GREEN" "$C_RESET"
+        script_ok=1
     else
         printf "  %b[!] Could not reach GitHub. Keeping current script.%b\n\n" "$C_YELLOW" "$C_RESET"
     fi
 
     # 2. Update Engine Binary
-    update_binary || true
-    FLASH_MSG="${C_GREEN}[+] TAILCAT ZER0 (script & engine) updated successfully.${C_RESET}"
+    bin_ok=0
+    if update_binary; then
+        bin_ok=1
+    fi
+
+    if [ "$script_ok" = "1" ] && [ "$bin_ok" = "1" ]; then
+        FLASH_MSG="${C_GREEN}[+] TAILCAT ZER0 (script & engine) updated successfully.${C_RESET}"
+    elif [ "$script_ok" = "1" ]; then
+        FLASH_MSG="${C_YELLOW}[*] Script updated, but engine binary update failed.${C_RESET}"
+    elif [ "$bin_ok" = "1" ]; then
+        FLASH_MSG="${C_YELLOW}[*] Engine binary updated, but GitHub script could not be fetched.${C_RESET}"
+    else
+        FLASH_MSG="${C_RED}[!] Update failed for both script and engine binary.${C_RESET}"
+    fi
 }
 
 reinstall_tailcat() {
     clear_screen
     draw_header
     printf "  %b⚡ Reinstalling TAILCAT ZER0...%b\n\n" "$C_CYAN" "$C_RESET"
-    update_binary || true
+
+    bin_ok=0
+    if update_binary; then
+        bin_ok=1
+    fi
+
+    script_ok=0
     printf "  %b[*] Updating /jffs/scripts/tailcat...%b\n" "$C_CYAN" "$C_RESET"
     if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcat" -o /jffs/scripts/tailcat.tmp 2>/dev/null; then
         chmod 755 /jffs/scripts/tailcat.tmp
@@ -821,6 +846,7 @@ reinstall_tailcat() {
             rm -f /opt/bin/tailcat /opt/bin/tailcatZero /opt/bin/tailcat-merlin 2>/dev/null || true
         fi
         printf "  %b[+] Script updated from GitHub.%b\n\n" "$C_GREEN" "$C_RESET"
+        script_ok=1
     else
         ln -sf /jffs/scripts/tailcat /jffs/scripts/tailcatzero 2>/dev/null || true
         rm -f /jffs/scripts/tailcatZero /jffs/scripts/tailcat-merlin 2>/dev/null || true
@@ -830,7 +856,16 @@ reinstall_tailcat() {
         fi
         printf "  %b[*] Keeping current script version.%b\n\n" "$C_GRAY" "$C_RESET"
     fi
-    FLASH_MSG="${C_GREEN}[+] TAILCAT ZER0 reinstalled successfully.${C_RESET}"
+
+    if [ "$script_ok" = "1" ] && [ "$bin_ok" = "1" ]; then
+        FLASH_MSG="${C_GREEN}[+] TAILCAT ZER0 reinstalled successfully.${C_RESET}"
+    elif [ "$script_ok" = "1" ]; then
+        FLASH_MSG="${C_YELLOW}[*] Script reinstalled, but engine binary update failed.${C_RESET}"
+    elif [ "$bin_ok" = "1" ]; then
+        FLASH_MSG="${C_YELLOW}[*] Engine binary reinstalled, but GitHub script could not be fetched.${C_RESET}"
+    else
+        FLASH_MSG="${C_RED}[!] Reinstall failed for both script and engine binary.${C_RESET}"
+    fi
 }
 
 uninstall_tailcat() {
@@ -864,6 +899,10 @@ manage_tailcat_menu() {
     while true; do
         clear_screen
         draw_header
+        if [ -n "${FLASH_MSG:-}" ]; then
+            printf "  %b\n\n" "$FLASH_MSG"
+            FLASH_MSG=""
+        fi
         b_ver=$(get_binary_version)
 
         printf "  %b%b⚙️  Manage TAILCAT ZER0:%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
@@ -897,7 +936,7 @@ manage_tailcat_menu() {
                 ;;
             *)
                 FLASH_MSG="${C_RED}[!] Invalid selection.${C_RESET}"
-                break
+                continue
                 ;;
         esac
     done

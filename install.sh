@@ -109,8 +109,8 @@ fi
 # 8. Reboot Teardown Hook in init-start
 if [ ! -f "/jffs/scripts/init-start" ]; then
     printf "#!/bin/sh\n\n" > "/jffs/scripts/init-start"
-    chmod 755 "/jffs/scripts/init-start"
 fi
+chmod 755 "/jffs/scripts/init-start"
 if ! grep -q "tailcat_sessions" /jffs/scripts/init-start 2>/dev/null; then
     echo 'rm -rf /tmp/tailcat_sessions /tmp/tailcat_addr*.txt 2>/dev/null # TAILCAT ZER0 cleanup' >> /jffs/scripts/init-start
 fi
