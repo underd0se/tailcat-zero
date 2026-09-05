@@ -955,30 +955,28 @@ get_client_connect_cmd() {
 get_webgui_connect_info() {
     w_info="${1:-}"
     w_proto="https"
-    w_port="8443"
     case "$w_info" in
         http://*)
             w_proto="http"
-            w_port=$(echo "$w_info" | sed -n 's|http://\([0-9]*\).*|\1|p')
-            [ -z "$w_port" ] && w_port="80"
-            ;;
-        https://*)
-            w_proto="https"
-            w_port=$(echo "$w_info" | sed -n 's|https://\([0-9]*\).*|\1|p')
-            [ -z "$w_port" ] && w_port="8443"
-            ;;
-        *)
-            w_port=$(echo "$w_info" | grep -oE '[0-9]+' | head -n1 || echo "8443")
-            [ -z "$w_port" ] && w_port="8443"
             ;;
     esac
+
+    w_port=$(echo "$w_info" | sed -n 's|.*:\([0-9]\{2,5\}\).*|\1|p' | head -n1)
+    if [ -z "$w_port" ]; then
+        w_port=$(echo "$w_info" | sed -n 's|.*//\([0-9]\{2,5\}\).*|\1|p' | head -n1)
+    fi
+    if [ -z "$w_port" ]; then
+        w_port=$(echo "$w_info" | grep -oE '[0-9]+' | head -n1 || echo "")
+    fi
+    if [ -z "$w_port" ]; then
+        [ "$w_proto" = "http" ] && w_port="80" || w_port="8443"
+    fi
     printf "%s %s\n" "$w_proto" "$w_port"
 }
 
 render_multi_session_overview() {
     draw_header
     cnt=$(get_active_service_count)
-    printf "%b%b========================================================================%b\n" "$C_GREEN" "$C_BOLD" "$C_RESET"
     printf "  %b%b🐱 TAILCAT ZER0 — Active Sessions (%d Running)%b\n" "$C_CYAN" "$C_BOLD" "$cnt" "$C_RESET"
     printf "%b========================================================================%b\n\n" "$C_GREEN" "$C_RESET"
 
@@ -989,7 +987,7 @@ render_multi_session_overview() {
             # shellcheck disable=SC1090
             . "$s_file"
             tl=$(get_service_time_left "$s")
-            printf "  %b[%d]%b %b%-28s%b ⏱️  %-14s 🔒 P2P\n" "$C_BOLD" "$idx" "$C_RESET" "$C_MAGENTA" "${DESC}" "$C_RESET" "$tl"
+            printf "  %b[%d]%b %b%-36s%b ⏱️ %-14s 🔒 P2P\n" "$C_BOLD" "$idx" "$C_RESET" "$C_MAGENTA" "${DESC}" "$C_RESET" "$tl"
             idx=$((idx + 1))
         fi
     done
@@ -1006,9 +1004,9 @@ render_multi_session_overview() {
                 read -r wp_proto wp_port <<EOF
 $(get_webgui_connect_info "${EXTRA_INFO:-}")
 EOF
-                printf "  • %bWebGUI:%b  %btailcat socks %s%b (Open %s://localhost:%s)\n" "$C_BOLD" "$C_RESET" "$C_YELLOW" "$TOKEN" "$C_RESET" "$wp_proto" "$wp_port"
+                printf "  • %b%-8s%b %btailcat socks %s%b (Open %s://localhost:%s)\n" "$C_BOLD" "WebGUI:" "$C_RESET" "$C_YELLOW" "$TOKEN" "$C_RESET" "$wp_proto" "$wp_port"
             else
-                printf "  • %b%-7s%b %b%s%b\n" "$C_BOLD" "${s}:" "$C_RESET" "$C_YELLOW" "$cmd" "$C_RESET"
+                printf "  • %b%-8s%b %b%s%b\n" "$C_BOLD" "${s}:" "$C_RESET" "$C_YELLOW" "$cmd" "$C_RESET"
             fi
         fi
     done
@@ -1033,7 +1031,6 @@ render_single_session_card() {
 
     draw_header
 
-    printf "%b%b========================================================================%b\n" "$C_GREEN" "$C_BOLD" "$C_RESET"
     printf "  %b%b🐱 TAILCAT ZER0 — Active Session%b\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
     printf "%b========================================================================%b\n\n" "$C_GREEN" "$C_RESET"
 
@@ -1046,7 +1043,7 @@ render_single_session_card() {
     else
         auto_kill_str="${time_left}"
     fi
-    printf "  %bAuto-Kill:%b   %b⏱️  %s%b\n" "$C_BOLD" "$C_RESET" "$C_YELLOW" "${auto_kill_str}" "$C_RESET"
+    printf "  %bAuto-Kill:%b   %b⏱️ %s%b\n" "$C_BOLD" "$C_RESET" "$C_YELLOW" "${auto_kill_str}" "$C_RESET"
 
     if [ "$s_id" = "VIEW" ]; then
         if [ "${time_left}" = "Persistent" ]; then
@@ -1506,7 +1503,7 @@ start_ssh_menu() {
     b_root=$(get_service_badge "SSH")
     b_view=$(get_service_badge "VIEW")
 
-    printf "  %b1.%b ⚡  Full Root Shell (Read-Write)     %b%-40s%b %b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "Full admin shell with unrestricted root" "$C_RESET" "$b_root"
+    printf "  %b1.%b 🔓 Full Root Shell (Read-Write)     %b%-40s%b %b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "Full admin shell with unrestricted root" "$C_RESET" "$b_root"
     printf "  %b2.%b 🔒 View-Only Diagnostic Shell       %b%-40s%b %b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "Safe inspection; writes blocked" "$C_RESET" "$b_view"
 
     printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
@@ -1779,7 +1776,11 @@ start_webgui_tunnel() {
         serve_ports="${https_port},${http_port}"
     fi
 
-    start_tunnel "WEBGUI" "serve ${serve_ports}" "🌐 Router WebGUI (Port ${primary_port})" "${web_proto}://${primary_port} (Ports: ${serve_ports})" "$interactive_mode"
+    lan_ip=$(nvram get lan_ipaddr 2>/dev/null || echo "192.168.1.1")
+    [ -z "$lan_ip" ] && lan_ip="192.168.1.1"
+    dest_url="${web_proto}://${lan_ip}:${primary_port}"
+
+    start_tunnel "WEBGUI" "serve ${serve_ports}" "🌐 Router WebGUI (Port ${primary_port})" "${dest_url} (Ports: ${serve_ports})" "$interactive_mode"
 }
 
 # -------------------------------------------------------------------------------------------------------------------------
@@ -1821,7 +1822,7 @@ cli_status() {
             . "$s_file"
             tl=$(get_service_time_left "$s")
             cmd=$(get_client_connect_cmd "$s" "$TOKEN")
-            printf "  • %b%-26s%b ⏱️  %-14s PID: %s\n" "$C_BOLD" "${DESC}" "$C_RESET" "$tl" "${PID:-unknown}"
+            printf "  • %b%-36s%b ⏱️ %-14s PID: %s\n" "$C_BOLD" "${DESC}" "$C_RESET" "$tl" "${PID:-unknown}"
             if [ "$s" = "WEBGUI" ]; then
                 read -r wp_proto wp_port <<EOF
 $(get_webgui_connect_info "${EXTRA_INFO:-}")
