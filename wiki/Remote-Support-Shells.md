@@ -167,12 +167,80 @@ The connecting user does **not** need a Tailscale account, VPN profile, or SSH k
 * **Precompiled Binaries:** Download for Linux, macOS, or Windows from [Tailscale TailCat Releases](https://github.com/tailscale/tailcat/releases).
 
 ### 2. Connect via Token
-The guest simply runs:
-```sh
-tailcat ssh tcXXXXXXXXXXXX
+
+#### Guest Terminal: Connecting to View-Only Diagnostic Shell
+```text
+┌──(guest@workstation)-[~]
+└─$ tailcat ssh tcpGFwWCBquiVYgLrL7k3HQDl_jERoGKCT7I5VYUIQeZ6LF_q4e2FrWCC...
+[+] Connecting to WireGuard peer via DERP relay (fra)...
+[+] Direct WireGuard connection established (UDP 192.168.50.1:51820)
+========================================================================
+  🐱 TAILCAT ZER0 — Restricted Diagnostic View-Shell
+========================================================================
+  [i] Welcome! You have safe, read-only diagnostic access to this router.
+  [i] Destructive actions, system mutations, and credentials are protected.
+  [i] Need to run an unapproved command? Type: request <command>
+========================================================================
+
+view-shell:~$ uptime
+ 22:20:15 up 4 days,  6:14,  load average: 0.14, 0.09, 0.06
+
+view-shell:~$ free -m
+             total       used       free     shared    buffers     cached
+Mem:        491520     184320     307200          0      24576      98304
+-/+ buffers/cache:      61440     430080
+Swap:      2097148          0    2097148
+
+view-shell:~$ nvram get lan_ipaddr
+192.168.50.1
+
+view-shell:~$ ps | grep dnsmasq
+ 1420 admin     2844 S    dnsmasq --log-async
+
+view-shell:~$ rm -rf /jffs
+[-] Permission denied: Command 'rm' is blocked by security sandbox.
+view-shell:~$ exit
+Connection to router closed.
 ```
 
-The client negotiates an encrypted WireGuard peer connection via Tailscale's DERP relay network, punches through any NATs or firewalls, and attaches to the remote shell within seconds.
+#### Guest Terminal: Connecting to Root Shell
+```text
+┌──(admin@workstation)-[~]
+└─$ tailcat ssh tcpGFwWCCuqKFX5cJxm-pNdgo2ILkJgpEGQO3cofQPT4fhKulsPGFrWCC...
+[+] Connecting to WireGuard peer via DERP relay (fra)...
+[+] Direct WireGuard connection established (UDP 192.168.50.1:51820)
+
+admin@RT-AX86U:/tmp/home/root# uname -a
+Linux RT-AX86U 4.19.183 #1 SMP PREEMPT Thu Jun 13 14:22:10 EDT 2024 aarch64 GNU/Linux
+
+admin@RT-AX86U:/tmp/home/root# nvram get buildno
+3004.388.8_2
+
+admin@RT-AX86U:/tmp/home/root# exit
+Connection to router closed.
+```
+
+#### Host Terminal: Inspecting Sessions via CLI
+```text
+admin@RT-AX86U:/tmp/home/root# tailcatzero status
+========================================================================
+  🐱 TAILCAT ZER0 — Active Sessions Status
+========================================================================
+
+  [VIEW]   Restricted View-Only Diagnostic Shell
+           PID:       29412
+           Remaining: ⏱️ 28m remaining
+           Token:     tcpGFwWCBquiVYgLrL7k3HQDl_jERoGKCT7I5VYUIQeZ6...
+           Command:   tailcat ssh tcpGFwWCBquiVYgLrL7k3HQDl_jERoGKCT7I5VYUIQeZ6...
+
+  [SSH]    Full Root Support Shell
+           PID:       29580
+           Remaining: ⏱️ 30m remaining
+           Token:     tcpGFwWCCuqKFX5cJxm-pNdgo2ILkJgpEGQO3cofQPT4fh...
+           Command:   tailcat ssh tcpGFwWCCuqKFX5cJxm-pNdgo2ILkJgpEGQO3cofQPT4fh...
+
+========================================================================
+```
 
 ---
 

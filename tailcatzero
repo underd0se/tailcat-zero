@@ -1719,7 +1719,7 @@ main_menu() {
             2)
                 clear_screen
                 draw_header
-                printf "  %b📥 Select DropBox Destination:%b\n\n" "$C_CYAN" "$C_RESET"
+                printf "  %b📥 Select Inbox Destination:%b\n\n" "$C_CYAN" "$C_RESET"
                 ram_free=$(get_free_space "/tmp")
                 printf "  %b1.%b ⚡ Volatile RAM:  /tmp/tailcat-inbox           %b(Free: %s) [Default]%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$ram_free" "$C_RESET"
                 usb_drive=""
@@ -1805,7 +1805,7 @@ main_menu() {
                     FLASH_MSG="${C_RED}[!] Could not create destination directory: ${target_dir}${C_RESET}"
                     continue
                 fi
-                start_tunnel "RECV" "recv ${target_dir}" "📥 Encrypted File DropBox" "${target_dir}"
+                start_tunnel "RECV" "recv ${target_dir}" "📥 Encrypted File Receiver" "${target_dir}"
                 ;;
             3)
                 clear_screen
@@ -2005,7 +2005,7 @@ cli_help() {
     printf "  %btailcatzero stop [all|SVC]%b            Stop all sessions or a specific service (SSH, VIEW, RECV, FILES, WEBGUI)\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero ssh [root|view]%b           Start remote shell tunnel (default root)\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero view%b                      Start restricted view-only diagnostic shell\n" "$C_CYAN" "$C_RESET"
-    printf "  %btailcatzero recv [dir]%b                Start encrypted DropBox tunnel (default /tmp/tailcat-inbox)\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero recv [dir]%b                Start encrypted file receiver tunnel (default /tmp/tailcat-inbox)\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero files [dir] [ro|rw]%b       Start SFTP directory share (default /jffs ro)\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero webgui%b                    Start router WebGUI tunnel\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero requests%b                  List pending guest permission requests\n" "$C_CYAN" "$C_RESET"
@@ -2140,7 +2140,7 @@ if [ $# -gt 0 ]; then
         recv)
             target_dir="${2:-/tmp/tailcat-inbox}"
             mkdir -p "$target_dir"
-            start_tunnel "RECV" "recv ${target_dir}" "📥 Encrypted File DropBox" "${target_dir}" 0
+            start_tunnel "RECV" "recv ${target_dir}" "📥 Encrypted File Receiver" "${target_dir}" 0
             exit 0
             ;;
         files|sftp)

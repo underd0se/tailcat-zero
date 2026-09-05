@@ -2,7 +2,7 @@
 
 Welcome to the official **TAILCAT ZER0** Wiki.
 
-> **Ephemeral WireGuard Tunnels, Remote Support Shells & Encrypted DropBoxes for Asuswrt-Merlin Routers**
+> **Ephemeral WireGuard Tunnels, Remote Support Shells & Encrypted File Inboxes for Asuswrt-Merlin Routers**
 
 ```text
   TAILCAT ZER0 v1.7.1              ╱|、
@@ -28,7 +28,7 @@ Whether you need to let a trusted forum helper diagnose a routing issue, securel
 * 🔔 **Live On-Demand Permission Escalation:** Need a guest to run a specific command outside the default sandbox? They run `request <cmd>`, and you can review and approve it directly from your terminal or TUI with a single keystroke.
 * 🌐 **Zero WAN Ports Opened:** Penetrates carrier-grade NATs (CGNAT), cellular modems, and corporate firewalls seamlessly using Tailscale's global DERP relay fabric and STUN UDP hole-punching.
 * ⏱️ **Automatic Ephemeral Teardown:** Every session has an automatic watchdog countdown (default: 30 minutes) or can run persistently until manually stopped. Volatile memory locks ensure zero remnants survive a router reboot.
-* 🖐️ **5-Slot Multi-Service Concurrency:** Run root shells, view-only triage sessions, DropBox receivers, SFTP shares, and WebGUI proxies concurrently on independent WireGuard nodes.
+* 🖐️ **5-Slot Multi-Service Concurrency:** Run root shells, view-only triage sessions, File Receivers, SFTP shares, and WebGUI proxies concurrently on independent WireGuard nodes.
 
 ---
 
@@ -42,7 +42,7 @@ Explore the detailed documentation chapters:
 | **[Interactive TUI Guide](Interactive-TUI-Guide)** | Full walkthrough of the retro cyberpunk terminal interface, session cards, ASCII QR codes, and chat snippets. |
 | **[Remote Support Shells](Remote-Support-Shells)** | Choosing between Root Shells and Restricted View-Only Shells, connection procedures, and use cases. |
 | **[View-Only Sandbox & Escalation](View-Only-Sandbox-&-Permission-Escalation)** | Zero-trust sandbox architecture, built-in commands, blocked syntax, GTFOBin defenses, Hard Red Lines, and on-demand escalation. |
-| **[P2P File Transfers & DropBox](File-Transfers-&-DropBox)** | Direct router drop boxes for firmware/backups, SFTP directory sharing (read-only and read-write). |
+| **[P2P File Transfers & Inbox](File-Transfers-&-Inbox)** | Direct router file receiver inboxes for firmware/backups, SFTP directory sharing (read-only and read-write). |
 | **[WebGUI Remote Access](WebGUI-Remote-Access)** | Exposing Asuswrt WebUI securely over WireGuard with zero-config client port forwarding. |
 | **[CLI Reference & Automation](CLI-Reference-&-Headless-Automation)** | Complete command-line syntax, scripting integration, headless approvals, and cron usage. |
 | **[Security Architecture](Security-Architecture)** | Cryptographic model, WireGuard/Noise protocol, volatile locks, DERP routing, and threat model. |

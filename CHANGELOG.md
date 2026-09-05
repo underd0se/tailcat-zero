@@ -92,7 +92,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🚀 Multi-Service Concurrency, Side-by-Side ASCII Cat Header & Interactive TUI Management
 
-* **⚡ Multi-Service Concurrent Management:** Full concurrent execution and management across all 4 services (Remote Shell, File DropBox, SFTP Directory Share, and Router WebGUI). Multiple tunnels can run simultaneously with independent WireGuard userspace nodes, tokens, and watchdog auto-kill timers in `/tmp/tailcat_sessions/`.
+* **⚡ Multi-Service Concurrent Management:** Full concurrent execution and management across all 4 services (Remote Shell, File Receiver, SFTP Directory Share, and Router WebGUI). Multiple tunnels can run simultaneously with independent WireGuard userspace nodes, tokens, and watchdog auto-kill timers in `/tmp/tailcat_sessions/`.
 * **🐱 Side-by-Side ASCII Cat Header:** Compact, elegant side-by-side Japanese ASCII cat (`╱|、`) and project title/description layout.
 * **⚙️ Dedicated Management Submenu:** Interactive management menu allowing users to update the Go engine binary, perform a fresh reinstall, or execute a complete uninstallation with clean init hook removal.
 * **🛑 Selective & Batch Process Killer:** Stop action (`S`) lists all running services with PIDs and remaining time, allowing users to stop specific individual processes or all tunnels simultaneously.
@@ -106,7 +106,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🚀 TUI Dashboard, Dynamic Storage Awareness & Smart Status Badges
 
 * **📺 Flicker-Free Live Dashboard:** Screen cleanly refreshes without terminal history scroll clutter when updating live timers (`r`) or toggling ASCII QR codes (`q`).
-* **💾 Dynamic DropBox Storage Awareness:** Displays real-time free disk space for volatile RAM (`/tmp`) and mounted USB partitions (`/tmp/mnt/*`), with dynamic choice numbering based on USB presence.
+* **💾 Dynamic Inbox Storage Awareness:** Displays real-time free disk space for volatile RAM (`/tmp`) and mounted USB partitions (`/tmp/mnt/*`), with dynamic choice numbering based on USB presence.
 * **🌐 Browser-Ready WebGUI Guidance:** Generates step-by-step zero-configuration instructions for remote administrators connecting via TCP port forwarding (`1. Run: tailcat forward <token> <port>`, `2. Open browser: https://localhost:<port>`).
 * **🟢 Smart Status Indicators & Menu Badging:** Added prominent visual status badge (`🟢 ACTIVE` vs `⚪ INACTIVE`) and dynamically badges menu options 5 & 6 with active timer and kill labels.
 * **⏱️ Precision Auto-Kill Warning:** Displays `< 1m remaining (expiring soon)` when session timer falls below 60 seconds.
@@ -117,7 +117,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ↩️ Submenu Navigation & Cancellation Support
 
-* **↩️ Submenu Cancel Navigation:** Added full support for canceling and returning to the main menu using `e` / `b` / `cancel` from DropBox destination selection, SFTP directory/mode prompts, and Auto-Kill timeout configuration, preventing accidental tunnel launches.
+* **↩️ Submenu Cancel Navigation:** Added full support for canceling and returning to the main menu using `e` / `b` / `cancel` from Inbox destination selection, SFTP directory/mode prompts, and Auto-Kill timeout configuration, preventing accidental tunnel launches.
 
 ---
 
@@ -148,17 +148,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **📷 Integrated ASCII QR Codes:** Direct rendering of ASCII QR codes in terminal via router's built-in `qrencode` for rapid mobile/tablet token capture.
 * **💬 Ready-to-Paste Chat Snippets:** Generates pre-formatted 2-line invite text ready to copy-paste into Discord, Slack, or WhatsApp.
 * **⚡ Global Contextual Hotkeys:** Single-key controls across the menu (`s` to stop immediately, `t` for timeout, `v` for session card).
-* **🎯 KISS Feature Alignment:** Streamlined menu to the 4 core sharing pillars (Shell, DropBox, SFTP, WebGUI), eliminating unnecessary feature creep.
-* **💾 Dynamic USB Storage Detection:** Automatically offers mounted USB partitions (`/tmp/mnt/*`) for DropBox storage to avoid RAM exhaustion.
+* **🎯 KISS Feature Alignment:** Streamlined menu to the 4 core sharing pillars (Shell, File Receiver, SFTP, WebGUI), eliminating unnecessary feature creep.
+* **💾 Dynamic USB Storage Detection:** Automatically offers mounted USB partitions (`/tmp/mnt/*`) for Inbox storage to avoid RAM exhaustion.
 
 ---
 
 ## [1.0.0] - 2026-09-02
 
-### 🚀 Initial Release: Ephemeral WireGuard Tunnel & DropBox Manager
+### 🚀 Initial Release: Ephemeral WireGuard Tunnel & File Receiver Manager
 
 * **🆘 Instant Remote Shell (Passwordless):** Ephemeral WireGuard shell powered by TailCat's native SSH server with capability-based token access (no passwords or SSH keys to configure).
-* **📥 Encrypted File DropBox:** Write-only peer-to-peer file drop receiver into `/tmp/tailcat-inbox`.
+* **📥 Encrypted File Receiver:** Write-only peer-to-peer file drop receiver into `/tmp/tailcat-inbox`.
 * **📤 SFTP File Share:** Read-only directory serving with native SFTP path confinement.
 * **🌐 WebGUI Remote Port Forwarder:** Securely forward local router management WebUI (port 8443).
 * **⏱️ Automated 30-Minute Session Auto-Kill:** Background supervisor process automatically tears down active sessions when timer expires.

@@ -113,22 +113,37 @@ If a remote assistant needs to run a diagnostic tool that is not in the default 
 
 ### 1. Guest Request Flow
 When the guest attempts an unapproved command:
+
 ```text
-Guest Terminal:
-$ traceroute 1.1.1.1
+view-shell:~$ traceroute 1.1.1.1
 [-] Command 'traceroute' is restricted in view-only mode.
 Would you like to request permission from the host router admin? [y/N]: y
 [*] Permission request submitted (ID: #1). Waiting for host approval...
 ```
-Or directly using the `request` command:
+Or directly using the built-in `request` helper:
 ```text
-$ request traceroute 1.1.1.1
+view-shell:~$ request traceroute 1.1.1.1
+[*] Permission request submitted (ID: #1). Waiting for host approval...
 ```
 
 ### 2. Host Alerting
 The moment a request is submitted:
-* A broadcast alert is immediately printed across all active host SSH terminals (`/dev/pts/*`).
-* An event is logged to `syslog`.
+* A broadcast alert is immediately printed across all active host SSH terminals (`/dev/pts/*`):
+
+```text
+admin@RT-AX86U:/tmp/home/root# 
+[🔔 TAILCAT ZER0 ALERT] View-only guest requested permission:
+    Request ID:   #1
+    Command:      traceroute 1.1.1.1
+    Base Utility: traceroute
+    Timestamp:    Sat Sep  5 22:15:30 2026
+    Action:       Press [P] in dashboard or run: tailcatzero approve 1
+```
+
+* An event is logged to `syslog`:
+```text
+Sep  5 22:15:30 RT-AX86U tailcat-view-shell[30142]: Guest submitted permission request #1: 'traceroute 1.1.1.1'
+```
 * The TUI dashboard immediately updates with a prominent badge: `[P] 🔔 1 Pending Request`.
 
 ### 3. Host Approval Channels
@@ -191,6 +206,21 @@ If a guest requests a binary that contains known subshell or file-writing vector
 #### Method B: Via Headless CLI
 Administrators managing the router via scripts or headless terminal sessions can inspect and resolve requests directly:
 
+```text
+admin@RT-AX86U:/tmp/home/root# tailcatzero requests
+========================================================================
+  🔔 Pending Guest Permission Requests
+========================================================================
+  ID  COMMAND              BASE UTILITY  THREAT  REQUESTED AT
+  #1  traceroute 1.1.1.1   traceroute    LOW     Sat Sep  5 22:15:30 2026
+========================================================================
+
+admin@RT-AX86U:/tmp/home/root# tailcatzero approve 1
+[✓] Approved request #1 ('traceroute 1.1.1.1') for this session.
+[✓] View-shell guest notified and execution released.
+```
+
+CLI commands available:
 ```sh
 # View all pending guest requests
 tailcatzero requests
@@ -212,11 +242,22 @@ tailcatzero revoke iperf3
 ```
 
 ### 4. Instant Execution
-The moment the host approves the request:
+The moment the host approves the request, the guest's blocking prompt immediately unfreezes and executes:
+
 ```text
-Guest Terminal:
-[✓] Host approved 'traceroute 1.1.1.1'.
+view-shell:~$ traceroute 1.1.1.1
+[-] Command 'traceroute' is restricted in view-only mode.
+Would you like to request permission from the host router admin? [y/N]: y
+[*] Permission request submitted (ID: #1). Waiting for host approval...
+[✓] Host approved 'traceroute 1.1.1.1' for this session!
+
 traceroute to 1.1.1.1 (1.1.1.1), 30 hops max, 60 byte packets
- 1  192.168.1.1 (192.168.1.1)  0.812 ms  0.720 ms  0.680 ms
-...
+ 1  100.64.24.1 (100.64.24.1)  1.214 ms  1.108 ms  1.042 ms
+ 2  172.16.12.1 (172.16.12.1)  4.321 ms  4.110 ms  3.985 ms
+ 3  one.one.one.one (1.1.1.1)  8.112 ms  7.942 ms  7.810 ms
+
+view-shell:~$ traceroute 8.8.8.8
+traceroute to 8.8.8.8 (8.8.8.8), 30 hops max, 60 byte packets
+ 1  100.64.24.1 (100.64.24.1)  1.198 ms  1.084 ms  1.011 ms
+ 2  dns.google (8.8.8.8)       9.245 ms  8.812 ms  8.704 ms
 ```

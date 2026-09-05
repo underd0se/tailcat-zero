@@ -1,6 +1,6 @@
 # 🐱 TAILCAT ZER0
 
-> **Ephemeral WireGuard Tunnels, Remote Support Shells & Encrypted DropBoxes for Asuswrt-Merlin Routers**
+> **Ephemeral WireGuard Tunnels, Remote Support Shells & Encrypted File Inboxes for Asuswrt-Merlin Routers**
 
 Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`magicsock` + WireGuard + DERP NAT traversal) without requiring a Tailscale account or central coordination server.
 
@@ -56,7 +56,7 @@ TAILCAT ZER0 can also be run directly from scripts or the command line:
 tailcatzero status                    # Display running sessions and connect tokens
 tailcatzero ssh [root|view]           # Start remote shell tunnel (default: root)
 tailcatzero view                      # Start restricted view-only diagnostic shell
-tailcatzero recv [/path/to/inbox]     # Start encrypted DropBox tunnel (default /tmp/tailcat-inbox)
+tailcatzero recv [/path/to/inbox]     # Start encrypted file receiver tunnel (default /tmp/tailcat-inbox)
 tailcatzero files [/path] [ro|rw]     # Start SFTP directory share (default /jffs ro)
 tailcatzero webgui                    # Start router WebGUI tunnel
 tailcatzero requests                  # List pending guest permission requests
@@ -90,8 +90,8 @@ tailcatzero --version                 # Display version
 * **🆘 Instant Remote Shell (Passwordless Support Access):**
   * Spawns an encrypted P2P WireGuard shell powered by TailCat's built-in SSH runtime.
   * **Zero Friction:** Share the token with any assistant or administrator — they connect immediately (`tailcat ssh <token>`) with **zero passwords to disclose and zero SSH keys to manage**.
-* **📥 Encrypted File DropBox:**
-  * Turn your router into a secure drop box (`/tmp/tailcat-inbox` or mounted USB storage).
+* **📥 Encrypted File Receiver:**
+  * Turn your router into a secure file receiver inbox (`/tmp/tailcat-inbox` or mounted USB storage).
   * Send firmware images or JFFS backups from any PC: `tailcat cp backup.tar.gz <token>:`
 * **📁 SFTP Directory Share:**
   * Serve any router directory (e.g. `/jffs` or USB mount) read-only or read-write to remote clients using native SFTP.
@@ -199,7 +199,7 @@ rm -rf /jffs/addons/tailcatzero /jffs/addons/tailcat /jffs/scripts/tailcat /jffs
 * **📦 Deep Entware & Asuswrt Diagnostics:** Permits extensive read-only tools across system health (`uptime`, `free`, `df`, `ps`, `top`, `dmesg`, `sysinfo`), network & WiFi (`ip addr/route`, `netstat`, `route`, `ping`, `mtr`, `wl`, `leases`, `wifi`, `ports`), NVRAM queries (`nvram get`, `nvram show`), text processing (`cat`, `head`, `tail`, `grep`, `rg`, `tree`, `sort`, `uniq`, `diff`), and Entware queries (`opkg list/info/find/status/search/depends`).
 * **⚡ Safe Unix Pipeline Execution:** Supports Unix pipelines (`|`) between allowed inspection tools (e.g. `ps | grep dnsmasq`, `nvram show | grep dhcp`, `opkg list-installed | grep python`).
 * **🆘 Remote Support Submenu (Option 1):** Main menu Option 1 now provides a clean choice between `1. Full Root Shell (Read-Write)` and `2. View-Only Diagnostic Shell (Read-Only)`, with dynamic badging (`[🟢 Root + 🔒 View]`).
-* **🖐️ 5-Slot Multi-Service Concurrency:** Extended active session slots and termination confirmation to support up to 5 concurrent tunnels (SSH Root, SSH View, DropBox, SFTP, and WebGUI) running simultaneously on independent WireGuard nodes.
+* **🖐️ 5-Slot Multi-Service Concurrency:** Extended active session slots and termination confirmation to support up to 5 concurrent tunnels (SSH Root, SSH View, File Receiver, SFTP, and WebGUI) running simultaneously on independent WireGuard nodes.
 
 ### [v1.5.0] - 2026-09-04
 * **⏱️ CLI Timeout Management:** Added `tailcatzero timeout [min|persistent]` for non-interactive timeout inspection and configuration without opening the TUI.
@@ -219,14 +219,14 @@ rm -rf /jffs/addons/tailcatzero /jffs/addons/tailcat /jffs/scripts/tailcat /jffs
 * **📋 Streamlined 6-Item Menu:** Consolidated configuration and maintenance under a dedicated management submenu with active badges and hotkey bar.
 
 ### [v1.3.0] - 2026-09-02
-* **⚡ Multi-Service Concurrency:** Full concurrent execution across SSH, DropBox, SFTP, and WebGUI with independent WireGuard userspace nodes.
+* **⚡ Multi-Service Concurrency:** Full concurrent execution across SSH, File Receiver, SFTP, and WebGUI with independent WireGuard userspace nodes.
 * **🐱 Side-by-Side ASCII Cat Header:** Clean Japanese minimalist ASCII cat (`╱|、`) paired with project title and subtitle.
 * **⚙️ Dedicated Management Submenu:** Interactive menu for updating binaries, reinstalling from GitHub, or cleanly uninstalling.
 * **🛑 Selective & Batch Process Killer:** Interactive process list to terminate specific individual sessions or all active tunnels.
 * **✨ Flicker-Free Clean Canvas:** VT100 screen clearing with non-intrusive toast notifications.
 
 ### [v1.1.3] - 2026-09-02
-* **↩️ Submenu Navigation & Cancellation Support:** Added full support for canceling and returning to the main menu using `e` / `b` / `cancel` from DropBox destination selection, SFTP directory/mode prompts, and Auto-Kill timeout configuration.
+* **↩️ Submenu Navigation & Cancellation Support:** Added full support for canceling and returning to the main menu using `e` / `b` / `cancel` from Inbox destination selection, SFTP directory/mode prompts, and Auto-Kill timeout configuration.
 
 ### [v1.1.2] - 2026-09-02
 * **🧹 Active Session Header:** Renamed card header to concise `Active Session`.
@@ -242,12 +242,12 @@ rm -rf /jffs/addons/tailcatzero /jffs/addons/tailcat /jffs/scripts/tailcat /jffs
 * **📷 Integrated ASCII QR Codes:** Direct rendering of ASCII QR codes in terminal via router's built-in `qrencode` for rapid mobile/tablet token capture.
 * **💬 Ready-to-Paste Chat Snippets:** Generates pre-formatted 2-line invite text ready to copy-paste into Discord, Slack, or WhatsApp.
 * **⚡ Global Contextual Hotkeys:** Single-key controls across the menu (`s` to stop immediately, `t` for timeout, `v` for session card).
-* **🎯 KISS Feature Alignment:** Streamlined menu to the 4 core sharing pillars (Shell, DropBox, SFTP, WebGUI), eliminating unnecessary feature creep.
-* **💾 Dynamic USB Storage Detection:** Automatically offers mounted USB partitions (`/tmp/mnt/*`) for DropBox storage to avoid RAM exhaustion.
+* **🎯 KISS Feature Alignment:** Streamlined menu to the 4 core sharing pillars (Shell, File Receiver, SFTP, WebGUI), eliminating unnecessary feature creep.
+* **💾 Dynamic USB Storage Detection:** Automatically offers mounted USB partitions (`/tmp/mnt/*`) for Inbox storage to avoid RAM exhaustion.
 
 ### [v1.0.0] - 2026-09-02
 * **🆘 Instant Remote Shell (Passwordless):** Ephemeral WireGuard shell powered by TailCat's native SSH server with capability-based token access (no passwords or SSH keys to configure).
-* **📥 Encrypted File DropBox:** Write-only peer-to-peer file drop receiver into `/tmp/tailcat-inbox`.
+* **📥 Encrypted File Receiver:** Write-only peer-to-peer file drop receiver into `/tmp/tailcat-inbox`.
 * **📤 SFTP File Share:** Read-only directory serving with native SFTP path confinement.
 * **🌐 WebGUI Remote Port Forwarder:** Securely forward local router management WebUI (port 8443).
 * **⏱️ Automated 30-Minute Session Auto-Kill:** Background supervisor process automatically tears down active sessions when timer expires.

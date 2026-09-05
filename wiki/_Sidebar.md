@@ -13,7 +13,7 @@
 ### 🛠️ Core Services
 * **[Remote Support Shells](Remote-Support-Shells)**
 * **[View-Only Sandbox & Escalation](View-Only-Sandbox-&-Permission-Escalation)**
-* **[P2P File Transfers & DropBox](File-Transfers-&-DropBox)**
+* **[P2P File Transfers & Inbox](File-Transfers-&-Inbox)**
 * **[WebGUI Remote Access](WebGUI-Remote-Access)**
 
 ---

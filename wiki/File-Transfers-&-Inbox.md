@@ -1,19 +1,19 @@
-# 📥 P2P File Transfers & DropBox
+# 📥 P2P File Transfers & Inbox
 
 TAILCAT ZER0 transforms your Asuswrt-Merlin router into a secure, peer-to-peer file transfer hub. You can upload large firmware files and scripts directly to the router or share local directories with remote clients using native SFTP—all over encrypted WireGuard without opening WAN ports or configuring FTP daemons.
 
 ---
 
-## 📥 1. Encrypted DropBox Receiver (`recv`)
+## 📥 1. Encrypted File Receiver (`recv`)
 
-The **DropBox Receiver** creates an ephemeral one-way inbox on your router. Any client with the capability token can upload files directly to this inbox.
+The **Encrypted File Receiver** creates an ephemeral one-way inbox on your router. Any client with the capability token can upload files directly to this inbox.
 
 ### Common Use Cases:
 * Uploading custom firmware (`.trx` / `.pkg`) or rescue images directly to the router.
 * Transferring JFFS backup archives (`jffs_backup.tar.gz`) for restoration.
 * Transferring large script packages or diagnostic bundles without setting up SCP or entering passwords.
 
-### Starting DropBox:
+### Starting the File Receiver:
 
 #### Via Interactive TUI:
 1. Run `tailcatzero` ➔ select **Option 2 (📥 Receive Files)**:
@@ -26,7 +26,7 @@ The **DropBox Receiver** creates an ephemeral one-way inbox on your router. Any 
 
 ========================================================================
 
-  📥 Select DropBox Destination:
+  📥 Select Inbox Destination:
 
   1. ⚡ Volatile RAM:  /tmp/tailcat-inbox           (Free: 384.2M) [Default]
   2. 💾 USB Storage:   /tmp/mnt/USB/tailcat-inbox   (Free: 28.4G) [Persistent]
@@ -42,7 +42,7 @@ The **DropBox Receiver** creates an ephemeral one-way inbox on your router. Any 
    * **USB (`u` / `2`):** Persistent storage on your mounted USB drive (`/tmp/mnt/USB/tailcat-inbox`).
    * **Custom (`c` / `3`):** Prompts for any custom directory path.
 
-3. The DropBox Active Session Card renders your upload command and connect token:
+3. The File Receiver Active Session Card renders your upload command and connect token:
 
 ```text
   TAILCAT ZER0 v1.7.1              ╱|、
@@ -55,7 +55,7 @@ The **DropBox Receiver** creates an ephemeral one-way inbox on your router. Any 
   🐱 TAILCAT ZER0 — Active Session
 ========================================================================
 
-  Service:     📥 Encrypted File DropBox
+  Service:     📥 Encrypted File Receiver
   Destination: /tmp/tailcat-inbox
   Auto-Kill:   ⏱️ 30m remaining
   Security:    🔒 WireGuard P2P Encrypted (Zero WAN Ports Open)
@@ -81,19 +81,23 @@ tailcatzero recv /tmp/mnt/USB_DRIVE/inbox
 ```
 
 ### Uploading Files from Client Machine:
-On any PC, laptop, or remote machine with `tailcat` installed:
 
-```sh
-# Upload a firmware image to the router's inbox
-tailcat cp RT-AX86U_3004_388.8_2.trx tcXXXXXXXXXXXX:
-
-# Upload a backup archive
-tailcat cp backup.tar.gz tcXXXXXXXXXXXX:
+#### Client Terminal: Uploading Firmware to Router Inbox
+```text
+┌──(user@laptop)-[~/Downloads]
+└─$ tailcat cp RT-AX86U_3004_388.8_2.trx tcpGFwWCCGsJ9JQ9WPomu5WUUGZY...:
+[+] Connecting to WireGuard peer via DERP relay (fra)...
+[+] Direct WireGuard connection established (UDP 192.168.50.1:51820)
+[+] Transferring: RT-AX86U_3004_388.8_2.trx (64.2 MB) -> /tmp/tailcat-inbox/
+    64.2 MB / 64.2 MB [======================================] 100% 12.8 MB/s
+[✓] Transfer complete: 67,318,528 bytes received in 5.0s
 ```
 
-Once the transfer finishes, files are immediately available on the router:
-```sh
-ls -lh /tmp/tailcat-inbox/
+#### Router Terminal: Verifying Received File
+```text
+admin@RT-AX86U:/tmp/home/root# ls -lh /tmp/tailcat-inbox/
+total 65744
+-rw------- 1 admin root 64.2M Sep  5 22:18 RT-AX86U_3004_388.8_2.trx
 ```
 
 > [!TIP]
@@ -193,23 +197,37 @@ tailcatzero files /tmp/mnt/USB_DRIVE/media rw
 
 ### Interacting from Client Machine:
 
-#### 1. Listing Directory Contents
-```sh
-tailcat ls tcXXXXXXXXXXXX
+#### Client Terminal: Listing Remote Router Directory
+```text
+┌──(user@laptop)-[~]
+└─$ tailcat ls -l tcpGFwWCBwoiH7ENLsCVJqJkf3bqslXzPvZN8ojZE...
+[+] Connecting to WireGuard peer via DERP relay (fra)...
+[+] Direct WireGuard connection established (UDP 192.168.50.1:51820)
+drwxr-xr-x   admin   root          0 Sep  4 12:00 configs
+drwxr-xr-x   admin   root          0 Sep  4 12:00 scripts
+-rw-r--r--   admin   root        412 Sep  4 12:05 openvpn-up.sh
+-rw-------   admin   root       1024 Sep  1 09:30 tailcat.cfg
 ```
 
-#### 2. Downloading Files from Router
-```sh
-# Download a configuration backup to your local computer
-tailcat cp tcXXXXXXXXXXXX:jffs/configs/dnsmasq.conf.add ./dnsmasq.conf.add
-
-# Download the router syslog
-tailcat cp tcXXXXXXXXXXXX:tmp/syslog.log ./router_syslog.log
+#### Client Terminal: Downloading Files from Router
+```text
+┌──(user@laptop)-[~]
+└─$ tailcat cp tcpGFwWCBwoiH7ENLsCVJqJkf3bqslXzPvZN8ojZE...:scripts/openvpn-up.sh ./openvpn-up.sh
+[+] Connecting to WireGuard peer via DERP relay (fra)...
+[+] Direct WireGuard connection established (UDP 192.168.50.1:51820)
+[+] Downloading scripts/openvpn-up.sh (412 B) -> ./openvpn-up.sh
+    412 B / 412 B [==============================================] 100% 1.2 MB/s
+[✓] Transfer complete: 412 bytes received in 0.04s
 ```
 
-#### 3. Uploading Files (in `rw` mode)
-```sh
-tailcat cp custom_script.sh tcXXXXXXXXXXXX:jffs/scripts/
+#### Client Terminal: Uploading Files (when in `rw` mode)
+```text
+┌──(user@laptop)-[~]
+└─$ tailcat cp custom_script.sh tcpGFwWCBwoiH7ENLsCVJqJkf3bqslXzPvZN8ojZE...:scripts/
+[+] Connecting to WireGuard peer via DERP relay (fra)...
+[+] Direct WireGuard connection established (UDP 192.168.50.1:51820)
+[+] Uploading custom_script.sh -> scripts/
+[✓] Transfer complete: 2,048 bytes sent in 0.1s
 ```
 
 ---
@@ -218,7 +236,7 @@ tailcat cp custom_script.sh tcXXXXXXXXXXXX:jffs/scripts/
 
 When your file transfer completes, terminate the service:
 ```sh
-tailcatzero stop RECV    # Stop DropBox
+tailcatzero stop RECV    # Stop File Receiver
 tailcatzero stop FILES   # Stop SFTP Share
 ```
 All active connections are dropped and capability tokens are immediately invalidated.

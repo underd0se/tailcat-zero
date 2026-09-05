@@ -17,7 +17,7 @@ Usage:
   tailcatzero stop [all|SVC]            Stop all sessions or a specific service (SSH, VIEW, RECV, FILES, WEBGUI)
   tailcatzero ssh [root|view]           Start remote shell tunnel (default root)
   tailcatzero view                      Start restricted view-only diagnostic shell
-  tailcatzero recv [dir]                Start encrypted DropBox tunnel (default /tmp/tailcat-inbox)
+  tailcatzero recv [dir]                Start encrypted file receiver tunnel (default /tmp/tailcat-inbox)
   tailcatzero files [dir] [ro|rw]       Start SFTP directory share (default /jffs ro)
   tailcatzero webgui                    Start router WebGUI tunnel
   tailcatzero requests                  List pending guest permission requests
@@ -36,7 +36,7 @@ Usage:
 | `status` | *(none)* | Display running sessions, service type, process ID, capability token, and remaining timeout countdown. |
 | `ssh` | `[root \| view]` | Start an ephemeral remote shell tunnel. Defaults to `root` if no argument is provided. |
 | `view` | *(none)* | Shortcut to start a restricted view-only diagnostic shell session directly. |
-| `recv` | `[/path/to/inbox]` | Start encrypted DropBox receiver. Defaults to `/tmp/tailcat-inbox` if omitted. |
+| `recv` | `[/path/to/inbox]` | Start encrypted file receiver inbox. Defaults to `/tmp/tailcat-inbox` if omitted. |
 | `files` | `[/path] [ro \| rw]` | Start SFTP directory share. Defaults to `/jffs` with `ro` (read-only) mode if omitted. |
 | `webgui` | `[port]` | Start Asuswrt WebGUI proxy tunnel. Defaults to HTTPS port `8443`. |
 | `requests` | *(none)* | List all pending guest command permission escalation requests. |
@@ -62,7 +62,7 @@ tailcatzero view
 # Start an SFTP share of USB drive in read-only mode
 tailcatzero files /tmp/mnt/USB_DRIVE/logs ro
 
-# Start an encrypted DropBox in persistent mode (no timeout)
+# Start an encrypted file receiver in persistent mode (no timeout)
 tailcatzero timeout 0
 tailcatzero recv /tmp/mnt/USB_DRIVE/inbox
 tailcatzero timeout 30  # Restore default
@@ -142,10 +142,10 @@ if [ -n "$TOKEN" ]; then
 fi
 ```
 
-### Example 2: Scheduled Daily Firmware / Backup DropBox
-You can configure an Asuswrt `cru` cron job to automatically open a temporary 1-hour DropBox every Sunday at 3 AM:
+### Example 2: Scheduled Daily Firmware / Backup Receiver
+You can configure an Asuswrt `cru` cron job to automatically open a temporary 1-hour receiver inbox every Sunday at 3 AM:
 
 ```sh
-cru a WeeklyDropbox "0 3 * * 0 /jffs/scripts/tailcatzero recv /tmp/mnt/USB_DRIVE/backups"
+cru a WeeklyReceiver "0 3 * * 0 /jffs/scripts/tailcatzero recv /tmp/mnt/USB_DRIVE/backups"
 ```
-Because the default timeout automatically triggers teardown, the DropBox closes itself after the configured timeout period without manual intervention.
+Because the default timeout automatically triggers teardown, the file receiver closes itself after the configured timeout period without manual intervention.

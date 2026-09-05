@@ -137,7 +137,7 @@ Test whether the compiled engine binary runs without missing libraries or archit
 **A:** No. TailCat is written in Go and optimized for embedded Linux devices. When idle or routing small management sessions, it consumes minimal CPU (<1%) and roughly 15-25MB of RAM.
 
 ### Q: Can I run multiple services at the same time?
-**A:** Yes! TAILCAT ZER0 supports up to **5 concurrent services** running in parallel (Root Shell, View Shell, DropBox, SFTP, and WebGUI). Each service receives its own isolated WireGuard node and unique capability token.
+**A:** Yes! TAILCAT ZER0 supports up to **5 concurrent services** running in parallel (Root Shell, View Shell, File Receiver, SFTP, and WebGUI). Each service receives its own isolated WireGuard node and unique capability token.
 
 ---
 
