@@ -1996,7 +1996,9 @@ if [ $# -gt 0 ]; then
     esac
 fi
 
-# Ensure engine binary and dependencies exist on first run
-ensure_dependencies
+if [ "${TAILCAT_SOURCED:-0}" != "1" ]; then
+    # Ensure engine binary and dependencies exist on first run
+    ensure_dependencies
 
-main_menu
+    main_menu
+fi
