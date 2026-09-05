@@ -6,7 +6,7 @@
 
 set -eu
 
-VERSION="1.7.1"
+VERSION="1.8.0"
 CONFIG_DIR="/jffs/addons/tailcatzero"
 CONFIG_FILE="${CONFIG_DIR}/tailcatzero.cfg"
 ADDON_SCRIPT="${CONFIG_DIR}/tailcatzero"
@@ -89,6 +89,23 @@ clear_screen() {
 
 log_msg() {
     logger -t "$LOG_TAG" "$*"
+}
+
+get_file_hash() {
+    target_f="${1:-}"
+    if [ ! -f "$target_f" ]; then
+        echo ""
+        return
+    fi
+    if which md5sum >/dev/null 2>&1; then
+        md5sum "$target_f" 2>/dev/null | awk '{print $1}'
+    elif which md5 >/dev/null 2>&1; then
+        md5 -q "$target_f" 2>/dev/null
+    elif which sha256sum >/dev/null 2>&1; then
+        sha256sum "$target_f" 2>/dev/null | awk '{print $1}'
+    else
+        cksum "$target_f" 2>/dev/null | awk '{print $1}'
+    fi
 }
 
 is_service_active() {
@@ -1432,47 +1449,125 @@ update_binary() {
     fi
 }
 
+check_update_status() {
+    printf "  %b[*] Checking upstream for TAILCAT ZER0 updates...%b\n" "$C_CYAN" "$C_RESET"
+    local_script_hash=$(get_file_hash "$ADDON_SCRIPT")
+    if [ -z "$local_script_hash" ] && [ -f "$0" ]; then
+        local_script_hash=$(get_file_hash "$0")
+    fi
+    local_hash_short=""
+    if [ -n "$local_script_hash" ]; then
+        local_hash_short=$(printf "%s" "$local_script_hash" | cut -c 1-8)
+    fi
+
+    tmp_chk="/tmp/tailcatzero.check.$$"
+    rm -f "$tmp_chk"
+
+    if ! curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcatzero" -o "$tmp_chk" 2>/dev/null && \
+       ! curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcat" -o "$tmp_chk" 2>/dev/null; then
+        printf "  %b[!] Could not connect to GitHub repository.%b\n\n" "$C_RED" "$C_RESET"
+        rm -f "$tmp_chk"
+        return 2
+    fi
+
+    remote_script_hash=$(get_file_hash "$tmp_chk")
+    remote_hash_short=""
+    if [ -n "$remote_script_hash" ]; then
+        remote_hash_short=$(printf "%s" "$remote_script_hash" | cut -c 1-8)
+    fi
+    remote_ver=$(grep '^VERSION=' "$tmp_chk" 2>/dev/null | head -n 1 | cut -d'"' -f2 || echo "$VERSION")
+    rm -f "$tmp_chk"
+
+    if [ -n "$remote_script_hash" ] && [ "$remote_script_hash" != "$local_script_hash" ]; then
+        if [ "$remote_ver" != "$VERSION" ]; then
+            printf "  %b[!] Update available: %bv%s%b -> %bv%s%b (hash: %s -> %s)%b\n" "$C_YELLOW" "$C_YELLOW" "$VERSION" "$C_RESET" "$C_GREEN" "$remote_ver" "$C_RESET" "${local_hash_short:-none}" "$remote_hash_short" "$C_RESET"
+        else
+            printf "  %b[!] Upstream update detected: %bv%s%b (hash changed: %s -> %s)%b\n" "$C_YELLOW" "$C_GREEN" "$VERSION" "$C_RESET" "${local_hash_short:-none}" "$remote_hash_short" "$C_RESET"
+        fi
+        printf "  Run '%btailcatzero update%b' to apply changes.\n\n" "$C_CYAN" "$C_RESET"
+        return 1
+    else
+        printf "  %b[✓] TAILCAT ZER0 is up to date (v%s, hash: %s).%b\n\n" "$C_GREEN" "$VERSION" "${local_hash_short:-none}" "$C_RESET"
+        return 0
+    fi
+}
+
 update_tailcat_all() {
     clear_screen
     draw_header
     printf "  %b[*] Checking for TAILCAT ZER0 script & engine updates...%b\n\n" "$C_CYAN" "$C_RESET"
 
-    # 1. Update CLI Script from GitHub
+    # 1. Update CLI Script from GitHub via Hash / MD5 Check
     script_ok=0
     script_restarted=0
-    tmp_script="/tmp/tailcat.update"
+    tmp_script="/tmp/tailcatzero.update.$$"
     rm -f "$tmp_script"
+
+    local_script_hash=$(get_file_hash "$ADDON_SCRIPT")
+    if [ -z "$local_script_hash" ] && [ -f "$0" ]; then
+        local_script_hash=$(get_file_hash "$0")
+    fi
+    local_hash_short=""
+    if [ -n "$local_script_hash" ]; then
+        local_hash_short=$(printf "%s" "$local_script_hash" | cut -c 1-8)
+    fi
+
     printf "  %b[*] Fetching latest TAILCAT ZER0 CLI script from GitHub...%b\n" "$C_CYAN" "$C_RESET"
     if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcatzero" -o "$tmp_script" 2>/dev/null || \
        curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcat" -o "$tmp_script" 2>/dev/null; then
-        remote_ver=$(grep '^VERSION=' "$tmp_script" 2>/dev/null | head -n 1 | cut -d'"' -f2 || echo "")
-        chmod 755 "$tmp_script"
-        mv -f "$tmp_script" "$ADDON_SCRIPT"
-        mkdir -p /jffs/scripts
-        ln -sf "$ADDON_SCRIPT" /jffs/scripts/tailcatzero 2>/dev/null || true
-        rm -rf /jffs/scripts/tailcat /jffs/scripts/tailcat-merlin 2>/dev/null || true
-        if [ -d "/opt/bin" ]; then
-            ln -sf "$ADDON_SCRIPT" /opt/bin/tailcatzero 2>/dev/null || true
-            rm -f /opt/bin/tailcat /opt/bin/tailcat-merlin 2>/dev/null || true
+        remote_script_hash=$(get_file_hash "$tmp_script")
+        remote_hash_short=""
+        if [ -n "$remote_script_hash" ]; then
+            remote_hash_short=$(printf "%s" "$remote_script_hash" | cut -c 1-8)
         fi
-        if [ -n "$remote_ver" ] && [ "$remote_ver" != "$VERSION" ]; then
-            printf "  %b[+] TAILCAT ZER0 script updated: %b%s%b -> %b%s%b\n\n" "$C_GREEN" "$C_YELLOW" "$VERSION" "$C_RESET" "$C_GREEN" "$remote_ver" "$C_RESET"
+        remote_ver=$(grep '^VERSION=' "$tmp_script" 2>/dev/null | head -n 1 | cut -d'"' -f2 || echo "$VERSION")
+
+        if [ -n "$remote_script_hash" ] && [ "$remote_script_hash" != "$local_script_hash" ]; then
+            chmod 755 "$tmp_script"
+            mv -f "$tmp_script" "$ADDON_SCRIPT"
+            mkdir -p /jffs/scripts
+            ln -sf "$ADDON_SCRIPT" /jffs/scripts/tailcatzero 2>/dev/null || true
+            rm -rf /jffs/scripts/tailcat /jffs/scripts/tailcat-merlin 2>/dev/null || true
+            if [ -d "/opt/bin" ]; then
+                ln -sf "$ADDON_SCRIPT" /opt/bin/tailcatzero 2>/dev/null || true
+                rm -f /opt/bin/tailcat /opt/bin/tailcat-merlin 2>/dev/null || true
+            fi
+            if [ "$remote_ver" != "$VERSION" ]; then
+                printf "  %b[+] TAILCAT ZER0 script updated: %b%s%b -> %b%s%b (hash: %s)%b\n\n" "$C_GREEN" "$C_YELLOW" "$VERSION" "$C_RESET" "$C_GREEN" "$remote_ver" "$C_RESET" "$remote_hash_short" "$C_RESET"
+            else
+                printf "  %b[+] TAILCAT ZER0 script updated: %bv%s%b (upstream hash changed: %s -> %s)%b\n\n" "$C_GREEN" "$C_GREEN" "$VERSION" "$C_RESET" "${local_hash_short:-none}" "$remote_hash_short" "$C_RESET"
+            fi
             script_restarted=1
+            script_ok=1
+        elif [ -n "$remote_script_hash" ]; then
+            rm -f "$tmp_script"
+            printf "  %b[✓] TAILCAT ZER0 script is up to date (v%s, hash: %s).%b\n\n" "$C_GREEN" "$VERSION" "${local_hash_short:-none}" "$C_RESET"
+            script_ok=1
         else
-            printf "  %b[✓] TAILCAT ZER0 script is up to date (%s).%b\n\n" "$C_GREEN" "$VERSION" "$C_RESET"
+            rm -f "$tmp_script"
+            printf "  %b[!] Downloaded script was empty or invalid. Keeping current script.%b\n\n" "$C_YELLOW" "$C_RESET"
         fi
-        script_ok=1
     else
         printf "  %b[!] Could not reach GitHub. Keeping current script.%b\n\n" "$C_YELLOW" "$C_RESET"
     fi
 
-    # Update View-Only Shell Script
-    tmp_view="/tmp/tailcat-view-shell.update"
+    # Update View-Only Shell Script via Hash Check
+    tmp_view="/tmp/tailcat-view-shell.update.$$"
     rm -f "$tmp_view"
     if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcat-view-shell" -o "$tmp_view" 2>/dev/null; then
-        mkdir -p "$BIN_DIR"
-        chmod 755 "$tmp_view"
-        mv -f "$tmp_view" "$VIEW_SHELL"
+        local_view_hash=$(get_file_hash "$VIEW_SHELL")
+        remote_view_hash=$(get_file_hash "$tmp_view")
+        if [ -n "$remote_view_hash" ] && [ "$remote_view_hash" != "$local_view_hash" ]; then
+            mkdir -p "$BIN_DIR"
+            chmod 755 "$tmp_view"
+            mv -f "$tmp_view" "$VIEW_SHELL"
+            view_hash_short=$(printf "%s" "$remote_view_hash" | cut -c 1-8)
+            printf "  %b[+] View-only shell script updated (hash: %s).%b\n\n" "$C_GREEN" "$view_hash_short" "$C_RESET"
+        else
+            rm -f "$tmp_view"
+            view_hash_short=$(printf "%s" "$local_view_hash" | cut -c 1-8)
+            printf "  %b[✓] View-only shell script is up to date (hash: %s).%b\n\n" "$C_GREEN" "${view_hash_short:-none}" "$C_RESET"
+        fi
     fi
 
     # 2. Update Engine Binary (checks for difference before downloading!)
@@ -1481,9 +1576,9 @@ update_tailcat_all() {
         bin_ok=1
     fi
 
-    # If the running script was replaced with a newer version, restart the process
+    # If the running script was replaced with a newer version or hash, restart the process
     if [ "$script_restarted" = "1" ]; then
-        printf "  %b[+] Restarting TAILCAT ZER0 with updated version (v%s)...%b\n" "$C_GREEN" "$remote_ver" "$C_RESET"
+        printf "  %b[+] Restarting TAILCAT ZER0 with updated script...%b\n" "$C_GREEN" "$C_RESET"
         sleep 1
         exec "$ADDON_SCRIPT"
     fi
@@ -2020,8 +2115,9 @@ cli_help() {
     printf "  %btailcatzero allow <cmd>%b               Proactively permit command in view-only mode\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero revoke <cmd>%b              Revoke command permission from view-only mode\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero timeout [min|persistent]%b  Get or configure default auto-kill session timeout\n" "$C_CYAN" "$C_RESET"
-    printf "  %btailcatzero update%b                    Update TAILCAT ZER0 script & engine\n" "$C_CYAN" "$C_RESET"
-    printf "  %btailcatzero -v, --version%b             Show version\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero update%b                    Update TAILCAT ZER0 script & engine (hash-verified)\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero check-update%b              Check upstream version & hash for updates\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero -v, --version%b             Show version & script hash\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero -h, --help%b                Show this help message\n\n" "$C_CYAN" "$C_RESET"
 }
 
@@ -2197,8 +2293,21 @@ if [ $# -gt 0 ]; then
             update_tailcat_all
             exit 0
             ;;
+        check-update|check)
+            check_update_status
+            exit $?
+            ;;
         -v|--version|version)
-            printf "TAILCAT ZER0 v%s (engine %s)\n" "$VERSION" "$(get_binary_version)"
+            script_hash=$(get_file_hash "$ADDON_SCRIPT")
+            if [ -z "$script_hash" ] && [ -f "$0" ]; then
+                script_hash=$(get_file_hash "$0")
+            fi
+            hash_info=""
+            if [ -n "$script_hash" ]; then
+                hash_short=$(printf "%s" "$script_hash" | cut -c 1-8)
+                hash_info=" [${hash_short}]"
+            fi
+            printf "TAILCAT ZER0 v%s%s (engine %s)\n" "$VERSION" "$hash_info" "$(get_binary_version)"
             exit 0
             ;;
         -h|--help|help)

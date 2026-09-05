@@ -99,7 +99,7 @@ Test whether the compiled engine binary runs without missing libraries or archit
 * **Explanation:** TAILCAT ZER0 detects that a background instance of this service is already active on the router:
 
 ```text
-  TAILCAT ZER0 v1.7.1              ╱|、
+  TAILCAT ZER0 v1.8.0              ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ

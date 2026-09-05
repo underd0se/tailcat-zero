@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.8.0] - 2026-09-05
+
+### 📥 Default Recursive Drop Box, Hash-Based Auto-Updates & Namespace Protection
+
+* **📥 Recursive Folder Support by Default (`--accept-dirs`):**
+  * Configured `tailcatzero recv` (both interactive TUI Option 2 and CLI `tailcatzero recv [dir]`) to launch with `--accept-dirs` by default.
+  * Senders can now upload entire directory trees (`tailcat cp -r folder/ <token>:`) as well as single files, while preserving original filenames, subfolders, and hierarchy.
+  * Verified byte-for-byte fidelity across recursive directory trees in automated integration tests.
+* **⚡ Hash & MD5-Based Update Detection:**
+  * Replaced version-only update checks in `update_tailcat_all` with cryptographic hash (`md5sum`) comparison.
+  * Upstream fixes, patches, and minor improvements are detected and applied even when the SemVer tag remains unchanged.
+  * Eliminates redundant flash writes to `/jffs` when the local script is byte-for-byte identical to upstream.
+  * Added `tailcatzero check-update` (or `tailcatzero check`) for non-destructive upstream update checking with status reporting.
+  * Enhanced `tailcatzero -v` / `--version` to output the active script's short hash alongside SemVer and engine version.
+* **🛡️ View-Only Sandbox Dynamic Approvals & Proactive Permissions:**
+  * Added `tailcatzero allow <cmd>` to proactively grant command permissions in the active view-only session.
+  * Added `tailcatzero revoke <cmd>` to revoke permissions from the active view-only allowlist.
+  * Added `tailcatzero approve [id|cmd] [--once]` supporting single-use execution authorization (`--once`) alongside session-wide approvals.
+* **📦 Namespace Protection & Compatibility:**
+  * Removed all `tailcat` command-name symlinking/hijacking across the installer and CLI to protect the official `tailcat` Go package namespace. Standardized strictly on `tailcatzero`.
+
+---
+
 ## [1.7.1] - 2026-09-05
 
 ### 🛡️ Security Hardening, Privilege Escalation Prevention & Zero-Config WebGUI Forwarding

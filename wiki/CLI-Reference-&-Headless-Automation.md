@@ -9,7 +9,7 @@ While TAILCAT ZER0 features a full interactive TUI, all features are exposed via
 Run `tailcatzero -h` or `tailcatzero --help`:
 
 ```text
-TAILCAT ZER0 v1.7.1 — Ephemeral WireGuard Tunnel & Multi-Service Manager
+TAILCAT ZER0 v1.8.0 — Ephemeral WireGuard Tunnel & Multi-Service Manager
 
 Usage:
   tailcatzero                           Launch interactive TUI dashboard (default)
@@ -26,8 +26,9 @@ Usage:
   tailcatzero allow <cmd>               Proactively permit command in view-only mode
   tailcatzero revoke <cmd>              Revoke command permission from view-only mode
   tailcatzero timeout [min|persistent]  Get or configure default auto-kill session timeout
-  tailcatzero update                    Update TAILCAT ZER0 script & engine
-  tailcatzero -v, --version             Show version
+  tailcatzero update                    Update TAILCAT ZER0 script & engine (hash-verified)
+  tailcatzero check-update              Check upstream version & hash for updates
+  tailcatzero -v, --version             Show version & script hash
   tailcatzero -h, --help                Show this help message
 ```
 
@@ -47,8 +48,9 @@ Usage:
 | `timeout` | `[min \| persistent]` | Query current default timeout or set a new duration (in minutes, or `0` / `persistent`). |
 | `stop` | `all` | Stop all active tunnels and terminate all background watchdogs. |
 | `stop` | `<SERVICE>` | Stop a specific service (`SSH`, `VIEW`, `RECV`, `FILES`, or `WEBGUI`). |
-| `update` | *(none)* | Check GitHub for updates to the CLI script and TailCat engine binary, and upgrade if needed. |
-| `-v`, `--version` | *(none)* | Display TAILCAT ZER0 version and installed engine binary version. |
+| `update` | *(none)* | Check GitHub upstream for updates by cryptographic hash (`md5sum`) and upgrade script and engine if changed. |
+| `check-update` | *(none)* | Non-destructively check whether upstream code has changed by comparing script hash and SemVer. |
+| `-v`, `--version` | *(none)* | Display TAILCAT ZER0 version, active script hash, and installed engine binary version. |
 
 ---
 

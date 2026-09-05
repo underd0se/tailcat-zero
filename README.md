@@ -9,7 +9,7 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
 ---
 
 ```text
-  TAILCAT ZER0 v1.7.1              ╱|、
+  TAILCAT ZER0 v1.8.0              ╱|、
                                  (˚ˎ 。7  
                                   |、˜〵          
   Instant Tunnel Manager         じしˍ,)ノ
@@ -17,7 +17,7 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
 ========================================================================
 
   1. 🆘 Remote Support Shell         Full root or view-only access     [🟢 Root + 🔒 View]
-  2. 📥 Receive Files                Direct P2P file transfer          [⚪ Inactive]
+  2. 📥 Receive Files & Folders      Direct P2P file/folder drop box   [⚪ Inactive]
   3. 📁 Share Directory (SFTP)       Share a folder from your drive    [🟢 Active: 28m]
   4. 🌐 Expose Router WebGUI         Access to router's web interface  [⚪ Inactive]
 
@@ -67,8 +67,9 @@ tailcatzero revoke <cmd>              # Revoke command permission from view-only
 tailcatzero timeout [min|persistent]  # Query or configure default auto-kill session timeout
 tailcatzero stop all                  # Stop all active sessions
 tailcatzero stop [SSH|VIEW|RECV|FILES|WEBGUI] # Stop specific service
-tailcatzero update                    # Update TAILCAT ZER0 script & engine
-tailcatzero --version                 # Display version
+tailcatzero update                    # Update TAILCAT ZER0 script & engine (hash-verified)
+tailcatzero check-update              # Check upstream version & hash for updates
+tailcatzero --version                 # Display version & active script hash
 ```
 
 ---
@@ -178,6 +179,12 @@ rm -rf /jffs/addons/tailcatzero /jffs/addons/tailcat /jffs/scripts/tailcat /jffs
 ---
 
 ## 📝 Changelog
+
+### [v1.8.0] - 2026-09-05
+* **📥 Recursive Folder Support by Default (`--accept-dirs`):** Senders can now upload entire directory trees (`tailcat cp -r`) as well as single files to the encrypted file drop box, preserving original filenames and subfolders.
+* **⚡ Hash & MD5-Based Update Checking:** The `update` process now verifies upstream files against cryptographic hashes (`md5sum`), detecting changes even when SemVer tags are not bumped and preventing unnecessary flash memory writes when files are identical. Added `tailcatzero check-update` for non-destructive update detection.
+* **🛡️ View-Only Sandbox Dynamic Approvals & Proactive Permissions:** Added `tailcatzero allow <cmd>` and `tailcatzero revoke <cmd>` for host permission management, and single-use execution approvals (`approve --once`).
+* **📦 Namespace Protection:** Standardized exclusively on `tailcatzero` without symlink hijacking of the official `tailcat` Go package name.
 
 ### [v1.7.1] - 2026-09-05
 * **🛡️ View-Only Sandbox Hardening:** Neutralized shell breakouts via `env <cmd>` and interactive pagers (`less`/`more`), blocked in-tool file writing (`sort -o`, `uniq [in out]`, `xxd`), restricted network and WiFi mutation (`route`, `arp`, `wl`), protected sensitive security files (`/etc/shadow`, `.ssh/id_*`, `dropbear`, `.key`), and blocked credential leaks in `nvram show`/`nvram get`.

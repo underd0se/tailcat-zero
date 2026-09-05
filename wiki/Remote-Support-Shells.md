@@ -32,7 +32,7 @@ The **View-Only Shell** is built for zero-trust scenarios. When an external help
 1. Run `tailcatzero` and select **Option 1 (🆘 Remote Support Shell)**:
 
 ```text
-  TAILCAT ZER0 v1.7.1              ╱|、
+  TAILCAT ZER0 v1.8.0              ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -53,7 +53,7 @@ The **View-Only Shell** is built for zero-trust scenarios. When an external help
 3. The dedicated Active Session Card will display your capability token and copy-paste invite snippet:
 
 ```text
-  TAILCAT ZER0 v1.7.1              ╱|、
+  TAILCAT ZER0 v1.8.0              ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -117,7 +117,7 @@ The **Root Shell** provides complete, unrestricted administrative root access to
 2. The Root Active Session Card is displayed:
 
 ```text
-  TAILCAT ZER0 v1.7.1              ╱|、
+  TAILCAT ZER0 v1.8.0              ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ

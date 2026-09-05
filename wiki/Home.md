@@ -5,7 +5,7 @@ Welcome to the official **TAILCAT ZER0** Wiki.
 > **Ephemeral WireGuard Tunnels, Remote Support Shells & Encrypted File Inboxes for Asuswrt-Merlin Routers**
 
 ```text
-  TAILCAT ZER0 v1.7.1              ╱|、
+  TAILCAT ZER0 v1.8.0              ╱|、
                                  (˚ˎ 。7  
                                   |、˜〵          
   Instant Tunnel Manager         じしˍ,)ノ
@@ -65,7 +65,7 @@ tailcatzero
 ```
 
 ```text
-  TAILCAT ZER0 v1.7.1              ╱|、
+  TAILCAT ZER0 v1.8.0              ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -73,7 +73,7 @@ tailcatzero
 ========================================================================
 
   1. 🆘 Remote Support Shell         Full root or view-only access      [⚪ Inactive]
-  2. 📥 Receive Files                Direct P2P file transfer           [⚪ Inactive]
+  2. 📥 Receive Files & Folders      Direct P2P file/folder drop box    [⚪ Inactive]
   3. 📁 Share Directory (SFTP)       Share a folder from your drive     [⚪ Inactive]
   4. 🌐 Expose Router WebGUI         Access to router's web interface   [⚪ Inactive]
 

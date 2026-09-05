@@ -57,7 +57,7 @@ TAILCAT ZER0 creates an ephemeral encrypted WireGuard tunnel targeting your rout
 3. TAILCAT ZER0 automatically inspects NVRAM (`https_lanport` / `http_lanport`), binds the tunnel, and renders the dedicated WebGUI Active Session Card:
 
 ```text
-  TAILCAT ZER0 v1.7.1              ╱|、
+  TAILCAT ZER0 v1.8.0              ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ

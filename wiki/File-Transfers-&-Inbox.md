@@ -22,7 +22,7 @@ By default, TAILCAT ZER0 starts the receiver with `--accept-dirs`, accepting bot
 1. Run `tailcatzero` ➔ select **Option 2 (📥 Receive Files)**:
 
 ```text
-  TAILCAT ZER0 v1.7.1              ╱|、
+  TAILCAT ZER0 v1.8.0              ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -48,7 +48,7 @@ By default, TAILCAT ZER0 starts the receiver with `--accept-dirs`, accepting bot
 3. The File Receiver Active Session Card renders your upload command and connect token:
 
 ```text
-  TAILCAT ZER0 v1.7.1              ╱|、
+  TAILCAT ZER0 v1.8.0              ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -143,7 +143,7 @@ The **SFTP Directory Sharing** feature exposes a specified router directory to r
 1. Run `tailcatzero` ➔ select **Option 3 (📁 Share Directory - SFTP)**:
 
 ```text
-  TAILCAT ZER0 v1.7.1              ╱|、
+  TAILCAT ZER0 v1.8.0              ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -164,7 +164,7 @@ The **SFTP Directory Sharing** feature exposes a specified router directory to r
 2. Select permission mode (`ro` or `rw`):
 
 ```text
-  TAILCAT ZER0 v1.7.1              ╱|、
+  TAILCAT ZER0 v1.8.0              ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -184,7 +184,7 @@ The **SFTP Directory Sharing** feature exposes a specified router directory to r
 3. The SFTP Active Session Card displays your connection token and `tailcat ls` command:
 
 ```text
-  TAILCAT ZER0 v1.7.1              ╱|、
+  TAILCAT ZER0 v1.8.0              ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
