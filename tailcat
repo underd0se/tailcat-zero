@@ -932,6 +932,7 @@ EOF
 get_client_connect_cmd() {
     s_type="$1"
     s_token="$2"
+    s_extra="${3:-}"
 
     case "$s_type" in
         "SSH"|"VIEW")
@@ -944,7 +945,10 @@ get_client_connect_cmd() {
             printf "tailcat ls -l %s" "$s_token"
             ;;
         "WEBGUI")
-            printf "tailcat socks %s" "$s_token"
+            read -r _wp_proto wp_port <<EOF
+$(get_webgui_connect_info "$s_extra")
+EOF
+            printf "tailcat forward %s %s" "$s_token" "$wp_port"
             ;;
         *)
             printf "tailcat %s" "$s_token"
@@ -999,12 +1003,12 @@ render_multi_session_overview() {
             s_file="${SESSIONS_DIR}/${s}.env"
             # shellcheck disable=SC1090
             . "$s_file"
-            cmd=$(get_client_connect_cmd "$s" "$TOKEN")
+            cmd=$(get_client_connect_cmd "$s" "$TOKEN" "${EXTRA_INFO:-}")
             if [ "$s" = "WEBGUI" ]; then
                 read -r wp_proto wp_port <<EOF
 $(get_webgui_connect_info "${EXTRA_INFO:-}")
 EOF
-                printf "  • %b%-8s%b %btailcat socks %s%b (Open %s://localhost:%s)\n" "$C_BOLD" "WebGUI:" "$C_RESET" "$C_YELLOW" "$TOKEN" "$C_RESET" "$wp_proto" "$wp_port"
+                printf "  • %b%-8s%b %b%s%b (Open %s://localhost:%s)\n" "$C_BOLD" "WebGUI:" "$C_RESET" "$C_YELLOW" "$cmd" "$C_RESET" "$wp_proto" "$wp_port"
             else
                 printf "  • %b%-8s%b %b%s%b\n" "$C_BOLD" "${s}:" "$C_RESET" "$C_YELLOW" "$cmd" "$C_RESET"
             fi
@@ -1027,7 +1031,7 @@ render_single_session_card() {
     # shellcheck disable=SC1090
     . "$s_file"
     time_left=$(get_service_time_left "$s_id")
-    cmd=$(get_client_connect_cmd "$s_id" "$TOKEN")
+    cmd=$(get_client_connect_cmd "$s_id" "$TOKEN" "${EXTRA_INFO:-}")
 
     draw_header
 
@@ -1077,7 +1081,7 @@ render_single_session_card() {
         read -r wp_proto wp_port <<EOF
 $(get_webgui_connect_info "${EXTRA_INFO:-}")
 EOF
-        printf "  %b1. Run: %btailcat socks %s%b\n" "$C_WHITE" "$C_YELLOW" "$TOKEN" "$C_RESET"
+        printf "  %b1. Run: %b%s%b\n" "$C_WHITE" "$C_YELLOW" "$cmd" "$C_RESET"
         printf "  %b2. Open browser: %b%s://localhost:%s%b\n" "$C_WHITE" "$C_CYAN" "$wp_proto" "$wp_port" "$C_RESET"
     else
         printf "  %bRun: %b%s%b\n" "$C_WHITE" "$C_YELLOW" "$cmd" "$C_RESET"
@@ -1821,7 +1825,7 @@ cli_status() {
             # shellcheck disable=SC1090
             . "$s_file"
             tl=$(get_service_time_left "$s")
-            cmd=$(get_client_connect_cmd "$s" "$TOKEN")
+            cmd=$(get_client_connect_cmd "$s" "$TOKEN" "${EXTRA_INFO:-}")
             printf "  • %b%-36s%b ⏱️ %-14s PID: %s\n" "$C_BOLD" "${DESC}" "$C_RESET" "$tl" "${PID:-unknown}"
             if [ "$s" = "WEBGUI" ]; then
                 read -r wp_proto wp_port <<EOF

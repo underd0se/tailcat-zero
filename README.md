@@ -123,7 +123,7 @@ Install `tailcat` on your laptop or client device:
 ### Client Examples:
 
 ```sh
-# Connect to router SSH
+# Connect to router SSH (root or view-only)
 tailcat ssh tcXXXXXXXXX
 
 # Send file to router
@@ -131,7 +131,38 @@ tailcat cp firmware.trx tcXXXXXXXXX:
 
 # Browse router files
 tailcat ls tcXXXXXXXXX
+
+# Forward router WebGUI to your local browser
+tailcat forward tcXXXXXXXXX 8443
+# Then open: https://localhost:8443
 ```
+
+---
+
+## 🤝 For Script Developers & Forum Helpers
+
+If you maintain an Asuswrt-Merlin script or help users troubleshoot on forums like SNBForums, diagnosing issues usually involves endless back-and-forth posts asking users to copy-paste logs, check configs, or run diagnostic commands.
+
+With TAILCAT ZER0, you can directly inspect the router yourself in minutes:
+
+1. **Ask the user to run one command:**
+   ```sh
+   tailcatzero view
+   ```
+2. **They PM you the token shown on their screen.**
+3. **Connect directly from your terminal:**
+   ```sh
+   tailcat ssh <token>
+   ```
+
+**Why this is safe and easy for both sides:**
+* **Read-only by default:** You can run diagnostic tools (`sysinfo`, `logread`, `ip route`, `netstat`, `nvram get`, `df`, etc.) to see what is happening. System writes, deletions, and state modifications are blocked.
+* **On-demand permission:** If you need to run a specific command outside the default list, type `request <command>`. The user gets an instant notification on their terminal and approves it with a single keystroke (`P`).
+* **No passwords shared:** The user never shares their admin password, SSH password, or private SSH keys.
+* **No firewall changes:** Zero ports are opened on the router; connections travel peer-to-peer over WireGuard.
+* **Auto-kills itself:** The session shuts down automatically after 30 minutes.
+
+If you need to inspect their WebGUI settings directly, have them run `tailcatzero webgui`. Then run `tailcat forward <token> 8443` on your computer and open `https://localhost:8443` in your browser.
 
 ---
 

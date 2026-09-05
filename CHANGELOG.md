@@ -88,7 +88,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * **📺 Flicker-Free Live Dashboard:** Screen cleanly refreshes without terminal history scroll clutter when updating live timers (`r`) or toggling ASCII QR codes (`q`).
 * **💾 Dynamic DropBox Storage Awareness:** Displays real-time free disk space for volatile RAM (`/tmp`) and mounted USB partitions (`/tmp/mnt/*`), with dynamic choice numbering based on USB presence.
-* **🌐 Browser-Ready WebGUI Guidance:** Generates step-by-step instructions for remote administrators connecting via SOCKS5 proxy (`1. Run: tailcat socks <token>`, `2. Open browser: https://localhost:8443`).
+* **🌐 Browser-Ready WebGUI Guidance:** Generates step-by-step zero-configuration instructions for remote administrators connecting via TCP port forwarding (`1. Run: tailcat forward <token> <port>`, `2. Open browser: https://localhost:<port>`).
 * **🟢 Smart Status Indicators & Menu Badging:** Added prominent visual status badge (`🟢 ACTIVE` vs `⚪ INACTIVE`) and dynamically badges menu options 5 & 6 with active timer and kill labels.
 * **⏱️ Precision Auto-Kill Warning:** Displays `< 1m remaining (expiring soon)` when session timer falls below 60 seconds.
 
