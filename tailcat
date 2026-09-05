@@ -7,8 +7,9 @@
 set -eu
 
 VERSION="1.7.0"
-CONFIG_DIR="/jffs/addons/tailcat"
-CONFIG_FILE="${CONFIG_DIR}/tailcat.cfg"
+CONFIG_DIR="/jffs/addons/tailcatzero"
+CONFIG_FILE="${CONFIG_DIR}/tailcatzero.cfg"
+ADDON_SCRIPT="${CONFIG_DIR}/tailcatzero"
 BIN_DIR="${CONFIG_DIR}/bin"
 TAILCAT_BIN="${BIN_DIR}/tailcat"
 VIEW_SHELL="${BIN_DIR}/tailcat-view-shell"
@@ -37,6 +38,16 @@ trap 'printf "%b" "$C_RESET" 2>/dev/null || true' EXIT INT TERM
 DEFAULT_TIMEOUT=30 # 30 minutes
 DERP_URL="https://tailcat.dev/derpmap.json"
 export DERP_URL
+
+# Auto-migrate legacy config if needed
+if [ ! -f "$CONFIG_FILE" ]; then
+    if [ -f "/jffs/addons/tailcat/tailcat.cfg" ]; then
+        mkdir -p "$CONFIG_DIR"
+        cp -f "/jffs/addons/tailcat/tailcat.cfg" "$CONFIG_FILE" 2>/dev/null || true
+    elif [ -f "${CONFIG_DIR}/tailcat.cfg" ]; then
+        mv -f "${CONFIG_DIR}/tailcat.cfg" "$CONFIG_FILE" 2>/dev/null || true
+    fi
+fi
 
 # Load Config if exists
 if [ -f "$CONFIG_FILE" ]; then
@@ -1306,11 +1317,10 @@ update_tailcat_all() {
     printf "  %b[*] Fetching latest TAILCAT ZER0 CLI script from GitHub...%b\n" "$C_CYAN" "$C_RESET"
     if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcat" -o "$tmp_script" 2>/dev/null; then
         chmod 755 "$tmp_script"
-        mv -f "$tmp_script" /jffs/scripts/tailcat
-        ln -sf /jffs/scripts/tailcat /jffs/scripts/tailcatzero 2>/dev/null || true
-        rm -f /jffs/scripts/tailcatZero /jffs/scripts/tailcat-merlin 2>/dev/null || true
+        mv -f "$tmp_script" "$ADDON_SCRIPT"
+        rm -rf /jffs/scripts/tailcat /jffs/scripts/tailcatzero /jffs/scripts/tailcatZero /jffs/scripts/tailcat-merlin 2>/dev/null || true
         if [ -d "/opt/bin" ]; then
-            ln -sf /jffs/scripts/tailcat /opt/bin/tailcatzero 2>/dev/null || true
+            ln -sf "$ADDON_SCRIPT" /opt/bin/tailcatzero 2>/dev/null || true
             rm -f /opt/bin/tailcat /opt/bin/tailcatZero /opt/bin/tailcat-merlin 2>/dev/null || true
         fi
         printf "  %b[+] TAILCAT ZER0 script updated successfully.%b\n\n" "$C_GREEN" "$C_RESET"
@@ -1356,23 +1366,21 @@ reinstall_tailcat() {
     fi
 
     script_ok=0
-    printf "  %b[*] Updating /jffs/scripts/tailcat...%b\n" "$C_CYAN" "$C_RESET"
-    if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcat" -o /jffs/scripts/tailcat.tmp 2>/dev/null; then
-        chmod 755 /jffs/scripts/tailcat.tmp
-        mv -f /jffs/scripts/tailcat.tmp /jffs/scripts/tailcat
-        ln -sf /jffs/scripts/tailcat /jffs/scripts/tailcatzero 2>/dev/null || true
-        rm -f /jffs/scripts/tailcatZero /jffs/scripts/tailcat-merlin 2>/dev/null || true
+    printf "  %b[*] Updating %s...%b\n" "$C_CYAN" "$ADDON_SCRIPT" "$C_RESET"
+    if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcat" -o "${ADDON_SCRIPT}.tmp" 2>/dev/null; then
+        chmod 755 "${ADDON_SCRIPT}.tmp"
+        mv -f "${ADDON_SCRIPT}.tmp" "$ADDON_SCRIPT"
+        rm -rf /jffs/scripts/tailcat /jffs/scripts/tailcatzero /jffs/scripts/tailcatZero /jffs/scripts/tailcat-merlin 2>/dev/null || true
         if [ -d "/opt/bin" ]; then
-            ln -sf /jffs/scripts/tailcat /opt/bin/tailcatzero 2>/dev/null || true
+            ln -sf "$ADDON_SCRIPT" /opt/bin/tailcatzero 2>/dev/null || true
             rm -f /opt/bin/tailcat /opt/bin/tailcatZero /opt/bin/tailcat-merlin 2>/dev/null || true
         fi
         printf "  %b[+] Script updated from GitHub.%b\n\n" "$C_GREEN" "$C_RESET"
         script_ok=1
     else
-        ln -sf /jffs/scripts/tailcat /jffs/scripts/tailcatzero 2>/dev/null || true
-        rm -f /jffs/scripts/tailcatZero /jffs/scripts/tailcat-merlin 2>/dev/null || true
+        rm -rf /jffs/scripts/tailcat /jffs/scripts/tailcatzero /jffs/scripts/tailcatZero /jffs/scripts/tailcat-merlin 2>/dev/null || true
         if [ -d "/opt/bin" ]; then
-            ln -sf /jffs/scripts/tailcat /opt/bin/tailcatzero 2>/dev/null || true
+            ln -sf "$ADDON_SCRIPT" /opt/bin/tailcatzero 2>/dev/null || true
             rm -f /opt/bin/tailcat /opt/bin/tailcatZero /opt/bin/tailcat-merlin 2>/dev/null || true
         fi
         printf "  %b[*] Keeping current script version.%b\n\n" "$C_GRAY" "$C_RESET"
@@ -1412,7 +1420,7 @@ uninstall_tailcat() {
             if [ -f "/jffs/scripts/init-start" ]; then
                 sed -i '/[tT][aA][iI][lL][cC][aA][tT]/d' /jffs/scripts/init-start 2>/dev/null || true
             fi
-            rm -rf "$CONFIG_DIR" "$SESSIONS_DIR" /jffs/scripts/tailcat /jffs/scripts/tailcatZero /jffs/scripts/tailcatzero /jffs/scripts/tailcat-merlin /opt/bin/tailcat /opt/bin/tailcatZero /opt/bin/tailcatzero /opt/bin/tailcat-merlin /tmp/tailcat_addr*.txt 2>/dev/null || true
+            rm -rf "$CONFIG_DIR" "/jffs/addons/tailcat" "$SESSIONS_DIR" /jffs/scripts/tailcat /jffs/scripts/tailcatZero /jffs/scripts/tailcatzero /jffs/scripts/tailcat-merlin /opt/bin/tailcat /opt/bin/tailcatZero /opt/bin/tailcatzero /opt/bin/tailcat-merlin /tmp/tailcat_addr*.txt 2>/dev/null || true
             clear_screen
             printf "\n%b[+] TAILCAT ZER0 has been completely uninstalled.%b\n\n" "$C_GREEN" "$C_RESET"
             exit 0

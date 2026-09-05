@@ -17,12 +17,12 @@ C_GREEN="\033[1;32m"
 C_CYAN="\033[1;36m"
 C_RED="\033[1;31m"
 
-INSTALL_SCRIPT="/jffs/scripts/tailcat"
-ADDON_DIR="/jffs/addons/tailcat"
+ADDON_DIR="/jffs/addons/tailcatzero"
+INSTALL_SCRIPT="${ADDON_DIR}/tailcatzero"
 BIN_DIR="${ADDON_DIR}/bin"
 TAILCAT_BIN="${BIN_DIR}/tailcat"
 VIEW_SHELL_BIN="${BIN_DIR}/tailcat-view-shell"
-CFG_FILE="${ADDON_DIR}/tailcat.cfg"
+CFG_FILE="${ADDON_DIR}/tailcatzero.cfg"
 
 printf "\n%b%b==============================================================%b\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
 printf "  %bTAILCAT ZER0 Installer %s%b\n" "$C_BOLD" "${VERSION}" "$C_RESET"
@@ -96,9 +96,16 @@ else
 fi
 chmod 755 "$VIEW_SHELL_BIN"
 
-# Create tailcatzero symlinks for universal command line access
-ln -sf "$INSTALL_SCRIPT" "/jffs/scripts/tailcatzero"
-rm -f "/jffs/scripts/tailcatZero" "/jffs/scripts/tailcat-merlin" 2>/dev/null || true
+# Clean up legacy directories and files from /jffs/scripts and /jffs/addons/tailcat
+rm -rf "/jffs/scripts/tailcat" "/jffs/scripts/tailcatzero" "/jffs/scripts/tailcatZero" "/jffs/scripts/tailcat-merlin" 2>/dev/null || true
+if [ -d "/jffs/addons/tailcat" ]; then
+    if [ -f "/jffs/addons/tailcat/tailcat.cfg" ] && [ ! -f "$CFG_FILE" ]; then
+        cp -f "/jffs/addons/tailcat/tailcat.cfg" "$CFG_FILE" 2>/dev/null || true
+    fi
+    rm -rf "/jffs/addons/tailcat" 2>/dev/null || true
+fi
+
+# Create tailcatzero symlink in /opt/bin for command line access
 if [ -d "/opt/bin" ]; then
     ln -sf "$INSTALL_SCRIPT" "/opt/bin/tailcatzero"
     rm -f "/opt/bin/tailcat" "/opt/bin/tailcatZero" "/opt/bin/tailcat-merlin" 2>/dev/null || true

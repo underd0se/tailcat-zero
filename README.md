@@ -139,7 +139,7 @@ tailcat ls tcXXXXXXXXX
 
 Launch `tailcatzero` and select **Option 6 (Manage TAILCAT ZER0) ➔ Option 3 (Complete Uninstall)**, or run:
 ```sh
-rm -rf /jffs/addons/tailcat /jffs/scripts/tailcat /jffs/scripts/tailcatzero /opt/bin/tailcatzero
+rm -rf /jffs/addons/tailcatzero /jffs/addons/tailcat /jffs/scripts/tailcat /jffs/scripts/tailcatzero /opt/bin/tailcatzero
 ```
 
 ---
