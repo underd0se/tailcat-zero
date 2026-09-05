@@ -7,7 +7,7 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
 ---
 
 ```text
-  TAILCAT ZER0 v1.6.0              ╱|、
+  TAILCAT ZER0 v1.7.0              ╱|、
                                  (˚ˎ 。7  
                                   |、˜〵          
   Instant Tunnel Manager         じしˍ,)ノ
@@ -57,6 +57,11 @@ tailcatzero view                      # Start restricted view-only diagnostic sh
 tailcatzero recv [/path/to/inbox]     # Start encrypted DropBox tunnel (default /tmp/tailcat-inbox)
 tailcatzero files [/path] [ro|rw]     # Start SFTP directory share (default /jffs ro)
 tailcatzero webgui                    # Start router WebGUI tunnel
+tailcatzero requests                  # List pending guest permission requests
+tailcatzero approve [id|cmd] [--once] # Approve guest request (session-wide or single-use)
+tailcatzero deny [id|cmd]             # Deny guest request and suppress repeat prompts
+tailcatzero allow <cmd>               # Proactively permit command in view-only mode
+tailcatzero revoke <cmd>              # Revoke command permission from view-only mode
 tailcatzero timeout [min|persistent]  # Query or configure default auto-kill session timeout
 tailcatzero stop all                  # Stop all active sessions
 tailcatzero stop [SSH|VIEW|RECV|FILES|WEBGUI] # Stop specific service
@@ -71,8 +76,9 @@ tailcatzero --version                 # Display version
 * **🔒 Restricted View-Only Diagnostic Shell:**
   * Zero-trust, read-only inspection shell designed for untrusted assistance or safe remote triage.
   * **Extensive Inspection Commands:** System health (`uptime`, `free`, `df`, `ps`, `top`, `dmesg`, `sysinfo`), networking & WiFi (`ip`, `netstat`, `route`, `ping`, `mtr`, `wl`, `leases`, `wifi`, `ports`), NVRAM queries (`nvram get`, `nvram show`, `logread`), text processing (`cat`, `head`, `tail`, `grep`, `rg`, `tree`, `sort`, `uniq`, `diff`), and Entware queries (`opkg list/info/find/status/search/depends`).
-  * **Strict Sandboxing:** Blocks file redirections (`>`, `>>`, `<`), subshells (`` ` `` / `$()`), command chaining (`;`, `&&`, `||`), mutating binaries (`rm`, `mv`, `cp`, `touch`, `chmod`, `dd`), state mutations (`nvram set/commit`, `reboot`, `kill`), and package changes (`opkg install/remove`).
-  * **Pipeline Support:** Supports Unix pipelines (`|`) between allowed tools (e.g. `ps | grep dnsmasq`, `nvram show | grep dhcp`).
+  * **🔔 On-Demand Permission Escalation:** Remote technicians or friends can run `request <command>` (or respond `y` when prompted on unapproved commands) to request live host authorization. The host router admin receives real-time notification alerts across admin terminals, syslog, and the TUI dashboard (`🔔 [P]ending Requests`), and can approve session-wide, approve once, or deny.
+  * **🛡️ Hardened Multi-Layer Security Sandbox:** Prohibits file redirections (`>`, `>>`, `<`), subshells (`` ` `` / `$()`), command chaining (`;`, `&&`, `||`), mutating binaries (`rm`, `mv`, `cp`, `touch`, `chmod`, `dd`), state mutations (`nvram set/commit`, `reboot`, `kill`), and package changes (`opkg install/remove`).
+  * **⚡ Unix Pipeline Support:** Supports Unix pipelines (`|`) between allowed tools (e.g. `ps | grep dnsmasq`, `nvram show | grep dhcp`).
 * **📱 Live Active Session Card:**
   * Dedicated interactive dashboard displaying a real-time auto-kill countdown, active service details, shareable capability token, and 1-key quick actions (`[s] Stop`, `[r] Refresh`, `[q] QR Code`, `[b] Back`).
 * **📷 Integrated ASCII QR Codes:**
@@ -139,6 +145,14 @@ rm -rf /jffs/addons/tailcat /jffs/scripts/tailcat /jffs/scripts/tailcatzero /opt
 ---
 
 ## 📝 Changelog
+
+### [v1.7.0] - 2026-09-05
+* **🔔 On-Demand Permission Escalation for View-Only Sessions:** Remote support guests and friends connected to restricted view-only sessions can request execution permissions for additional commands in real-time (`request <cmd>`, `req <cmd>`, or interactive `[y/N]` prompt on blocked commands).
+* **⚡ Dual-Channel Host Approvals (TUI & Headless CLI):** The host router administrator is notified instantly via syslog and admin terminals (`/dev/pts/*`). Host can approve or deny via:
+  * **Interactive TUI Dashboard:** Dynamic badge (`🔔 [P]ending Requests`) on main menu and active session cards with hotkey `[P]` opening an interactive modal.
+  * **Headless CLI:** `tailcatzero requests`, `tailcatzero approve [id|cmd] [--once]`, `tailcatzero deny [id|cmd]`, `tailcatzero allow <cmd>`, and `tailcatzero revoke <cmd>`.
+* **🎯 Granular Approval Scopes:** Host can choose between **"Approve for this session"** (session-wide allowlist cached in memory) or **"Approve once"** (single execution token).
+* **🛡️ Irreversible Hardware Safeguards (Hard Red Lines):** Destructive partition and flash corruption commands (`dd of=/dev/mtd*`, `flash_erase*`, `rm -rf /`, `nvram erase`) are hard-blocked from ever being requested or authorized.
 
 ### [v1.6.0] - 2026-09-04
 * **🔒 Restricted View-Only Diagnostic Shell (`tailcat-view-shell`):** Introduced a zero-trust, read-only remote support shell option (`Option 1 -> 2` or `tailcatzero view` / `tailcatzero ssh view`) for safe technical assistance without disclosing root write access.

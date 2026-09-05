@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.7.0] - 2026-09-05
+
+### 🔔 Interactive On-Demand Permission Escalation for View-Only Sessions
+
+* **🔔 On-Demand Permission Escalation (`tailcat-view-shell`):** Remote support technicians and friends in view-only sessions can request execution authorization for additional diagnostic tools via `request <command>` (or `req <cmd>` / `ask <cmd>`), or simply by answering `y` when prompted upon typing a restricted command.
+* **⚡ Dual-Channel Host Approval Engine:**
+  * **Interactive TUI Dashboard:** Real-time notification badge (`🔔 [%d Pending Requests - Press P to Review]`) displayed on the main menu and active session cards. Pressing `[P]` opens an interactive modal to review, inspect full commands, and approve or deny.
+  * **Headless CLI Interface:** Router administrators can manage requests entirely via CLI without opening the TUI:
+    * `tailcatzero requests`: Lists all pending requests with tool, full command line, and age.
+    * `tailcatzero approve [id|cmd] [--once]`: Approves the request for the session (default) or single execution (`--once`).
+    * `tailcatzero deny [id|cmd]`: Denies the request and adds the base command to the session blocklist to suppress repeat prompts.
+    * `tailcatzero allow <cmd>`: Proactively adds a command to the session allowlist before it is even requested.
+    * `tailcatzero revoke <cmd>`: Removes a command from the session allowlist.
+* **🎯 Granular Approval Scopes:**
+  * **Session-Wide (`APPROVED_SESSION`):** Adds the base command to volatile RAM (`/tmp/tailcat_sessions/VIEW_APPROVED.txt`), allowing the guest to run the tool repeatedly for the remainder of the session without re-prompting.
+  * **Single Execution (`APPROVED_ONCE`):** Grants single-use authorization for the pending command instance only.
+* **🛡️ Hardened Flash & Partition Brick Protection:** Critical low-level operations that could permanently brick or corrupt flash partitions (`dd of=/dev/mtd*`, `flash_erase*`, `rm -rf /`, `nvram erase`) are hard-blocked from ever being requested or authorized.
+* **📢 Real-Time Admin Broadcasts:** Automatically notifies the host router admin via syslog (`tailcatzero`) and broadcasts alert banners across active SSH terminals (`/dev/pts/*`).
+
+---
+
 ## [1.6.0] - 2026-09-04
 
 ### 🔒 Restricted View-Only Diagnostic Shell, Entware Inspection & 5-Slot Multi-Service Concurrency
