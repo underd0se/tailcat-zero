@@ -270,9 +270,9 @@ stop_sessions_with_confirmation() {
     printf "\n%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
 
     if [ "$count" -gt 1 ]; then
-        printf "  🛑 %b1-%d%b. Stop Service  |  🛑 %bA%bll  |  ↩️ %bB%back: " "$C_KEY" "$count" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
+        printf "  🛑 %bS%btop (1-%d)  |  🛑 %bA%bll  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$count" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
     else
-        printf "  🛑 %b1%b. Stop Session  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
+        printf "  🛑 %bS%btop Session  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
     fi
 
     if ! read -r confirm_stop; then
@@ -281,11 +281,22 @@ stop_sessions_with_confirmation() {
     fi
 
     case "$confirm_stop" in
-        [aA]|[aA][lL][lL]|[yY]|[yY][eE][sS])
+        [aA]|[aA][lL][lL])
             stop_all_sessions
             FLASH_MSG="${C_GREEN}[+] All active TailCat sessions stopped.${C_RESET}"
             ;;
-        1|2|3|4|5)
+        [yY]|[yY][eE][sS]|[sS]|[sS][tT][oO][pP]|1)
+            if [ "$count" -eq 1 ]; then
+                target_svc="$svc_1"
+                stop_single_session "$target_svc"
+                FLASH_MSG="${C_GREEN}[+] Stopped session.${C_RESET}"
+            else
+                target_svc="$svc_1"
+                stop_single_session "$target_svc"
+                FLASH_MSG="${C_GREEN}[+] Stopped 1st session.${C_RESET}"
+            fi
+            ;;
+        2|3|4|5)
             target_svc=""
             case "$confirm_stop" in
                 1) target_svc="$svc_1" ;;
@@ -494,12 +505,15 @@ show_approval_modal() {
     sel_req=1
     if [ "$total_req" -gt 1 ]; then
         printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
-        printf "  🔍 Select %b1-%d%b  |  ↩️ %bB%back: " "$C_KEY" "$total_req" "$C_RESET" "$C_KEY" "$C_RESET"
+        printf "  🔍 %bS%belect (1-%d)  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$total_req" "$C_KEY" "$C_RESET"
         if ! read -r r_pick; then
             return
         fi
         case "$r_pick" in
             [eE]|[bB]|cancel|exit) return ;;
+            [sS]|'')
+                sel_req=1
+                ;;
             [1-9]*)
                 if [ "$r_pick" -ge 1 ] && [ "$r_pick" -le "$total_req" ]; then
                     sel_req="$r_pick"
@@ -537,22 +551,22 @@ show_approval_modal() {
     printf "  %b3.%b ❌ %-28s %b%s%b\n\n" "$C_BOLD" "$C_RESET" "Deny request" "$C_GRAY" "(Block execution & suppress repeat prompts)" "$C_RESET"
 
     printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
-    printf "  ⚡ %b1%b. Session (Default)  |  ⏱️ %b2%b. Once  |  ❌ %b3%b. Deny  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
+    printf "  ⚡ %bS%bession (Default)  |  ⏱️ %bO%bnce  |  ❌ %bD%beny  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
 
     if ! read -r a_pick; then
         return
     fi
 
     case "$a_pick" in
-        1|'')
+        1|''|[sS]|[sS][eE][sS][sS][iI][oO][nN])
             resolve_single_request "$chosen_f" "APPROVED_SESSION"
             FLASH_MSG="${C_GREEN}[+] Approved '${BASE_CMD}' for this session.${C_RESET}"
             ;;
-        2)
+        2|[oO]|[oO][nN][cC][eE])
             resolve_single_request "$chosen_f" "APPROVED_ONCE"
             FLASH_MSG="${C_GREEN}[+] Approved single execution of '${BASE_CMD}'.${C_RESET}"
             ;;
-        3)
+        3|[dD]|[dD][eE][nN][yY])
             resolve_single_request "$chosen_f" "DENIED"
             FLASH_MSG="${C_RED}[-] Denied request for '${BASE_CMD}'.${C_RESET}"
             ;;
@@ -825,22 +839,26 @@ start_tunnel() {
         printf "  %b3.%b 🔄 Restart session                 %bStop and launch with fresh token%b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
 
         printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
-        printf "  👁️ %b1%b. View (Default)  |  🛑 %b2%b. Stop  |  🔄 %b3%b. Restart  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
+        printf "  👁️ %bV%biew (Default)  |  🛑 %bS%btop  |  🔄 %bR%bestart  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
         if ! read -r act_choice; then
             return
         fi
         case "$act_choice" in
-            1|'')
+            1|''|[vV]|[vV][iI][eE][wW])
                 interactive_session_card "$service_type"
                 return
                 ;;
-            2)
+            2|[sS]|[sS][tT][oO][pP])
                 stop_single_session "$service_type"
                 FLASH_MSG="${C_GREEN}[+] Stopped ${desc}.${C_RESET}"
                 return
                 ;;
-            3)
+            3|[rR]|[rR][eE][sS][tT][aA][rR][tT])
                 stop_single_session "$service_type"
+                ;;
+            [eE]|[bB]|cancel|exit)
+                FLASH_MSG="${C_YELLOW}[*] Operation cancelled.${C_RESET}"
+                return
                 ;;
             *)
                 FLASH_MSG="${C_YELLOW}[*] Operation cancelled.${C_RESET}"
@@ -1154,9 +1172,9 @@ interactive_session_card() {
         if [ "$cur_svc" = "ALL" ]; then
             render_multi_session_overview
             if [ "$req_cnt" -gt 0 ]; then
-                printf "  👁️ %b1-%d%b. View  |  🔔 %bP%bending (%d)  |  🛑 %bS%btop All  |  🔄 %bR%befresh  |  ↩️ %bB%back: " "$C_KEY" "$active_cnt" "$C_RESET" "$C_KEY" "$C_RESET" "$req_cnt" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
+                printf "  👁️ %bV%biew (1-%d)  |  🔔 %bP%bending (%d)  |  🛑 %bS%btop All  |  🔄 %bR%befresh  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$active_cnt" "$C_KEY" "$C_RESET" "$req_cnt" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
             else
-                printf "  👁️ %b1-%d%b. View  |  🛑 %bS%btop All  |  🔄 %bR%befresh  |  ↩️ %bB%back: " "$C_KEY" "$active_cnt" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
+                printf "  👁️ %bV%biew (1-%d)  |  🛑 %bS%btop All  |  🔄 %bR%befresh  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$active_cnt" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
             fi
             if ! read -r act; then
                 break
@@ -1176,11 +1194,22 @@ interactive_session_card() {
                 [mM]|[bB]|''|[eE])
                     break
                     ;;
-                [1-5])
+                [vV]|1)
                     c_idx=1
                     for s in SSH VIEW RECV FILES WEBGUI; do
                         if is_service_active "$s"; then
-                            if [ "$c_idx" -eq "$act" ]; then
+                            cur_svc="$s"
+                            show_qr=0
+                            break
+                        fi
+                    done
+                    ;;
+                [vV][1-5]|[2-5])
+                    target_num="${act#[vV]}"
+                    c_idx=1
+                    for s in SSH VIEW RECV FILES WEBGUI; do
+                        if is_service_active "$s"; then
+                            if [ "$c_idx" -eq "$target_num" ]; then
                                 cur_svc="$s"
                                 show_qr=0
                                 break
@@ -1291,7 +1320,7 @@ set_timeout_config() {
         printf "  %b4.%b ♾️  Persistent (0 min)           %bNo auto-kill; runs until stopped%b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
 
         printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
-        printf "  ⏱️ Enter %b1-4%b or custom minutes  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
+        printf "  ⏱️ %bS%bet Timeout (1-4 or minutes)  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
         if ! read -r user_t; then
             return
         fi
@@ -1300,7 +1329,7 @@ set_timeout_config() {
                 FLASH_MSG="${C_YELLOW}[*] Operation cancelled.${C_RESET}"
                 return
                 ;;
-            1)
+            1|''|[sS])
                 user_t=30
                 ;;
             2)
@@ -1309,11 +1338,8 @@ set_timeout_config() {
             3)
                 user_t=120
                 ;;
-            4|[pP][eE][rR][sS][iI][sS][tT][eE][nN][tT]|[fF][oO][rR][eE][vV][eE][rR]|[uU][nN][lL][iI][mM][iI][tT][eE][dD])
+            4|[pP]|[pP][eE][rR][sS][iI][sS][tT][eE][nN][tT]|[fF][oO][rR][eE][vV][eE][rR]|[uU][nN][lL][iI][mM][iI][tT][eE][dD])
                 user_t=0
-                ;;
-            '')
-                user_t=30
                 ;;
             *[!0-9]*)
                 t_err="${C_RED}[!] Invalid entry. Enter a preset (1-4), minutes, or 'b' to cancel.${C_RESET}"
@@ -1571,22 +1597,22 @@ manage_tailcat_menu() {
         printf "  %b3.%b 🗑️ Complete Uninstall           %bRemove addon, configs & init hooks%b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
 
         printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
-        printf "  🔄 %b1%b. Update  |  ⚡ %b2%b. Reinstall  |  🗑️ %b3%b. Uninstall  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
+        printf "  🔄 %bU%bpdate  |  ⚡ %bR%beinstall  |  🗑️ %bC%bomplete Uninstall  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
 
         if ! read -r m_choice; then
             break
         fi
 
         case "$m_choice" in
-            1)
+            1|[uU]|[uU][pP][dD][aA][tT][eE])
                 update_tailcat_all
                 break
                 ;;
-            2)
+            2|[rR]|[rR][eE][iI][nN][sS][tT][aA][lL][lL])
                 reinstall_tailcat
                 break
                 ;;
-            3)
+            3|[cC]|[cC][oO][mM][pP][lL][eE][tT][eE]|[uU][nN][iI][nN][sS][tT][aA][lL][lL])
                 uninstall_tailcat
                 break
                 ;;
@@ -1614,7 +1640,7 @@ start_ssh_menu() {
     printf "  %b2.%b 🔒 View-Only Diagnostic Shell       %b%-40s%b %b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "Safe inspection; writes blocked" "$C_RESET" "$b_view"
 
     printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
-    printf "  🔓 %b1%b. Root (Default)  |  🔒 %b2%b. View-Only  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
+    printf "  🔓 %bR%boot (Default)  |  🔒 %bV%biew-Only  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
     if ! read -r s_choice; then
         return
     fi
@@ -1624,10 +1650,10 @@ start_ssh_menu() {
             FLASH_MSG="${C_YELLOW}[*] Operation cancelled.${C_RESET}"
             return
             ;;
-        1|'')
+        1|''|[rR]|[rR][oO][oO][tT])
             start_tunnel "SSH" "serve no-auth-ssh" "🆘 Remote Support Shell (Root)"
             ;;
-        2)
+        2|[vV]|[vV][iI][eE][wW]*)
             start_tunnel "VIEW" "serve no-auth-ssh" "🔒 View-Only Diagnostic Shell"
             ;;
         *)
@@ -1708,85 +1734,73 @@ main_menu() {
                     printf "  %b2.%b 💾 USB Storage:   %s/tailcat-inbox %b(Free: %s) [Persistent]%b\n" "$C_BOLD" "$C_RESET" "$usb_drive" "$C_GRAY" "$usb_free" "$C_RESET"
                     printf "  %b3.%b 📂 Custom Directory Path\n\n" "$C_BOLD" "$C_RESET"
                     printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
-                    printf "  ⚡ %b1%b. RAM (Default)  |  💾 %b2%b. USB  |  📂 %b3%b. Custom  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
+                    printf "  ⚡ %bR%bAM (Default)  |  💾 %bU%bSB  |  📂 %bC%bustom  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
                 else
                     printf "  %b2.%b 📂 Custom Directory Path\n\n" "$C_BOLD" "$C_RESET"
                     printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
-                    printf "  ⚡ %b1%b. RAM (Default)  |  📂 %b2%b. Custom  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
+                    printf "  ⚡ %bR%bAM (Default)  |  📂 %bC%bustom  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
                 fi
 
                 if ! read -r d_choice; then
                     continue
                 fi
                 target_dir="/tmp/tailcat-inbox"
+                ask_custom_dir=0
                 case "$d_choice" in
                     [eE]|[bB]|cancel|exit)
                         FLASH_MSG="${C_YELLOW}[*] Operation cancelled.${C_RESET}"
                         continue
                         ;;
-                    1|'')
+                    1|''|[rR]|[rR][aA][mM])
                         target_dir="/tmp/tailcat-inbox"
+                        ;;
+                    [uU]|[uU][sS][bB])
+                        if [ -n "$usb_drive" ]; then
+                            target_dir="${usb_drive}/tailcat-inbox"
+                        else
+                            FLASH_MSG="${C_RED}[!] No USB drive mounted.${C_RESET}"
+                            continue
+                        fi
                         ;;
                     2)
                         if [ -n "$usb_drive" ]; then
                             target_dir="${usb_drive}/tailcat-inbox"
                         else
-                            clear_screen
-                            draw_header
-                            printf "  %b📂 Custom Destination Directory:%b\n\n" "$C_CYAN" "$C_RESET"
-                            printf "  Enter folder path for incoming files (e.g. /tmp/mnt/USB/inbox):\n\n"
-                            printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
-                            printf "  📂 Path (Default /tmp/tailcat-inbox)  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET"
-                            if ! read -r user_dir; then
-                                continue
-                            fi
-                            case "$user_dir" in
-                                [eE]|[bB]|cancel|exit)
-                                    FLASH_MSG="${C_YELLOW}[*] Operation cancelled.${C_RESET}"
-                                    continue
-                                    ;;
-                                '')
-                                    target_dir="/tmp/tailcat-inbox"
-                                    ;;
-                                *)
-                                    target_dir="$user_dir"
-                                    ;;
-                            esac
+                            ask_custom_dir=1
                         fi
                         ;;
-                    3)
-                        if [ -n "$usb_drive" ]; then
-                            clear_screen
-                            draw_header
-                            printf "  %b📂 Custom Destination Directory:%b\n\n" "$C_CYAN" "$C_RESET"
-                            printf "  Enter folder path for incoming files (e.g. /tmp/mnt/USB/inbox):\n\n"
-                            printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
-                            printf "  📂 Path (Default /tmp/tailcat-inbox)  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET"
-                            if ! read -r user_dir; then
-                                continue
-                            fi
-                            case "$user_dir" in
-                                [eE]|[bB]|cancel|exit)
-                                    FLASH_MSG="${C_YELLOW}[*] Operation cancelled.${C_RESET}"
-                                    continue
-                                    ;;
-                                '')
-                                    target_dir="/tmp/tailcat-inbox"
-                                    ;;
-                                *)
-                                    target_dir="$user_dir"
-                                    ;;
-                            esac
-                        else
-                            FLASH_MSG="${C_RED}[!] Invalid selection.${C_RESET}"
-                            continue
-                        fi
+                    3|[cC]|[cC][uU][sS][tT][oO][mM])
+                        ask_custom_dir=1
                         ;;
                     *)
                         FLASH_MSG="${C_RED}[!] Invalid selection.${C_RESET}"
                         continue
                         ;;
                 esac
+
+                if [ "$ask_custom_dir" -eq 1 ]; then
+                    clear_screen
+                    draw_header
+                    printf "  %b📂 Custom Destination Directory:%b\n\n" "$C_CYAN" "$C_RESET"
+                    printf "  Enter folder path for incoming files (e.g. /tmp/mnt/USB/inbox):\n\n"
+                    printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
+                    printf "  📂 Path (Default /tmp/tailcat-inbox)  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET"
+                    if ! read -r user_dir; then
+                        continue
+                    fi
+                    case "$user_dir" in
+                        [eE]|[bB]|cancel|exit)
+                            FLASH_MSG="${C_YELLOW}[*] Operation cancelled.${C_RESET}"
+                            continue
+                            ;;
+                        '')
+                            target_dir="/tmp/tailcat-inbox"
+                            ;;
+                        *)
+                            target_dir="$user_dir"
+                            ;;
+                    esac
+                fi
                 if ! mkdir -p "$target_dir" 2>/dev/null; then
                     FLASH_MSG="${C_RED}[!] Could not create destination directory: ${target_dir}${C_RESET}"
                     continue
@@ -1809,79 +1823,43 @@ main_menu() {
                     printf "  %b2.%b 💾 USB Storage:   %-30s %b(Mounted storage)%b\n" "$C_BOLD" "$C_RESET" "$usb_drive" "$C_GRAY" "$C_RESET"
                     printf "  %b3.%b 📂 Custom Directory Path\n\n" "$C_BOLD" "$C_RESET"
                     printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
-                    printf "  📂 %b1%b. /jffs (Default)  |  💾 %b2%b. USB  |  📂 %b3%b. Custom  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
+                    printf "  📂 %bJ%bFFS (Default)  |  💾 %bU%bSB  |  📂 %bC%bustom  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
                 else
                     printf "  %b2.%b 📂 Custom Directory Path\n\n" "$C_BOLD" "$C_RESET"
                     printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
-                    printf "  📂 %b1%b. /jffs (Default)  |  📂 %b2%b. Custom  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
+                    printf "  📂 %bJ%bFFS (Default)  |  📂 %bC%bustom  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
                 fi
 
                 if ! read -r s_pick; then
                     continue
                 fi
                 s_dir="/jffs"
+                ask_custom_sftp=0
                 case "$s_pick" in
                     [eE]|[bB]|cancel|exit)
                         FLASH_MSG="${C_YELLOW}[*] Operation cancelled.${C_RESET}"
                         continue
                         ;;
-                    1|'')
+                    1|''|[jJ]|[jJ][fF][fF][sS])
                         s_dir="/jffs"
+                        ;;
+                    [uU]|[uU][sS][bB])
+                        if [ -n "$usb_drive" ]; then
+                            s_dir="$usb_drive"
+                        else
+                            FLASH_MSG="${C_RED}[!] No USB drive mounted.${C_RESET}"
+                            continue
+                        fi
                         ;;
                     2)
                         if [ -n "$usb_drive" ]; then
                             s_dir="$usb_drive"
                         else
-                            clear_screen
-                            draw_header
-                            printf "  %b📂 Custom Directory Path (SFTP):%b\n\n" "$C_CYAN" "$C_RESET"
-                            printf "  Enter path to directory you want to share:\n\n"
-                            printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
-                            printf "  📂 Path (Default /jffs)  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET"
-                            if ! read -r user_dir; then
-                                continue
-                            fi
-                            case "$user_dir" in
-                                [eE]|[bB]|cancel|exit)
-                                    FLASH_MSG="${C_YELLOW}[*] Operation cancelled.${C_RESET}"
-                                    continue
-                                    ;;
-                                '')
-                                    s_dir="/jffs"
-                                    ;;
-                                *)
-                                    s_dir="$user_dir"
-                                    ;;
-                            esac
+                            ask_custom_sftp=1
                         fi
                         ;;
-                    3)
-                        if [ -n "$usb_drive" ]; then
-                            clear_screen
-                            draw_header
-                            printf "  %b📂 Custom Directory Path (SFTP):%b\n\n" "$C_CYAN" "$C_RESET"
-                            printf "  Enter path to directory you want to share:\n\n"
-                            printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
-                            printf "  📂 Path (Default /jffs)  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET"
-                            if ! read -r user_dir; then
-                                continue
-                            fi
-                            case "$user_dir" in
-                                [eE]|[bB]|cancel|exit)
-                                    FLASH_MSG="${C_YELLOW}[*] Operation cancelled.${C_RESET}"
-                                    continue
-                                    ;;
-                                '')
-                                    s_dir="/jffs"
-                                    ;;
-                                *)
-                                    s_dir="$user_dir"
-                                    ;;
-                            esac
-                        else
-                            FLASH_MSG="${C_RED}[!] Invalid selection.${C_RESET}"
-                            continue
-                        fi
+                    3|[cC]|[cC][uU][sS][tT][oO][mM])
+                        ask_custom_sftp=1
                         ;;
                     *)
                         if [ -d "$s_pick" ]; then
@@ -1892,6 +1870,30 @@ main_menu() {
                         fi
                         ;;
                 esac
+
+                if [ "$ask_custom_sftp" -eq 1 ]; then
+                    clear_screen
+                    draw_header
+                    printf "  %b📂 Custom Directory Path (SFTP):%b\n\n" "$C_CYAN" "$C_RESET"
+                    printf "  Enter path to directory you want to share:\n\n"
+                    printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
+                    printf "  📂 Path (Default /jffs)  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET"
+                    if ! read -r user_dir; then
+                        continue
+                    fi
+                    case "$user_dir" in
+                        [eE]|[bB]|cancel|exit)
+                            FLASH_MSG="${C_YELLOW}[*] Operation cancelled.${C_RESET}"
+                            continue
+                            ;;
+                        '')
+                            s_dir="/jffs"
+                            ;;
+                        *)
+                            s_dir="$user_dir"
+                            ;;
+                    esac
+                fi
 
                 if [ ! -d "$s_dir" ]; then
                     FLASH_MSG="${C_RED}[!] Directory ${s_dir} does not exist.${C_RESET}"
@@ -1905,7 +1907,7 @@ main_menu() {
                 printf "  %b2.%b ✏️  Read-Write (rw)     %bFull remote upload, edit, and delete access%b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
 
                 printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
-                printf "  🔒 %b1%b. Read-Only (Default)  |  ✏️ %b2%b. Read-Write  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
+                printf "  🔒 %bR%bead-Only (Default)  |  ✏️ %bW%brite  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
 
                 if ! read -r p_choice; then
                     continue
@@ -1915,11 +1917,15 @@ main_menu() {
                         FLASH_MSG="${C_YELLOW}[*] Operation cancelled.${C_RESET}"
                         continue
                         ;;
-                    2|[rR][wW])
+                    2|[wW]|[wW][rR][iI][tT][eE]|[rR][wW])
                         perm_mode="rw"
                         ;;
-                    1|''|*)
+                    1|''|[rR]|[rR][oO]|[rR][eE][aA][dD]*)
                         perm_mode="ro"
+                        ;;
+                    *)
+                        FLASH_MSG="${C_RED}[!] Invalid selection.${C_RESET}"
+                        continue
                         ;;
                 esac
                 start_tunnel "FILES" "serve --files=${s_dir}:${perm_mode} files" "📁 SFTP File Share (${s_dir})" "Path: ${s_dir} (${perm_mode})"
