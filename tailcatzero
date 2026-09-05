@@ -1448,10 +1448,12 @@ update_tailcat_all() {
         remote_ver=$(grep '^VERSION=' "$tmp_script" 2>/dev/null | head -n 1 | cut -d'"' -f2 || echo "")
         chmod 755 "$tmp_script"
         mv -f "$tmp_script" "$ADDON_SCRIPT"
-        rm -rf /jffs/scripts/tailcat /jffs/scripts/tailcatzero /jffs/scripts/tailcatZero /jffs/scripts/tailcat-merlin 2>/dev/null || true
+        mkdir -p /jffs/scripts
+        ln -sf "$ADDON_SCRIPT" /jffs/scripts/tailcatzero 2>/dev/null || true
+        rm -rf /jffs/scripts/tailcat /jffs/scripts/tailcat-merlin 2>/dev/null || true
         if [ -d "/opt/bin" ]; then
             ln -sf "$ADDON_SCRIPT" /opt/bin/tailcatzero 2>/dev/null || true
-            rm -f /opt/bin/tailcat /opt/bin/tailcatZero /opt/bin/tailcat-merlin 2>/dev/null || true
+            rm -f /opt/bin/tailcat /opt/bin/tailcat-merlin 2>/dev/null || true
         fi
         if [ -n "$remote_ver" ] && [ "$remote_ver" != "$VERSION" ]; then
             printf "  %b[+] TAILCAT ZER0 script updated: %b%s%b -> %b%s%b\n\n" "$C_GREEN" "$C_YELLOW" "$VERSION" "$C_RESET" "$C_GREEN" "$remote_ver" "$C_RESET"
@@ -1513,18 +1515,22 @@ reinstall_tailcat() {
        curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcat" -o "${ADDON_SCRIPT}.tmp" 2>/dev/null; then
         chmod 755 "${ADDON_SCRIPT}.tmp"
         mv -f "${ADDON_SCRIPT}.tmp" "$ADDON_SCRIPT"
-        rm -rf /jffs/scripts/tailcat /jffs/scripts/tailcatzero /jffs/scripts/tailcatZero /jffs/scripts/tailcat-merlin 2>/dev/null || true
+        mkdir -p /jffs/scripts
+        ln -sf "$ADDON_SCRIPT" /jffs/scripts/tailcatzero 2>/dev/null || true
+        rm -rf /jffs/scripts/tailcat /jffs/scripts/tailcat-merlin 2>/dev/null || true
         if [ -d "/opt/bin" ]; then
             ln -sf "$ADDON_SCRIPT" /opt/bin/tailcatzero 2>/dev/null || true
-            rm -f /opt/bin/tailcat /opt/bin/tailcatZero /opt/bin/tailcat-merlin 2>/dev/null || true
+            rm -f /opt/bin/tailcat /opt/bin/tailcat-merlin 2>/dev/null || true
         fi
         printf "  %b[+] Script updated from GitHub.%b\n\n" "$C_GREEN" "$C_RESET"
         script_ok=1
     else
-        rm -rf /jffs/scripts/tailcat /jffs/scripts/tailcatzero /jffs/scripts/tailcatZero /jffs/scripts/tailcat-merlin 2>/dev/null || true
+        mkdir -p /jffs/scripts
+        ln -sf "$ADDON_SCRIPT" /jffs/scripts/tailcatzero 2>/dev/null || true
+        rm -rf /jffs/scripts/tailcat /jffs/scripts/tailcat-merlin 2>/dev/null || true
         if [ -d "/opt/bin" ]; then
             ln -sf "$ADDON_SCRIPT" /opt/bin/tailcatzero 2>/dev/null || true
-            rm -f /opt/bin/tailcat /opt/bin/tailcatZero /opt/bin/tailcat-merlin 2>/dev/null || true
+            rm -f /opt/bin/tailcat /opt/bin/tailcat-merlin 2>/dev/null || true
         fi
         printf "  %b[*] Keeping current script version.%b\n\n" "$C_GRAY" "$C_RESET"
     fi
@@ -1570,7 +1576,7 @@ uninstall_tailcat() {
             if [ -f "/jffs/scripts/init-start" ]; then
                 sed -i '/[tT][aA][iI][lL][cC][aA][tT]/d' /jffs/scripts/init-start 2>/dev/null || true
             fi
-            rm -rf "$CONFIG_DIR" "/jffs/addons/tailcat" "$SESSIONS_DIR" /jffs/scripts/tailcat /jffs/scripts/tailcatZero /jffs/scripts/tailcatzero /jffs/scripts/tailcat-merlin /opt/bin/tailcat /opt/bin/tailcatZero /opt/bin/tailcatzero /opt/bin/tailcat-merlin /tmp/tailcat_addr*.txt 2>/dev/null || true
+            rm -rf "$CONFIG_DIR" "/jffs/addons/tailcat" "$SESSIONS_DIR" /jffs/scripts/tailcat /jffs/scripts/tailcatzero /jffs/scripts/tailcat-merlin /opt/bin/tailcat /opt/bin/tailcatzero /opt/bin/tailcat-merlin /tmp/tailcat_addr*.txt 2>/dev/null || true
             clear_screen
             printf "\n%b[+] TAILCAT ZER0 has been completely uninstalled.%b\n\n" "$C_GREEN" "$C_RESET"
             exit 0

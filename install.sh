@@ -113,7 +113,7 @@ fi
 chmod 755 "$VIEW_SHELL_BIN"
 
 # Clean up legacy directories and files from /jffs/scripts and /jffs/addons/tailcat
-rm -rf "/jffs/scripts/tailcat" "/jffs/scripts/tailcatzero" "/jffs/scripts/tailcatZero" "/jffs/scripts/tailcat-merlin" 2>/dev/null || true
+rm -rf "/jffs/scripts/tailcat" "/jffs/scripts/tailcat-merlin" 2>/dev/null || true
 if [ -d "/jffs/addons/tailcat" ]; then
     if [ -f "/jffs/addons/tailcat/tailcat.cfg" ] && [ ! -f "$CFG_FILE" ]; then
         cp -f "/jffs/addons/tailcat/tailcat.cfg" "$CFG_FILE" 2>/dev/null || true
@@ -121,10 +121,13 @@ if [ -d "/jffs/addons/tailcat" ]; then
     rm -rf "/jffs/addons/tailcat" 2>/dev/null || true
 fi
 
-# Create tailcatzero symlink in /opt/bin for command line access
+# Create symlink for tailcatzero in /jffs/scripts and /opt/bin
+mkdir -p /jffs/scripts
+ln -sf "$INSTALL_SCRIPT" "/jffs/scripts/tailcatzero"
+
 if [ -d "/opt/bin" ]; then
     ln -sf "$INSTALL_SCRIPT" "/opt/bin/tailcatzero"
-    rm -f "/opt/bin/tailcat" "/opt/bin/tailcatZero" "/opt/bin/tailcat-merlin" 2>/dev/null || true
+    rm -f "/opt/bin/tailcat" "/opt/bin/tailcat-merlin" 2>/dev/null || true
 fi
 printf "%b[+] Registered command: %b%s%b\n" "$C_GREEN" "$C_BOLD" "tailcatzero" "$C_RESET"
 
