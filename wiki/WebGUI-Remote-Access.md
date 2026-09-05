@@ -117,23 +117,7 @@ https://localhost:8443
 
 1. **Bypass Certificate Warning:** Since Asuswrt uses a self-signed SSL certificate, your browser will display an "Untrusted Connection" or "Your connection is not private" notice. Click **Advanced ➔ Proceed to localhost (unsafe)**.
 2. **Log In:** Log into the Asuswrt-Merlin interface with your regular admin credentials.
-3. You now have full, fast, responsive access to the router dashboard, wireless settings, VPN director, AiMesh nodes, and system logs:
-
-```text
-+-------------------------------------------------------------------------+
-| [<-] [->] [R]  https://localhost:8443                         [---] [x] |
-+-------------------------------------------------------------------------+
-|  ASUSWRT-Merlin | RT-AX86U Pro           Firmware: 3004.388.8_2         |
-+-------------------------------------------------------------------------+
-|  [General]        * System Status:   🟢 Normal (CPU 1%, RAM 28%)       |
-|  - Network Map    * WAN IP:          100.64.24.12 (CGNAT)               |
-|  - Guest Network  * LAN IP:          192.168.50.1                       |
-|  - AiProtection   * Wireless 2.4GHz: "HomeNet_2.4G" (WPA2/WPA3-Personal)|
-|  - Adaptive QoS   * Wireless 5GHz:   "HomeNet_5G" (WPA3-Personal)       |
-|  - Traffic Analyzer* Operation Mode: Wireless Router                    |
-|  - VPN Director   * Connected:       18 Active Clients                  |
-+-------------------------------------------------------------------------+
-```
+3. You now have full, fast, responsive access to the router dashboard, wireless settings, VPN director, AiMesh nodes, and system logs!
 
 ---
 

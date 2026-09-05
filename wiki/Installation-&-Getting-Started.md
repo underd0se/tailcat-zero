@@ -51,8 +51,8 @@ curl -fsSL https://raw.githubusercontent.com/underd0se/tailcat-zero/main/install
    - Default configuration: `/jffs/addons/tailcatzero/tailcatzero.cfg`
 5. **Registers PATH Symlinks:**
    - Creates `/jffs/scripts/tailcatzero`
-   - Creates backward-compatible alias `/jffs/scripts/tailcat`
    - Links into `/opt/bin/tailcatzero` (if Entware is present).
+   - Preserves the official `tailcat` package binary namespace to prevent any command collision.
 
 ---
 
@@ -171,13 +171,13 @@ Run this cleanup sequence to stop all tunnels and remove files:
 # Stop all running sessions
 tailcatzero stop all 2>/dev/null
 
-# Remove addon directories and scripts
+# Remove addon directories and TAILCAT ZER0 script symlinks
 rm -rf /jffs/addons/tailcatzero /jffs/addons/tailcat
-rm -f /jffs/scripts/tailcatzero /jffs/scripts/tailcat
-rm -f /opt/bin/tailcatzero /opt/bin/tailcat
+rm -f /jffs/scripts/tailcatzero
+rm -f /opt/bin/tailcatzero
 
-# Clean volatile session locks and pipes
-rm -rf /tmp/tailcat-* /tmp/tailcatzero-*
+# Clean volatile session locks and state files
+rm -rf /tmp/tailcat_sessions /tmp/tailcat_addr*.txt
 ```
 
 Your router's firewall rules and network configuration remain completely untouched and clean.
