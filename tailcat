@@ -320,6 +320,17 @@ stop_sessions_with_confirmation() {
 # -------------------------------------------------------------------------------------------------------------------------
 # On-Demand Permission Escalation for View-Only Sessions
 
+is_gtfobin() {
+    case "$1" in
+        awk|gawk|mawk|nawk|find|python|python2|python3|perl|lua|ruby|php|\
+        vim|vi|nano|ed|sed|tar|zip|unzip|gzip|bzip2|cp|mv|rm|dd|chmod|chown|\
+        sh|bash|ash|zsh|dash|ksh|busybox|env|xargs|tee|curl|wget|nc|netcat|socat)
+            return 0
+            ;;
+    esac
+    return 1
+}
+
 get_pending_request_count() {
     if [ ! -d "$REQUESTS_DIR" ]; then
         echo "0"
@@ -514,7 +525,11 @@ show_approval_modal() {
 
     printf "  %b────────────────────────────────────────────────────────────────────────%b\n\n" "$C_CYAN" "$C_RESET"
     printf "  %bResolving Request:%b %b%s%b\n" "$C_BOLD" "$C_RESET" "$C_YELLOW" "${BASE_CMD}" "$C_RESET"
-    printf "  %bCommand:%b           %b%s%b\n\n" "$C_BOLD" "$C_RESET" "$C_WHITE" "${RAW_COMMAND}" "$C_RESET"
+    printf "  %bCommand:%b           %b%s%b\n" "$C_BOLD" "$C_RESET" "$C_WHITE" "${RAW_COMMAND}" "$C_RESET"
+    if is_gtfobin "${BASE_CMD}"; then
+        printf "  %b⚠️  SECURITY WARNING: '%s' has subshell execution or file modification capabilities!%b\n" "$C_RED" "${BASE_CMD}" "$C_RESET"
+    fi
+    printf "\n"
     printf "  %b1.%b ⚡  %-28s %b%s%b\n" "$C_BOLD" "$C_RESET" "Approve for this session" "$C_GRAY" "(Full allowance for remainder of session)" "$C_RESET"
     printf "  %b2.%b ⏱️ %-28s %b%s%b\n" "$C_BOLD" "$C_RESET" "Approve once" "$C_GRAY" "(Single execution only)" "$C_RESET"
     printf "  %b3.%b ❌ %-28s %b%s%b\n" "$C_BOLD" "$C_RESET" "Deny request" "$C_GRAY" "(Block execution & suppress repeat prompts)" "$C_RESET"
@@ -566,7 +581,11 @@ cli_requests() {
         age=$((now - CREATED_AT))
         printf "  • %b[%d] ID:%b      %s %b(Age: %ds)%b\n" "$C_BOLD" "$idx" "$C_RESET" "${REQ_ID}" "$C_GRAY" "$age" "$C_RESET"
         printf "    %bTool:%b    %b%s%b\n" "$C_BOLD" "$C_RESET" "$C_YELLOW" "${BASE_CMD}" "$C_RESET"
-        printf "    %bCommand:%b %s\n\n" "$C_BOLD" "$C_RESET" "${RAW_COMMAND}"
+        printf "    %bCommand:%b %s\n" "$C_BOLD" "$C_RESET" "${RAW_COMMAND}"
+        if is_gtfobin "${BASE_CMD}"; then
+            printf "    %b⚠️  WARNING: '%s' can execute subshells or modify files!%b\n" "$C_RED" "${BASE_CMD}" "$C_RESET"
+        fi
+        printf "\n"
         idx=$((idx + 1))
     done
     printf "  Usage: %btailcatzero approve [ID|tool]%b or %btailcatzero deny [ID|tool]%b\n\n" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET"
