@@ -66,7 +66,7 @@ When you start any service or press `v` (View Sessions), TAILCAT ZER0 renders a 
   Connect with: tailcat ssh tc8d2a1b9f7c04e3
 ========================================================================
 
-  [s] Stop Session  |  [r] Refresh  |  [q] QR Code  |  [b] Back: 
+  🛑 [s] Stop  |  📱 [q] QR Code  |  🔄 [r] Refresh  |  ↩️ [b] Back: 
 ```
 
 ### Hotkey Actions on Session Cards:
