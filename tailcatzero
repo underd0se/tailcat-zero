@@ -1463,8 +1463,13 @@ check_update_status() {
     tmp_chk="/tmp/tailcatzero.check.$$"
     rm -f "$tmp_chk"
 
-    if ! curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcatzero" -o "$tmp_chk" 2>/dev/null && \
-       ! curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcat" -o "$tmp_chk" 2>/dev/null; then
+    # Query latest commit SHA to bypass stale CDN caches
+    target_ref="main"
+    latest_sha=$(curl -fsSL -m 4 -H "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/underd0se/tailcat-zero/commits/main" 2>/dev/null | grep '"sha":' | head -n 1 | cut -d'"' -f4 || echo "")
+    [ -n "$latest_sha" ] && target_ref="$latest_sha"
+
+    if ! curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/${target_ref}/tailcatzero" -o "$tmp_chk" 2>/dev/null && \
+       ! curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/${target_ref}/tailcat" -o "$tmp_chk" 2>/dev/null; then
         printf "  %b[!] Could not connect to GitHub repository.%b\n\n" "$C_RED" "$C_RESET"
         rm -f "$tmp_chk"
         return 2
@@ -1512,9 +1517,14 @@ update_tailcat_all() {
         local_hash_short=$(printf "%s" "$local_script_hash" | cut -c 1-8)
     fi
 
+    # Query latest commit SHA to bypass stale CDN caches
+    target_ref="main"
+    latest_sha=$(curl -fsSL -m 4 -H "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/underd0se/tailcat-zero/commits/main" 2>/dev/null | grep '"sha":' | head -n 1 | cut -d'"' -f4 || echo "")
+    [ -n "$latest_sha" ] && target_ref="$latest_sha"
+
     printf "  %b[*] Fetching latest TAILCAT ZER0 CLI script from GitHub...%b\n" "$C_CYAN" "$C_RESET"
-    if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcatzero" -o "$tmp_script" 2>/dev/null || \
-       curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcat" -o "$tmp_script" 2>/dev/null; then
+    if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/${target_ref}/tailcatzero" -o "$tmp_script" 2>/dev/null || \
+       curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/${target_ref}/tailcat" -o "$tmp_script" 2>/dev/null; then
         remote_script_hash=$(get_file_hash "$tmp_script")
         remote_hash_short=""
         if [ -n "$remote_script_hash" ]; then
@@ -1554,7 +1564,7 @@ update_tailcat_all() {
     # Update View-Only Shell Script via Hash Check
     tmp_view="/tmp/tailcat-view-shell.update.$$"
     rm -f "$tmp_view"
-    if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcat-view-shell" -o "$tmp_view" 2>/dev/null; then
+    if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/${target_ref}/tailcat-view-shell" -o "$tmp_view" 2>/dev/null; then
         local_view_hash=$(get_file_hash "$VIEW_SHELL")
         remote_view_hash=$(get_file_hash "$tmp_view")
         if [ -n "$remote_view_hash" ] && [ "$remote_view_hash" != "$local_view_hash" ]; then
