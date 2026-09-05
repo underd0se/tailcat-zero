@@ -441,9 +441,9 @@ show_approval_modal() {
         # shellcheck disable=SC1090
         . "$f"
         age=$((now - CREATED_AT))
-        printf "  %b[%d]%b Tool: %b%-14s%b Age: %ds\n" "$C_BOLD" "$idx" "$C_RESET" "$C_YELLOW" "${BASE_CMD}" "$C_RESET" "$age"
-        printf "      Full Command: %b%s%b\n" "$C_WHITE" "${RAW_COMMAND}" "$C_RESET"
-        printf "      Request ID:   %s\n\n" "${REQ_ID}"
+        printf "  • %b[%d] Tool:%b     %b%-16s%b %b(Age: %ds)%b\n" "$C_BOLD" "$idx" "$C_RESET" "$C_YELLOW" "${BASE_CMD}" "$C_RESET" "$C_GRAY" "$age" "$C_RESET"
+        printf "    %bCommand:%b  %b%s%b\n" "$C_BOLD" "$C_RESET" "$C_WHITE" "${RAW_COMMAND}" "$C_RESET"
+        printf "    %bID:%b       %s\n\n" "$C_BOLD" "$C_RESET" "${REQ_ID}"
         eval "req_file_${idx}=\"$f\""
         idx=$((idx + 1))
     done
@@ -482,13 +482,13 @@ show_approval_modal() {
     # shellcheck disable=SC1090
     . "$chosen_f"
 
-    printf "%b------------------------------------------------------------------------%b\n" "$C_CYAN" "$C_RESET"
-    printf "  Resolving Request for: %b%s%b\n" "$C_YELLOW" "${BASE_CMD}" "$C_RESET"
-    printf "  Command: %b%s%b\n\n" "$C_WHITE" "${RAW_COMMAND}" "$C_RESET"
-    printf "  1. ⚡ %bApprove for this session%b (Full allowance for remainder of session)\n" "$C_GREEN" "$C_RESET"
-    printf "  2. ⏱️ %bApprove once%b             (Single execution only)\n" "$C_CYAN" "$C_RESET"
-    printf "  3. ❌ %bDeny request%b             (Block execution & suppress repeat prompts)\n" "$C_RED" "$C_RESET"
-    printf "  4. ↩️ %bIgnore / Dismiss%b\n\n" "$C_GRAY" "$C_RESET"
+    printf "  %b────────────────────────────────────────────────────────────────────────%b\n\n" "$C_CYAN" "$C_RESET"
+    printf "  %bResolving Request:%b %b%s%b\n" "$C_BOLD" "$C_RESET" "$C_YELLOW" "${BASE_CMD}" "$C_RESET"
+    printf "  %bCommand:%b           %b%s%b\n\n" "$C_BOLD" "$C_RESET" "$C_WHITE" "${RAW_COMMAND}" "$C_RESET"
+    printf "  %b1.%b ⚡  %-28s %b%s%b\n" "$C_BOLD" "$C_RESET" "Approve for this session" "$C_GRAY" "(Full allowance for remainder of session)" "$C_RESET"
+    printf "  %b2.%b ⏱️ %-28s %b%s%b\n" "$C_BOLD" "$C_RESET" "Approve once" "$C_GRAY" "(Single execution only)" "$C_RESET"
+    printf "  %b3.%b ❌ %-28s %b%s%b\n" "$C_BOLD" "$C_RESET" "Deny request" "$C_GRAY" "(Block execution & suppress repeat prompts)" "$C_RESET"
+    printf "  %b4.%b ↩️ %-28s %b%s%b\n\n" "$C_BOLD" "$C_RESET" "Ignore / Dismiss" "$C_GRAY" "(Leave request pending)" "$C_RESET"
     printf "  Choice [1-4, Default 1]: "
 
     if ! read -r a_pick; then
@@ -534,12 +534,12 @@ cli_requests() {
         # shellcheck disable=SC1090
         . "$f"
         age=$((now - CREATED_AT))
-        printf "  • %b[%d] ID: %s%b (Age: %ds)\n" "$C_BOLD" "$idx" "${REQ_ID}" "$C_RESET" "$age"
-        printf "    Tool:    %b%s%b\n" "$C_YELLOW" "${BASE_CMD}" "$C_RESET"
-        printf "    Command: %s\n\n" "${RAW_COMMAND}"
+        printf "  • %b[%d] ID:%b      %s %b(Age: %ds)%b\n" "$C_BOLD" "$idx" "$C_RESET" "${REQ_ID}" "$C_GRAY" "$age" "$C_RESET"
+        printf "    %bTool:%b    %b%s%b\n" "$C_BOLD" "$C_RESET" "$C_YELLOW" "${BASE_CMD}" "$C_RESET"
+        printf "    %bCommand:%b %s\n\n" "$C_BOLD" "$C_RESET" "${RAW_COMMAND}"
         idx=$((idx + 1))
     done
-    printf "Run: %btailcatzero approve [ID|tool]%b or %btailcatzero deny [ID|tool]%b\n" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET"
+    printf "  Usage: %btailcatzero approve [ID|tool]%b or %btailcatzero deny [ID|tool]%b\n\n" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET"
 }
 
 cli_approve() {
@@ -1094,14 +1094,14 @@ interactive_session_card() {
         fi
 
         req_cnt=$(get_pending_request_count)
-        req_act_str=""
-        if [ "$req_cnt" -gt 0 ]; then
-            req_act_str="  |  🔔 %bP%bending (${req_cnt})"
-        fi
 
         if [ "$cur_svc" = "ALL" ]; then
             render_multi_session_overview
-            printf "  Actions: 1-%d View/QR  |  🛑 %bS%btop All  |  🔄 %bR%befresh%b  |  ↩️ %bM%bain Menu: " "$active_cnt" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$req_act_str" "$C_KEY" "$C_RESET"
+            if [ "$req_cnt" -gt 0 ]; then
+                printf "  Actions: 1-%d View/QR  |  🔔 %bP%bending (%d)  |  🛑 %bS%btop All  |  🔄 %bR%befresh  |  ↩️ %bM%bain Menu: " "$active_cnt" "$C_KEY" "$C_RESET" "$req_cnt" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
+            else
+                printf "  Actions: 1-%d View/QR  |  🛑 %bS%btop All  |  🔄 %bR%befresh  |  ↩️ %bM%bain Menu: " "$active_cnt" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
+            fi
             if ! read -r act; then
                 break
             fi
@@ -1144,9 +1144,17 @@ interactive_session_card() {
                 qr_label="📱 Show ${C_KEY}Q${C_RESET}R"
             fi
             if [ "$active_cnt" -gt 1 ]; then
-                printf "  Actions: 🛑 %bS%btop This  |  📋 %bA%bll Sessions  |  🔄 %bR%befresh  |  %b%b  |  ↩️ %bM%bain Menu: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$qr_label" "$req_act_str" "$C_KEY" "$C_RESET"
+                if [ "$req_cnt" -gt 0 ]; then
+                    printf "  Actions: 🛑 %bS%btop This  |  📋 %bA%bll Sessions  |  🔔 %bP%bending (%d)  |  🔄 %bR%befresh  |  %b  |  ↩️ %bM%bain Menu: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$req_cnt" "$C_KEY" "$C_RESET" "$qr_label" "$C_KEY" "$C_RESET"
+                else
+                    printf "  Actions: 🛑 %bS%btop This  |  📋 %bA%bll Sessions  |  🔄 %bR%befresh  |  %b  |  ↩️ %bM%bain Menu: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$qr_label" "$C_KEY" "$C_RESET"
+                fi
             else
-                printf "  Actions: 🛑 %bS%btop Session  |  🔄 %bR%befresh  |  %b%b  |  ↩️ %bM%bain Menu: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$qr_label" "$req_act_str" "$C_KEY" "$C_RESET"
+                if [ "$req_cnt" -gt 0 ]; then
+                    printf "  Actions: 🛑 %bS%btop Session  |  🔔 %bP%bending (%d)  |  🔄 %bR%befresh  |  %b  |  ↩️ %bM%bain Menu: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$req_cnt" "$C_KEY" "$C_RESET" "$qr_label" "$C_KEY" "$C_RESET"
+                else
+                    printf "  Actions: 🛑 %bS%btop Session  |  🔄 %bR%befresh  |  %b  |  ↩️ %bM%bain Menu: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$qr_label" "$C_KEY" "$C_RESET"
+                fi
             fi
 
             if ! read -r act; then
@@ -1470,11 +1478,11 @@ start_ssh_menu() {
     b_root=$(get_service_badge "SSH")
     b_view=$(get_service_badge "VIEW")
 
-    printf "  %b1.%b ⚡ Full Root Shell (Read-Write)      %b%-32s%b %b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "Full admin shell with unrestricted root" "$C_RESET" "$b_root"
-    printf "  %b2.%b 🔒 View-Only Diagnostic Shell       %b%-32s%b %b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "Safe inspection; writes blocked" "$C_RESET" "$b_view"
+    printf "  %b1.%b ⚡  Full Root Shell (Read-Write)     %b%-40s%b %b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "Full admin shell with unrestricted root" "$C_RESET" "$b_root"
+    printf "  %b2.%b 🔒 View-Only Diagnostic Shell       %b%-40s%b %b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "Safe inspection; writes blocked" "$C_RESET" "$b_view"
 
     printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
-    printf "   Choice [1-2, Default 1, e to return]: "
+    printf "  Choice [1-2, Default 1, e to return]: "
     if ! read -r s_choice; then
         return
     fi
@@ -1789,9 +1797,9 @@ cli_status() {
                 read -r wp_proto wp_port <<EOF
 $(get_webgui_connect_info "${EXTRA_INFO:-}")
 EOF
-                printf "    Connect: %b%s%b (Open %s://localhost:%s)\n" "$C_YELLOW" "$cmd" "$C_RESET" "${wp_proto}" "${wp_port}"
+                printf "    Connect:  %b%s%b (Open %s://localhost:%s)\n" "$C_YELLOW" "$cmd" "$C_RESET" "${wp_proto}" "${wp_port}"
             else
-                printf "    Connect: %b%s%b\n" "$C_YELLOW" "$cmd" "$C_RESET"
+                printf "    Connect:  %b%s%b\n" "$C_YELLOW" "$cmd" "$C_RESET"
             fi
             if [ "$s" = "VIEW" ]; then
                 p_cnt=$(get_pending_request_count)

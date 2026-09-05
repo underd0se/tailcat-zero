@@ -36,7 +36,7 @@ print_banner() {
 }
 
 show_help() {
-    printf "%bAvailable Read-Only Diagnostic Commands:%b\n\n" "$C_BOLD" "$C_RESET"
+    printf "  %bAvailable Read-Only Diagnostic Commands:%b\n\n" "$C_BOLD" "$C_RESET"
 
     printf "  %b📊 System Health & Hardware:%b\n" "$C_CYAN" "$C_RESET"
     printf "    uptime, date, free, df, ps, top, uname, dmesg, lsmod\n"
