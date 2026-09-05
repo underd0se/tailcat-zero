@@ -16,6 +16,7 @@ REQUESTS_DIR="${SESSIONS_DIR}/requests"
 APPROVED_FILE="${SESSIONS_DIR}/VIEW_APPROVED.txt"
 DENIED_FILE="${SESSIONS_DIR}/VIEW_DENIED.txt"
 ONCE_DIR="${SESSIONS_DIR}/VIEW_ONCE"
+ACTIVE_TUIS_DIR="${SESSIONS_DIR}/active_tuis"
 
 # ANSI Colors
 C_RESET="\033[0m"
@@ -187,16 +188,25 @@ request_command_approval() {
 
     logger -t tailcatzero "GUEST PERMISSION REQUEST: '${req_base_clean}' ('${req_input}') [ID: ${req_id}]"
 
-    # Notify admin terminals if any
+    # Notify ONLY active tailcatzero TUI dashboard screen(s)
     cur_tty=""
     if [ -t 0 ]; then
         cur_tty=$(tty 2>/dev/null || true)
     fi
-    for p in /dev/pts/*; do
-        if [ -w "$p" ] && [ "$p" != "$cur_tty" ]; then
-            printf "\n\033[1;33m[tailcatzero] 🔔 Guest requested permission to run: '%s' (ID: %s)\033[0m\n\033[1;36mRun 'tailcatzero approve' or open dashboard [P]\033[0m\n" "$req_input" "$req_id" > "$p" 2>/dev/null || true
-        fi
-    done
+    if [ -d "$ACTIVE_TUIS_DIR" ]; then
+        for f in "${ACTIVE_TUIS_DIR}"/*; do
+            [ -f "$f" ] || continue
+            t_pid=$(basename "$f")
+            if kill -0 "$t_pid" 2>/dev/null; then
+                target_tty=$(cat "$f" 2>/dev/null || true)
+                if [ -n "$target_tty" ] && [ "$target_tty" != "$cur_tty" ] && [ -w "$target_tty" ]; then
+                    printf "\n\033[1;33m[tailcatzero] 🔔 Guest requested permission to run: '%s' (ID: %s)\033[0m\n\033[1;36mPress [P] to review or run 'tailcatzero approve'\033[0m\n" "$req_input" "$req_id" > "$target_tty" 2>/dev/null || true
+                fi
+            else
+                rm -f "$f" 2>/dev/null || true
+            fi
+        done
+    fi
 
     printf "\n%b[*] Permission request submitted to router host:%b\n" "$C_CYAN" "$C_RESET"
     printf "    Command: %b%s%b (Tool: %b%s%b)\n" "$C_YELLOW" "$req_input" "$C_RESET" "$C_BOLD" "$req_base_clean" "$C_RESET"

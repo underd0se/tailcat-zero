@@ -18,6 +18,7 @@ REQUESTS_DIR="${SESSIONS_DIR}/requests"
 VIEW_APPROVED_FILE="${SESSIONS_DIR}/VIEW_APPROVED.txt"
 VIEW_DENIED_FILE="${SESSIONS_DIR}/VIEW_DENIED.txt"
 VIEW_ONCE_DIR="${SESSIONS_DIR}/VIEW_ONCE"
+ACTIVE_TUIS_DIR="${SESSIONS_DIR}/active_tuis"
 LOG_TAG="tailcatzero"
 
 # ANSI Color Palette
@@ -32,7 +33,25 @@ C_GRAY="\033[0;37m" # Readable muted white/gray
 C_WHITE="\033[1;37m" # Crisp high-contrast white
 C_MAGENTA="\033[1;35m"
 
-trap 'printf "%b" "$C_RESET" 2>/dev/null || true' EXIT INT TERM
+unregister_active_tui() {
+    rm -f "${ACTIVE_TUIS_DIR}/$$" 2>/dev/null || true
+}
+
+cleanup_on_exit() {
+    unregister_active_tui
+    printf "%b" "$C_RESET" 2>/dev/null || true
+}
+trap cleanup_on_exit EXIT INT TERM
+
+register_active_tui() {
+    if [ -t 0 ] && [ -t 1 ]; then
+        cur_tui_tty=$(tty 2>/dev/null || true)
+        if [ -n "$cur_tui_tty" ] && [ -c "$cur_tui_tty" ]; then
+            mkdir -p "$ACTIVE_TUIS_DIR"
+            echo "$cur_tui_tty" > "${ACTIVE_TUIS_DIR}/$$"
+        fi
+    fi
+}
 
 # Default Configuration
 DEFAULT_TIMEOUT=30 # 30 minutes
@@ -1084,6 +1103,7 @@ EOF
 }
 
 interactive_session_card() {
+    register_active_tui
     cur_svc="${1:-ALL}"
     show_qr=0
 
@@ -1516,6 +1536,7 @@ start_ssh_menu() {
 # Interactive Menu Loop (KISS & Modern UX with Generous Whitespace)
 
 main_menu() {
+    register_active_tui
     while true; do
         clear_screen
 
