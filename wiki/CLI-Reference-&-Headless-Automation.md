@@ -1,0 +1,116 @@
+# ⚙️ CLI Reference & Headless Automation
+
+While TAILCAT ZER0 features a full interactive TUI, all features are exposed via non-interactive command-line subcommands. This allows direct scripting, headless SSH invocation, cron jobs, and integration with other Asuswrt-Merlin tools.
+
+---
+
+## 📖 Command Reference
+
+```text
+Usage: tailcatzero <command> [arguments...]
+```
+
+| Command | Arguments | Description |
+|---|---|---|
+| `status` | *(none)* | Display running sessions, service type, process ID, capability token, and remaining timeout countdown. |
+| `ssh` | `[root \| view]` | Start an ephemeral remote shell tunnel. Defaults to `root` if no argument is provided. |
+| `view` | *(none)* | Shortcut to start a restricted view-only diagnostic shell session directly. |
+| `recv` | `[/path/to/inbox]` | Start encrypted DropBox receiver. Defaults to `/tmp/tailcat-inbox` if omitted. |
+| `files` | `[/path] [ro \| rw]` | Start SFTP directory share. Defaults to `/jffs` with `ro` (read-only) mode if omitted. |
+| `webgui` | `[port]` | Start Asuswrt WebGUI proxy tunnel. Defaults to HTTPS port `8443`. |
+| `requests` | *(none)* | List all pending guest command permission escalation requests. |
+| `approve` | `<id \| cmd> [--once]` | Approve a guest request. Appends `--once` for single-use execution; otherwise approves session-wide. |
+| `deny` | `<id \| cmd>` | Deny a pending guest request and suppress repeat alerts. |
+| `allow` | `<cmd>` | Proactively add `<cmd>` to the current view-only session allowlist. |
+| `revoke` | `<cmd>` | Revoke permission for `<cmd>` from the current view-only session allowlist. |
+| `timeout` | `[min \| persistent]` | Query current default timeout or set a new duration (in minutes, or `0` / `persistent`). |
+| `stop` | `all` | Stop all active tunnels and terminate all background watchdogs. |
+| `stop` | `<SERVICE>` | Stop a specific service (`SSH`, `VIEW`, `RECV`, `FILES`, or `WEBGUI`). |
+| `update` | *(none)* | Check GitHub for updates to the CLI script and TailCat engine binary, and upgrade if needed. |
+| `--version` | *(none)* | Display TAILCAT ZER0 version and installed engine binary version. |
+
+---
+
+## 💻 CLI Examples
+
+### 1. Starting Services Non-Interactively
+```sh
+# Start a view-only shell for a forum helper
+tailcatzero view
+
+# Start an SFTP share of USB drive in read-only mode
+tailcatzero files /tmp/mnt/USB_DRIVE/logs ro
+
+# Start an encrypted DropBox in persistent mode (no timeout)
+tailcatzero timeout 0
+tailcatzero recv /tmp/mnt/USB_DRIVE/inbox
+tailcatzero timeout 30  # Restore default
+```
+
+### 2. Managing Permission Escalation
+```sh
+# List all pending guest requests
+tailcatzero requests
+
+# Output:
+# ID   GUEST   COMMAND               STATUS    THREAT
+# --------------------------------------------------------
+# 1    guest   traceroute 1.1.1.1   PENDING   LOW
+
+# Approve request #1 for the remainder of the session
+tailcatzero approve 1
+
+# Approve a request for single-use only
+tailcatzero approve 1 --once
+
+# Deny request #1
+tailcatzero deny 1
+
+# Proactively permit 'iperf3'
+tailcatzero allow iperf3
+```
+
+### 3. Checking Status and Teardown
+```sh
+# Check running tunnels
+tailcatzero status
+
+# Stop specific service
+tailcatzero stop VIEW
+
+# Stop everything immediately
+tailcatzero stop all
+```
+
+---
+
+## 🤖 Headless Scripting & Integration
+
+### Example 1: Extract Capability Token in a Script
+To extract the capability token programmatically (e.g. to send to a private Telegram bot or webhook):
+
+```bash
+#!/bin/sh
+# Start a view-only diagnostic session
+tailcatzero view > /tmp/tc_output.log 2>&1 &
+sleep 2
+
+# Extract token from active state file
+TOKEN=$(grep "TOKEN=" /tmp/tailcat-view.env | cut -d'=' -f2)
+
+if [ -n "$TOKEN" ]; then
+    echo "Active Token: $TOKEN"
+    # Example: Send to Telegram
+    # curl -s -X POST "https://api.telegram.org/bot<TOKEN>/sendMessage" \
+    #      -d chat_id="<CHAT_ID>" \
+    #      -d text="Router View-Only Diagnostic Token: $TOKEN"
+fi
+```
+
+### Example 2: Scheduled Daily Firmware / Backup DropBox
+You can configure an Asuswrt `cru` cron job to automatically open a temporary 1-hour DropBox every Sunday at 3 AM:
+
+```sh
+cru a WeeklyDropbox "0 3 * * 0 /jffs/scripts/tailcatzero recv /tmp/mnt/USB_DRIVE/backups"
+```
+Because the default timeout automatically triggers teardown, the DropBox closes itself after the configured timeout period without manual intervention.

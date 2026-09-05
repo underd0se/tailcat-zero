@@ -4,6 +4,8 @@
 
 Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`magicsock` + WireGuard + DERP NAT traversal) without requiring a Tailscale account or central coordination server.
 
+📚 **[Read the Official Wiki & Documentation](wiki/Home.md)** | **[GitHub Wiki](https://github.com/underd0se/tailcat-zero/wiki)**
+
 ---
 
 ```text
