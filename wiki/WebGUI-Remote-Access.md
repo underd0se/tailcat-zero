@@ -54,16 +54,40 @@ TAILCAT ZER0 creates an ephemeral encrypted WireGuard tunnel targeting your rout
 #### Via Interactive TUI:
 1. Run `tailcatzero`.
 2. Select **Option 4 (🌐 Expose Router WebGUI)**.
-3. Choose the target port:
-   * **Option 1:** HTTPS Port `8443` (Default).
-   * **Option 2:** HTTP Port `80`.
+3. TAILCAT ZER0 automatically inspects NVRAM (`https_lanport` / `http_lanport`), binds the tunnel, and renders the dedicated WebGUI Active Session Card:
+
+```text
+  TAILCAT ZER0 v1.7.1              ╱|、
+                                 (˚ˎ 。7
+                                  |、˜〵
+  Instant Tunnel Manager         じしˍ,)ノ
+
+========================================================================
+
+  🐱 TAILCAT ZER0 — Active Session
+========================================================================
+
+  Service:     🌐 Router WebGUI (Port 8443)
+  Destination: https://192.168.50.1:8443 (Ports: 8443,80)
+  Auto-Kill:   ⏱️ 30m remaining
+  Security:    🔒 WireGuard P2P Encrypted (Zero WAN Ports Open)
+
+  💬 Copy & Paste to Friend / Admin Support:
+  ────────────────────────────────────────────────────────────────────────
+  Hey, I've opened a temporary TailCat session on my router (30m remaining).
+  1. Run: tailcat forward tcpGFwWCBVZX0... 8443
+  2. Open browser: https://localhost:8443
+  ────────────────────────────────────────────────────────────────────────
+
+========================================================================
+
+  🛑 Stop  |  📱 QR Code  |  🔄 Refresh  |  ↩️ Back: 
+```
 
 #### Via CLI:
 ```sh
 tailcatzero webgui
 ```
-
-TAILCAT ZER0 generates a unique capability token (e.g. `tc9a4f21de805c31`).
 
 ---
 

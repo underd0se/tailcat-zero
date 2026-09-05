@@ -65,8 +65,7 @@ tailcatzero --version
 ```
 *Expected output:*
 ```text
-TAILCAT ZER0 v1.7.1
-Engine: v0.6.0
+TAILCAT ZER0 v1.7.1 (engine v0.6.0)
 ```
 
 Check the initial service status:
@@ -75,12 +74,35 @@ tailcatzero status
 ```
 *Expected output:*
 ```text
-[✓] No active TAILCAT ZER0 tunnels currently running.
+[⚪] No active TAILCAT ZER0 sessions running.
 ```
 
-Launch the interactive cyberpunk TUI dashboard:
+Launch the interactive terminal dashboard:
 ```sh
 tailcatzero
+```
+
+```text
+  TAILCAT ZER0 v1.7.1              ╱|、
+                                 (˚ˎ 。7
+                                  |、˜〵
+  Instant Tunnel Manager         じしˍ,)ノ
+
+========================================================================
+
+  1. 🆘 Remote Support Shell         Full root or view-only access      [⚪ Inactive]
+  2. 📥 Receive Files                Direct P2P file transfer           [⚪ Inactive]
+  3. 📁 Share Directory (SFTP)       Share a folder from your drive     [⚪ Inactive]
+  4. 🌐 Expose Router WebGUI         Access to router's web interface   [⚪ Inactive]
+
+  ------------------------------------------------------------------------
+
+  5. ⏱️ Configure Default Timeout    Current: 30 min
+  6. ⚙️ Manage TAILCAT ZER0          Update, reinstall, or remove
+
+========================================================================
+
+  👁️ View Sessions  |  🛑 Stop  |  ↩️ Exit: 
 ```
 
 ---
@@ -98,13 +120,22 @@ tailcatzero update
 ```
 
 ### Smart Version Comparison Logic:
-* **CLI Script Update:** Fetches the latest script from GitHub. If an update is applied, the script automatically executes `exec "$ADDON_SCRIPT"` to cleanly reload the in-memory shell process without requiring a manual terminal restart.
-* **Engine Binary Check:** Inspects `$TAILCAT_BIN --version` against the latest GitHub release tag from `https://github.com/tailscale/tailcat/releases/latest`. If the installed version already matches, it skips redundant downloads:
-  ```text
-  [*] Installed engine version: v0.6.0
-  [*] Latest release on GitHub:  v0.6.0
-  [✓] TailCat engine binary is already up to date (v0.6.0). Skipping download.
-  ```
+* **CLI Script Update:** Fetches the latest script from GitHub. If an update is applied, the script automatically reloads the in-memory shell process cleanly.
+* **Engine Binary Check:** Inspects the installed engine version against the latest GitHub release. If versions match, redundant downloads are skipped:
+
+```text
+========================================================================
+  🐱 TAILCAT ZER0 — Dual-Component Update Check
+========================================================================
+
+  [1/2] Checking TAILCAT ZER0 Script:
+        Current: v1.7.1 | Remote: v1.7.1
+        [✓] Script is up to date.
+
+  [2/2] Checking TailCat Engine Binary:
+        Current: v0.6.0 | Remote: v0.6.0
+        [✓] Engine binary is already up to date (v0.6.0).
+```
 
 ---
 
@@ -113,7 +144,26 @@ tailcatzero update
 If you ever wish to completely remove TAILCAT ZER0 from your router:
 
 ### Method 1: Via TUI
-Launch `tailcatzero` ➔ select **Option 6 (Manage TAILCAT ZER0)** ➔ select **Option 3 (Complete Uninstall)**. Confirm with `y`.
+Launch `tailcatzero` ➔ select **Option 6 (Manage TAILCAT ZER0)** ➔ select **Option 3 (Complete Uninstall)**:
+
+```text
+  TAILCAT ZER0 v1.7.1              ╱|、
+                                 (˚ˎ 。7
+                                  |、˜〵
+  Instant Tunnel Manager         じしˍ,)ノ
+
+========================================================================
+
+  🗑️  Uninstall TAILCAT ZER0
+
+  This will terminate all active sessions and clean up all TailCat files.
+
+========================================================================
+
+  🗑️ Yes, Uninstall  |  ↩️ Back / Cancel: 
+```
+
+Confirm with `y` to terminate all tunnels and purge all addon files.
 
 ### Method 2: Via Command Line
 Run this cleanup sequence to stop all tunnels and remove files:

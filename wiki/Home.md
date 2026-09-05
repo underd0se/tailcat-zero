@@ -64,6 +64,29 @@ Launch the interactive dashboard:
 tailcatzero
 ```
 
+```text
+  TAILCAT ZER0 v1.7.1              ╱|、
+                                 (˚ˎ 。7
+                                  |、˜〵
+  Instant Tunnel Manager         じしˍ,)ノ
+
+========================================================================
+
+  1. 🆘 Remote Support Shell         Full root or view-only access      [⚪ Inactive]
+  2. 📥 Receive Files                Direct P2P file transfer           [⚪ Inactive]
+  3. 📁 Share Directory (SFTP)       Share a folder from your drive     [⚪ Inactive]
+  4. 🌐 Expose Router WebGUI         Access to router's web interface   [⚪ Inactive]
+
+  ------------------------------------------------------------------------
+
+  5. ⏱️ Configure Default Timeout    Current: 30 min
+  6. ⚙️ Manage TAILCAT ZER0          Update, reinstall, or remove
+
+========================================================================
+
+  👁️ View Sessions  |  🛑 Stop  |  ↩️ Exit: 
+```
+
 Or spin up an instant view-only diagnostic shell for remote help:
 
 ```sh

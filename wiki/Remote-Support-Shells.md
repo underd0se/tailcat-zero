@@ -29,10 +29,54 @@ The **View-Only Shell** is built for zero-trust scenarios. When an external help
 ### Starting a View-Only Shell:
 
 #### Via Interactive TUI:
-1. Run `tailcatzero`.
-2. Select **Option 1 (🆘 Remote Support Shell)**.
-3. Select **Option 2 (Restricted View-Only Shell)**.
-4. The Active Session Card will display your capability token and a copy-paste invite snippet.
+1. Run `tailcatzero` and select **Option 1 (🆘 Remote Support Shell)**:
+
+```text
+  TAILCAT ZER0 v1.7.1              ╱|、
+                                 (˚ˎ 。7
+                                  |、˜〵
+  Instant Tunnel Manager         じしˍ,)ノ
+
+========================================================================
+
+  🆘 Remote Support Shell Options:
+
+  1. 🔓 Full Root Shell (Read-Write)     Full admin shell with unrestricted root  [⚪ Inactive]
+  2. 🔒 View-Only Diagnostic Shell       Safe inspection; writes blocked          [⚪ Inactive]
+
+========================================================================
+
+  🔓 Root (Default)  |  🔒 View-Only  |  ↩️ Back: 
+```
+
+2. Select **Option 2 (Restricted View-Only Shell)** (or press `v`).
+3. The dedicated Active Session Card will display your capability token and copy-paste invite snippet:
+
+```text
+  TAILCAT ZER0 v1.7.1              ╱|、
+                                 (˚ˎ 。7
+                                  |、˜〵
+  Instant Tunnel Manager         じしˍ,)ノ
+
+========================================================================
+
+  🐱 TAILCAT ZER0 — Active Session
+========================================================================
+
+  Service:     🔒 View-Only Diagnostic Shell
+  Auto-Kill:   ⏱️ 28m remaining
+  Security:    🔒 WireGuard P2P • Read-Only (System Writes Blocked)
+
+  💬 Copy & Paste to Friend / Admin Support:
+  ────────────────────────────────────────────────────────────────────────
+  Hey, I've opened a temporary read-only diagnostic TailCat session on my router (28m remaining).
+  Run: tailcat ssh tcpGFwWCBquiVYgLrL7k3HQDl_jERoGKCT7I5VYUIQeZ6LF_q4e2FrWCCGx_dEaW2LF0g2e2n6b1rBPDOYeDTyCVNS2qKtROJmKmFxWCCufT1iqPy9rsILOQQ7EUZk6HsfbXwb3xyO8RbF99tPgGFpGQEv
+  ────────────────────────────────────────────────────────────────────────
+
+========================================================================
+
+  🛑 Stop  |  📱 QR Code  |  🔄 Refresh  |  ↩️ Back: 
+```
 
 #### Via Direct CLI Command:
 ```sh
@@ -69,9 +113,34 @@ The **Root Shell** provides complete, unrestricted administrative root access to
 ### Starting a Root Shell:
 
 #### Via Interactive TUI:
-1. Run `tailcatzero`.
-2. Select **Option 1 (🆘 Remote Support Shell)**.
-3. Select **Option 1 (Full Root Shell)**.
+1. Run `tailcatzero` ➔ select **Option 1 (🆘 Remote Support Shell)** ➔ select **Option 1 (Full Root Shell)** (or press `r` / `Enter`).
+2. The Root Active Session Card is displayed:
+
+```text
+  TAILCAT ZER0 v1.7.1              ╱|、
+                                 (˚ˎ 。7
+                                  |、˜〵
+  Instant Tunnel Manager         じしˍ,)ノ
+
+========================================================================
+
+  🐱 TAILCAT ZER0 — Active Session
+========================================================================
+
+  Service:     🆘 Remote Support Shell (Root)
+  Auto-Kill:   ⏱️ 30m remaining
+  Security:    🔒 WireGuard P2P Encrypted (Zero WAN Ports Open)
+
+  💬 Copy & Paste to Friend / Admin Support:
+  ────────────────────────────────────────────────────────────────────────
+  Hey, I've opened a temporary TailCat session on my router (30m remaining).
+  Run: tailcat ssh tcpGFwWCCuqKFX5cJxm-pNdgo2ILkJgpEGQO3cofQPT4fhKulsPGFrWCCJzce8x0-_mKErEp7pzaVaP_8ugclQvlwiwn0nCDBAZWFxWCBAelM3VvuSlnH6mIe_NpCTqtGxv1-S0oVPZ03h3-t4emFpGQEv
+  ────────────────────────────────────────────────────────────────────────
+
+========================================================================
+
+  🛑 Stop  |  📱 QR Code  |  🔄 Refresh  |  ↩️ Back: 
+```
 
 #### Via Direct CLI Command:
 ```sh

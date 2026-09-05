@@ -10,16 +10,16 @@ Run `tailcatzero` in your router shell to open the dashboard:
 
 ```text
   TAILCAT ZER0 v1.7.1              ╱|、
-                                 (˚ˎ 。7  
-                                  |、˜〵          
+                                 (˚ˎ 。7
+                                  |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
 
 ========================================================================
 
-  1. 🆘 Remote Support Shell         Full root or view-only access     [🟢 Root + 🔒 View]
-  2. 📥 Receive Files                Direct P2P file transfer          [⚪ Inactive]
-  3. 📁 Share Directory (SFTP)       Share a folder from your drive    [🟢 Active: 28m]
-  4. 🌐 Expose Router WebGUI         Access to router's web interface  [⚪ Inactive]
+  1. 🆘 Remote Support Shell         Full root or view-only access      [⚪ Inactive]
+  2. 📥 Receive Files                Direct P2P file transfer           [⚪ Inactive]
+  3. 📁 Share Directory (SFTP)       Share a folder from your drive     [⚪ Inactive]
+  4. 🌐 Expose Router WebGUI         Access to router's web interface   [⚪ Inactive]
 
   ------------------------------------------------------------------------
 
@@ -28,54 +28,147 @@ Run `tailcatzero` in your router shell to open the dashboard:
 
 ========================================================================
 
-  [v] View Sessions  |  [s] Stop  |  [P] 🔔 1 Pending Request  |  [e] Exit: 
+  👁️ View Sessions  |  🛑 Stop  |  ↩️ Exit: 
+```
+
+When sessions are active and a guest submits an on-demand permission request, the dashboard dynamically alerts you with a notification badge:
+
+```text
+  TAILCAT ZER0 v1.7.1              ╱|、
+                                 (˚ˎ 。7
+                                  |、˜〵
+  Instant Tunnel Manager         じしˍ,)ノ
+
+========================================================================
+
+  🔔 [1 Permission Request(s) Pending — Press P to Review]
+
+  1. 🆘 Remote Support Shell         Full root or view-only access      [🔒 View: 24m]
+  2. 📥 Receive Files                Direct P2P file transfer           [⚪ Inactive]
+  3. 📁 Share Directory (SFTP)       Share a folder from your drive     [🟢 Active: 24m]
+  4. 🌐 Expose Router WebGUI         Access to router's web interface   [⚪ Inactive]
+
+  ------------------------------------------------------------------------
+
+  5. ⏱️ Configure Default Timeout    Current: 30 min
+  6. ⚙️ Manage TAILCAT ZER0          Update, reinstall, or remove
+
+========================================================================
+
+  🔔 Pending (1)  |  👁️ View Sessions  |  🛑 Stop  |  ↩️ Exit: 
 ```
 
 ### Dynamic Service Status Indicators
 * `[⚪ Inactive]`: Service is not currently running.
 * `[🟢 Active: Xm]`: Service is live, showing minutes remaining before auto-kill teardown.
+* `[🔒 View: Xm]`: View-only diagnostic shell is running.
 * `[🟢 Root + 🔒 View]`: Both root and view-only remote support shells are running concurrently.
-* `[🔔 [P]ending Requests]`: Displayed whenever a guest connected to a view-only session has submitted an on-demand command execution request. Pressing `P` directly opens the interactive approval modal.
+* `🔔 [1 Permission Request(s) Pending]`: Displayed whenever a guest connected to a view-only session has submitted an on-demand command execution request. Pressing `P` directly opens the interactive approval modal.
 
 ---
 
 ## 📱 The Active Session Card
 
-When you start any service or press `v` (View Sessions), TAILCAT ZER0 renders a dedicated **Active Session Card**:
+When you launch any service or press `v` (View Sessions), TAILCAT ZER0 renders a dedicated **Active Session Card**:
 
 ```text
-========================================================================
-  SESSION CARD: RESTRICTED VIEW-ONLY SHELL
-========================================================================
+  TAILCAT ZER0 v1.7.1              ╱|、
+                                 (˚ˎ 。7
+                                  |、˜〵
+  Instant Tunnel Manager         じしˍ,)ノ
 
-  Service:           SSH View-Only Diagnostic Shell
-  Status:            🟢 ACTIVE
-  Auto-Kill In:      27 min (Auto-teardown watchdog active)
-  Access Token:      tc8d2a1b9f7c04e3
-
-------------------------------------------------------------------------
-  HOW YOUR GUEST CONNECTS:
-------------------------------------------------------------------------
-  Run this on client machine (macOS / Linux / Windows):
-  $ tailcat ssh tc8d2a1b9f7c04e3
-
-------------------------------------------------------------------------
-  READY-TO-PASTE INVITE (Copy & send to helper):
-------------------------------------------------------------------------
-  I've started a read-only diagnostic session on my router.
-  Connect with: tailcat ssh tc8d2a1b9f7c04e3
 ========================================================================
 
-  🛑 [s] Stop  |  📱 [q] QR Code  |  🔄 [r] Refresh  |  ↩️ [b] Back: 
+  🐱 TAILCAT ZER0 — Active Session
+========================================================================
+
+  Service:     🔒 View-Only Diagnostic Shell
+  Auto-Kill:   ⏱️ 28m remaining
+  Security:    🔒 WireGuard P2P • Read-Only (System Writes Blocked)
+
+  💬 Copy & Paste to Friend / Admin Support:
+  ────────────────────────────────────────────────────────────────────────
+  Hey, I've opened a temporary read-only diagnostic TailCat session on my router (28m remaining).
+  Run: tailcat ssh tcpGFwWCBquiVYgLrL7k3HQDl_jERoGKCT7I5VYUIQeZ6LF_q4e2FrWCCGx_dEaW2LF0g2e2n6b1rBPDOYeDTyCVNS2qKtROJmKmFxWCCufT1iqPy9rsILOQQ7EUZk6HsfbXwb3xyO8RbF99tPgGFpGQEv
+  ────────────────────────────────────────────────────────────────────────
+
+========================================================================
+
+  🛑 Stop  |  📱 QR Code  |  🔄 Refresh  |  ↩️ Back: 
 ```
 
 ### Hotkey Actions on Session Cards:
-| Key | Action | Description |
+| Key / Number | Action | Description |
 |---|---|---|
-| `s` | **Stop Session** | Prompts to safely terminate the selected tunnel and revoke the token immediately. |
+| `s` / `1` | **Stop Session** | Safely terminates the tunnel and revokes the capability token immediately. |
+| `q` | **QR Code** | Toggles an inline ASCII QR code of the capability token. |
 | `r` | **Refresh** | Refreshes the countdown timer and checks connection state. |
-| `q` | **QR Code** | Displays an inline ASCII QR code of the capability token. |
-| `b` | **Back** | Returns to the main menu (leaves tunnel running in background). |
+| `b` / `Enter` | **Back** | Returns to the dashboard (leaves tunnel running in background). |
+
+---
+
+## 🗂️ Multi-Session Overview
+
+When two or more services run simultaneously, pressing `v` (View Sessions) opens the **Multi-Session Overview**:
+
+```text
+  TAILCAT ZER0 v1.7.1              ╱|、
+                                 (˚ˎ 。7
+                                  |、˜〵
+  Instant Tunnel Manager         じしˍ,)ノ
+
+========================================================================
+
+  🐱 TAILCAT ZER0 — Active Sessions (2 Running)
+========================================================================
+
+  [1] 🔒 View-Only Diagnostic Shell        ⏱️ 26m remaining  🔒 P2P
+  [2] 📁 SFTP File Share (/jffs)           ⏱️ 26m remaining  🔒 P2P
+
+  💬 Copy & Paste Connect Commands:
+  ────────────────────────────────────────────────────────────────────────
+  • VIEW:    tailcat ssh tcpGFwWCBquiVYgLrL7k3HQDl...
+  • FILES:   tailcat ls -l tcpGFwWCBwoiH7ENLsCVJqJ...
+  ────────────────────────────────────────────────────────────────────────
+
+========================================================================
+
+  👁️ View (1-2)  |  🛑 Stop All  |  🔄 Refresh  |  ↩️ Back: 
+```
+
+From this overview:
+* Type `1` or `v1` to open the dedicated card for session 1.
+* Type `2` or `v2` to open session 2.
+* Type `s` to stop all sessions.
+
+---
+
+## 🛑 Safe Stop Confirmation
+
+Pressing `s` (Stop) prompts you to confirm which session to terminate, preventing accidental service interruptions:
+
+```text
+  TAILCAT ZER0 v1.7.1              ╱|、
+                                 (˚ˎ 。7
+                                  |、˜〵
+  Instant Tunnel Manager         じしˍ,)ノ
+
+========================================================================
+
+  🛑 Active Sessions to Stop:
+
+  1. 🔒 View-Only Diagnostic Shell
+  2. 📁 SFTP File Share (/jffs)
+
+========================================================================
+
+  🛑 Stop (1-2)  |  🛑 All  |  ↩️ Back: 
+```
+
+* Enter `1` or `s` to stop session 1.
+* Enter `2` to stop session 2.
+* Enter `a` to stop all sessions.
+* Enter `b` to cancel.
 
 ---
 
@@ -84,16 +177,16 @@ When you start any service or press `v` (View Sessions), TAILCAT ZER0 renders a 
 If Entware has `qrencode` installed, pressing `q` renders an inline ASCII QR code directly inside your terminal:
 
 ```text
-█████████████████████████████
-█████████████████████████████
-████ ▄▄▄▄▄ ██▀▀ █ ▄▄▄▄▄ ████
-████ █   █ █ █ ▄█ █   █ ████
-████ █▄▄▄█ █▀ █▄█ █▄▄▄█ ████
-████▄▄▄▄▄▄▄█▄█ █▄█▄▄▄▄▄▄▄████
+█████████████████████████████████████████████████
+█████████████████████████████████████████████████
+████ ▄▄▄▄▄ ██▀▀ █ ▄▄▄▄▄ ████████ ▄▄▄▄▄ ██▀▀ █ ███
+████ █   █ █ █ ▄█ █   █ ████████ █   █ █ █ ▄█ ███
+████ █▄▄▄█ █▀ █▄█ █▄▄▄█ ████████ █▄▄▄█ █▀ █▄█ ███
+████▄▄▄▄▄▄▄█▄█ █▄█▄▄▄▄▄▄▄████████▄▄▄▄▄▄▄█▄█ █▄███
 ...
 ```
 
-This allows instant token capture using mobile devices running TailCat or smartphone cameras, without needing to manually transcribe or copy long capability tokens across devices.
+This allows instant token capture using mobile devices or laptops with webcams without copying long tokens.
 
 ---
 
@@ -101,20 +194,59 @@ This allows instant token capture using mobile devices running TailCat or smartp
 
 By default, every session is guarded by an ephemeral watchdog timer set to **30 minutes**.
 
-### Configuring Timeout:
-1. Select **Option 5 (Configure Default Timeout)** from the main menu.
-2. Enter the desired duration in minutes (e.g., `15`, `60`, `120`).
-3. **Persistent Mode:** Enter `0` or `persistent`. When set to `0`, tunnels run indefinitely until explicitly stopped via the TUI, CLI (`tailcatzero stop`), or router reboot.
+Select **Option 5 (Configure Default Timeout)** from the main menu:
+
+```text
+  TAILCAT ZER0 v1.7.1              ╱|、
+                                 (˚ˎ 。7
+                                  |、˜〵
+  Instant Tunnel Manager         じしˍ,)ノ
+
+========================================================================
+
+  ⏱️ Configure Session Auto-Kill Timeout
+
+  Current Timeout: 30 minutes
+
+  1. ⏱️ 30 Minutes                   Standard auto-kill (Default)
+  2. ⏱️ 60 Minutes                   1 Hour session
+  3. ⏱️ 120 Minutes                  2 Hours session
+  4. ♾️  Persistent (0 min)           No auto-kill; runs until stopped
+
+========================================================================
+
+  ⏱️ Set Timeout (1-4 or minutes)  |  ↩️ Back: 
+```
+
+* Enter `1`, `2`, or `3` for quick presets.
+* Enter custom minutes (e.g. `45` or `180`).
+* Enter `4` or `p` for **Persistent Mode** (`0 min`), disabling auto-kill until manually stopped.
 
 ---
 
-## 🖐️ 5-Slot Multi-Service Concurrency
+## ⚙️ Managing TAILCAT ZER0
 
-TAILCAT ZER0 supports up to **5 concurrent services** running at the same time:
-1. `SSH_ROOT`: Full administrative root shell.
-2. `SSH_VIEW`: Restricted read-only diagnostic shell.
-3. `RECV`: Encrypted drop box receiver.
-4. `FILES`: SFTP directory share.
-5. `WEBGUI`: Encrypted WebGUI proxy tunnel.
+Select **Option 6 (Manage TAILCAT ZER0)** from the main menu:
 
-Each service runs on its own isolated ephemeral WireGuard node with its own unique capability token, meaning you can share view-only access with a forum helper while simultaneously receiving a firmware backup from your desktop PC without any token conflicts or crosstalk.
+```text
+  TAILCAT ZER0 v1.7.1              ╱|、
+                                 (˚ˎ 。7
+                                  |、˜〵
+  Instant Tunnel Manager         じしˍ,)ノ
+
+========================================================================
+
+  ⚙️  Manage TAILCAT ZER0:
+
+  1. 🔄 Check & Update TAILCAT ZER0  Update script & engine (v1.7.1 / v0.6.0)
+  2. ⚡ Force Reinstall TAILCAT ZER0 Fresh download of script & binary
+  3. 🗑️ Complete Uninstall           Remove addon, configs & init hooks
+
+========================================================================
+
+  🔄 Update  |  ⚡ Reinstall  |  🗑️ Complete Uninstall  |  ↩️ Back: 
+```
+
+* Enter `u` or `1` to run the smart updater.
+* Enter `r` or `2` to force-reinstall fresh copies from GitHub.
+* Enter `c` or `3` to perform a complete clean uninstallation.

@@ -93,6 +93,38 @@ Test whether the compiled engine binary runs without missing libraries or archit
 
 ---
 
+### 6. "Service is already running prompt"
+* **Symptom:** Launching a service from the menu displays:
+  `[!] Service 🆘 Remote Support Shell (Root) is already running (PID: 14205).`
+* **Explanation:** TAILCAT ZER0 detects that a background instance of this service is already active on the router:
+
+```text
+  TAILCAT ZER0 v1.7.1              ╱|、
+                                 (˚ˎ 。7
+                                  |、˜〵
+  Instant Tunnel Manager         じしˍ,)ノ
+
+========================================================================
+
+  [!] Service 🆘 Remote Support Shell (Root) is already running (PID: 14205).
+
+  1. 👁️ View session card and token
+  2. 🛑 Stop active session
+  3. 🔄 Restart session                 Stop and launch with fresh token
+
+========================================================================
+
+  👁️ View (Default)  |  🛑 Stop  |  🔄 Restart  |  ↩️ Back: 
+```
+
+* **Actions:**
+  * Press `v` or `1` (or `Enter`) to view the active session card and copy its token.
+  * Press `s` or `2` to stop the running session immediately.
+  * Press `r` or `3` to stop and cleanly restart the service with a fresh token.
+  * Press `b` to cancel and return to the main dashboard.
+
+---
+
 ## 💬 Frequently Asked Questions (FAQ)
 
 ### Q: Do I need a Tailscale account or credit card?

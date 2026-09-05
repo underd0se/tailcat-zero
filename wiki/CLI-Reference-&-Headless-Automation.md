@@ -6,8 +6,29 @@ While TAILCAT ZER0 features a full interactive TUI, all features are exposed via
 
 ## 📖 Command Reference
 
+Run `tailcatzero -h` or `tailcatzero --help`:
+
 ```text
-Usage: tailcatzero <command> [arguments...]
+TAILCAT ZER0 v1.7.1 — Ephemeral WireGuard Tunnel & Multi-Service Manager
+
+Usage:
+  tailcatzero                           Launch interactive TUI dashboard (default)
+  tailcatzero status                    Display running sessions and connect tokens
+  tailcatzero stop [all|SVC]            Stop all sessions or a specific service (SSH, VIEW, RECV, FILES, WEBGUI)
+  tailcatzero ssh [root|view]           Start remote shell tunnel (default root)
+  tailcatzero view                      Start restricted view-only diagnostic shell
+  tailcatzero recv [dir]                Start encrypted DropBox tunnel (default /tmp/tailcat-inbox)
+  tailcatzero files [dir] [ro|rw]       Start SFTP directory share (default /jffs ro)
+  tailcatzero webgui                    Start router WebGUI tunnel
+  tailcatzero requests                  List pending guest permission requests
+  tailcatzero approve [id|cmd] [--once] Approve guest request (session-wide or single-use)
+  tailcatzero deny [id|cmd]             Deny guest request and suppress repeat prompts
+  tailcatzero allow <cmd>               Proactively permit command in view-only mode
+  tailcatzero revoke <cmd>              Revoke command permission from view-only mode
+  tailcatzero timeout [min|persistent]  Get or configure default auto-kill session timeout
+  tailcatzero update                    Update TAILCAT ZER0 script & engine
+  tailcatzero -v, --version             Show version
+  tailcatzero -h, --help                Show this help message
 ```
 
 | Command | Arguments | Description |
@@ -27,7 +48,7 @@ Usage: tailcatzero <command> [arguments...]
 | `stop` | `all` | Stop all active tunnels and terminate all background watchdogs. |
 | `stop` | `<SERVICE>` | Stop a specific service (`SSH`, `VIEW`, `RECV`, `FILES`, or `WEBGUI`). |
 | `update` | *(none)* | Check GitHub for updates to the CLI script and TailCat engine binary, and upgrade if needed. |
-| `--version` | *(none)* | Display TAILCAT ZER0 version and installed engine binary version. |
+| `-v`, `--version` | *(none)* | Display TAILCAT ZER0 version and installed engine binary version. |
 
 ---
 
@@ -52,11 +73,6 @@ tailcatzero timeout 30  # Restore default
 # List all pending guest requests
 tailcatzero requests
 
-# Output:
-# ID   GUEST   COMMAND               STATUS    THREAT
-# --------------------------------------------------------
-# 1    guest   traceroute 1.1.1.1   PENDING   LOW
-
 # Approve request #1 for the remainder of the session
 tailcatzero approve 1
 
@@ -74,7 +90,26 @@ tailcatzero allow iperf3
 ```sh
 # Check running tunnels
 tailcatzero status
+```
 
+*Expected output when sessions are active:*
+```text
+[🟢] Active TAILCAT ZER0 Sessions (2 Running):
+
+  • 🔒 View-Only Diagnostic Shell      ⏱️ 26m remaining  PID: 14205
+    Connect:  tailcat ssh tcpGFwWCBquiVYgLrL7k3HQDl...
+    Requests: 🔔 1 Pending ('tailcatzero requests' or 'tailcatzero approve')
+
+  • 📁 SFTP File Share (/jffs)         ⏱️ 26m remaining  PID: 14210
+    Connect:  tailcat ls -l tcpGFwWCBwoiH7ENLsCVJqJ...
+```
+
+*Expected output when idle:*
+```text
+[⚪] No active TAILCAT ZER0 sessions running.
+```
+
+```sh
 # Stop specific service
 tailcatzero stop VIEW
 

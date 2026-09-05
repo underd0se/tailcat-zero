@@ -134,34 +134,58 @@ The moment a request is submitted:
 ### 3. Host Approval Channels
 
 #### Method A: Via Interactive TUI Modal
-Press `P` on the main menu or active session card to open the **Pending Requests Modal**:
+Press `P` on the main dashboard or active session card to open the **Pending Requests Modal**:
 
 ```text
+  TAILCAT ZER0 v1.7.1              ╱|、
+                                 (˚ˎ 。7
+                                  |、˜〵
+  Instant Tunnel Manager         じしˍ,)ノ
+
 ========================================================================
-  🔔 PENDING PERMISSION REQUEST (#1)
+
+  🔔 Pending Host Approval Request (1 of 1):
+
+  Command:      traceroute 1.1.1.1
+  Base Utility: traceroute
+  Threat Level: LOW (Diagnostic inspection)
+  Requested At: Sat Sep 5 21:55:00 2026
+
+  Select Resolution:
+  1. ⚡ Approve for Session    (Persists in allowlist until session teardown)
+  2. ⏱️  Approve Once           (Permits one single execution only)
+  3. ❌ Deny request           (Block execution & suppress repeat prompts)
+
 ========================================================================
 
-  Guest:         Remote Support Guest (View-Only Session)
-  Command:       traceroute 1.1.1.1
-  Requested At:  20:45:12
-  Threat Level:  LOW (Diagnostic utility)
+  ⚡ Session (Default)  |  ⏱️ Once  |  ❌ Deny  |  ↩️ Back: 
+```
 
-------------------------------------------------------------------------
-  ACTIONS:
-------------------------------------------------------------------------
-  [1] Approve for this session (Cached allowlist in memory)
-  [2] Approve once (Single execution only)
-  [3] Deny request
-  [4] Skip / Review later
+If multiple requests are pending, TAILCAT ZER0 presents an interactive selection picker first:
 
-  Select action [1-4]: 
+```text
+  TAILCAT ZER0 v1.7.1              ╱|、
+                                 (˚ˎ 。7
+                                  |、˜〵
+  Instant Tunnel Manager         じしˍ,)ノ
+
+========================================================================
+
+  🔍 2 Pending Guest Requests:
+
+  1. traceroute 1.1.1.1 (traceroute) - Sat Sep 5 21:55:00 2026
+  2. iperf3 -c 1.1.1.1 (iperf3) - Sat Sep 5 21:55:10 2026
+
+========================================================================
+
+  🔍 Select (1-2)  |  ↩️ Back: 
 ```
 
 #### GTFOBin Threat Warnings:
-If a guest requests a binary that contains known subshell or file-writing vectors (e.g. `find -exec`, `awk 'BEGIN {system()}'`), the modal highlights a bold security warning:
+If a guest requests a binary that contains known subshell or file-writing vectors (e.g. `find`, `awk`, `python`, `vi`, `tar`), the modal highlights a bold security warning:
 ```text
-⚠️ WARNING: Binary 'find' has known GTFOBin vectors (arbitrary execution).
-Review arguments carefully before approving!
+  ⚠️  SECURITY WARNING: 'find' is a known GTFOBin binary!
+      Capable of subshell escapes (-exec, system). Review arguments carefully.
 ```
 
 #### Method B: Via Headless CLI

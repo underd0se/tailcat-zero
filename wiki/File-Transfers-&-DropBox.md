@@ -16,11 +16,60 @@ The **DropBox Receiver** creates an ephemeral one-way inbox on your router. Any 
 ### Starting DropBox:
 
 #### Via Interactive TUI:
-1. Run `tailcatzero`.
-2. Select **Option 2 (📥 Receive Files)**.
-3. Choose inbox destination:
-   * **Option 1:** Default volatile inbox (`/tmp/tailcat-inbox` in RAM).
-   * **Option 2:** Custom directory (e.g. `/tmp/mnt/USB_DRIVE/inbox` on an external hard drive).
+1. Run `tailcatzero` ➔ select **Option 2 (📥 Receive Files)**:
+
+```text
+  TAILCAT ZER0 v1.7.1              ╱|、
+                                 (˚ˎ 。7
+                                  |、˜〵
+  Instant Tunnel Manager         じしˍ,)ノ
+
+========================================================================
+
+  📥 Select DropBox Destination:
+
+  1. ⚡ Volatile RAM:  /tmp/tailcat-inbox           (Free: 384.2M) [Default]
+  2. 💾 USB Storage:   /tmp/mnt/USB/tailcat-inbox   (Free: 28.4G) [Persistent]
+  3. 📂 Custom Directory Path
+
+========================================================================
+
+  ⚡ RAM (Default)  |  💾 USB  |  📂 Custom  |  ↩️ Back: 
+```
+
+2. Select your destination:
+   * **RAM (`r` / `1` / Enter):** Fast, volatile inbox (`/tmp/tailcat-inbox`). Disappears cleanly on reboot.
+   * **USB (`u` / `2`):** Persistent storage on your mounted USB drive (`/tmp/mnt/USB/tailcat-inbox`).
+   * **Custom (`c` / `3`):** Prompts for any custom directory path.
+
+3. The DropBox Active Session Card renders your upload command and connect token:
+
+```text
+  TAILCAT ZER0 v1.7.1              ╱|、
+                                 (˚ˎ 。7
+                                  |、˜〵
+  Instant Tunnel Manager         じしˍ,)ノ
+
+========================================================================
+
+  🐱 TAILCAT ZER0 — Active Session
+========================================================================
+
+  Service:     📥 Encrypted File DropBox
+  Destination: /tmp/tailcat-inbox
+  Auto-Kill:   ⏱️ 30m remaining
+  Security:    🔒 WireGuard P2P Encrypted (Zero WAN Ports Open)
+
+  💬 Copy & Paste to Friend / Admin Support:
+  ────────────────────────────────────────────────────────────────────────
+  Hey, I've opened a temporary TailCat session on my router (30m remaining).
+  Run: tailcat cp <file_or_dir> tcpGFwWCCGsJ9JQ9WPomu5WUUGZY-kf26El-WSoPKoaeXo2RSGdGFrWCAsP6FxwhlwsFaNAiWcV6Ryp27eR4ho4IFCASRQCZRcRGFxWCAcb6A83f_08x3mY0kpBKLax4Uj_dP81xxlOF5T9ARnRmFpGQEv:
+  ────────────────────────────────────────────────────────────────────────
+
+========================================================================
+
+  🛑 Stop  |  📱 QR Code  |  🔄 Refresh  |  ↩️ Back: 
+```
 
 #### Via CLI:
 ```sh
@@ -63,9 +112,75 @@ The **SFTP Directory Sharing** feature exposes a specified router directory to r
 ### Starting SFTP Sharing:
 
 #### Via Interactive TUI:
-1. Run `tailcatzero`.
-2. Select **Option 3 (📁 Share Directory - SFTP)**.
-3. Select folder to share (default `/jffs`) and permission level (`ro` or `rw`).
+1. Run `tailcatzero` ➔ select **Option 3 (📁 Share Directory - SFTP)**:
+
+```text
+  TAILCAT ZER0 v1.7.1              ╱|、
+                                 (˚ˎ 。7
+                                  |、˜〵
+  Instant Tunnel Manager         じしˍ,)ノ
+
+========================================================================
+
+  📁 Select Directory to Share (SFTP):
+
+  1. 📂 Default JFFS:  /jffs                         (Router configs) [Default]
+  2. 💾 USB Storage:   /tmp/mnt/USB                  (Mounted storage)
+  3. 📂 Custom Directory Path
+
+========================================================================
+
+  📂 JFFS (Default)  |  💾 USB  |  📂 Custom  |  ↩️ Back: 
+```
+
+2. Select permission mode (`ro` or `rw`):
+
+```text
+  TAILCAT ZER0 v1.7.1              ╱|、
+                                 (˚ˎ 。7
+                                  |、˜〵
+  Instant Tunnel Manager         じしˍ,)ノ
+
+========================================================================
+
+  🔒 SFTP Permission Mode for /jffs:
+
+  1. 🔒 Read-Only (ro)      Safe remote browsing; no edits or deletes [Default]
+  2. ✏️  Read-Write (rw)     Full remote upload, edit, and delete access
+
+========================================================================
+
+  🔒 Read-Only (Default)  |  ✏️ Write  |  ↩️ Back: 
+```
+
+3. The SFTP Active Session Card displays your connection token and `tailcat ls` command:
+
+```text
+  TAILCAT ZER0 v1.7.1              ╱|、
+                                 (˚ˎ 。7
+                                  |、˜〵
+  Instant Tunnel Manager         じしˍ,)ノ
+
+========================================================================
+
+  🐱 TAILCAT ZER0 — Active Session
+========================================================================
+
+  Service:     📁 SFTP File Share (/jffs)
+  Destination: Path: /jffs (ro)
+  Auto-Kill:   ⏱️ 30m remaining
+  Security:    🔒 WireGuard P2P Encrypted (Zero WAN Ports Open)
+
+  💬 Copy & Paste to Friend / Admin Support:
+  ────────────────────────────────────────────────────────────────────────
+  Hey, I've opened a temporary TailCat session on my router (30m remaining).
+  Run: tailcat ls -l tcpGFwWCBwoiH7ENLsCVJqJkf3bqslXzPvZN8ojZE1xhLsIh1SNmFrWCBCSVSvDt58ByyZZ59rFCypZTzDrgIWPbSv7g7USo5mI2FxWCBLJkmyTLROiWxunuYi66TFGbl7na4F1KbxXpMxBHdbL2FpGQEv
+  ────────────────────────────────────────────────────────────────────────
+
+========================================================================
+
+  🛑 Stop  |  📱 QR Code  |  🔄 Refresh  |  ↩️ Back: 
+```
 
 #### Via CLI:
 ```sh
