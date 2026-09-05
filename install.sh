@@ -7,7 +7,6 @@
 set -eu
 
 VERSION="v1.8.0"
-TAILCAT_VER="v0.4.0"
 REPO_RAW_URL="https://raw.githubusercontent.com/underd0se/tailcat-zero/main"
 
 # ANSI Colors
@@ -53,23 +52,32 @@ printf "%b[+] Detected architecture: %b%s%b (%s)\n" "$C_GREEN" "$C_BOLD" "${pkg_
 # 3. Directory Setup
 mkdir -p "$ADDON_DIR" "$BIN_DIR"
 
-# 4. Download TailCat Static Binary
+# 4. Download TailCat Static Binary (100% Dynamic Discovery)
 cur_bin_ver=""
 if [ -x "$TAILCAT_BIN" ]; then
     cur_bin_ver=$("$TAILCAT_BIN" --version 2>/dev/null || true)
 fi
 
-latest_tag=$(curl -sI -m 5 https://github.com/tailscale/tailcat/releases/latest 2>/dev/null | grep -i '^location:' | sed -e 's/.*tag\///' -e 's/[[:space:]\r\n]//g' || true)
-target_bin_ver="${latest_tag:-${TAILCAT_VER}}"
+latest_tag=$(curl -sI -m 6 https://github.com/tailscale/tailcat/releases/latest 2>/dev/null | grep -i '^location:' | sed -e 's/.*tag\///' -e 's/[[:space:]\r\n]//g' || true)
+if [ -z "$latest_tag" ]; then
+    latest_tag=$(curl -fsSL -m 6 -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/tailscale/tailcat/releases/latest 2>/dev/null | grep '"tag_name":' | head -n 1 | cut -d'"' -f4 || echo "")
+fi
 
-if [ -n "$cur_bin_ver" ] && [ "$cur_bin_ver" = "$target_bin_ver" ]; then
+if [ -z "$latest_tag" ]; then
+    if [ -n "$cur_bin_ver" ]; then
+        printf "%b[!] Could not query latest release tag from GitHub. Retaining existing binary (%s).%b\n" "$C_YELLOW" "$cur_bin_ver" "$C_RESET"
+    else
+        printf "%b[!] Error: Could not determine latest TailCat release from GitHub. Check internet connection.%b\n" "$C_RED" "$C_RESET"
+        exit 1
+    fi
+elif [ -n "$cur_bin_ver" ] && [ "$cur_bin_ver" = "$latest_tag" ]; then
     printf "%b[✓] TailCat binary is already up to date (%s). Skipping download.%b\n" "$C_GREEN" "$cur_bin_ver" "$C_RESET"
 else
-    download_url="https://github.com/tailscale/tailcat/releases/download/${target_bin_ver}/tailcat_${target_bin_ver#v}_linux_${pkg_arch}.tar.gz"
-    printf "%b[*] Downloading official TailCat binary (%s)...%b\n" "$C_CYAN" "${target_bin_ver}" "$C_RESET"
+    download_url="https://github.com/tailscale/tailcat/releases/download/${latest_tag}/tailcat_${latest_tag#v}_linux_${pkg_arch}.tar.gz"
+    printf "%b[*] Downloading official TailCat engine binary (%s)...%b\n" "$C_CYAN" "${latest_tag}" "$C_RESET"
     if curl -fsSL "$download_url" | tar -xz -C "$BIN_DIR" tailcat 2>/dev/null; then
         chmod 755 "$TAILCAT_BIN"
-        printf "%b[+] TailCat binary installed at %s%b\n" "$C_GREEN" "$TAILCAT_BIN" "$C_RESET"
+        printf "%b[+] TailCat binary installed at %s (%s)%b\n" "$C_GREEN" "$TAILCAT_BIN" "$latest_tag" "$C_RESET"
     elif [ -n "$cur_bin_ver" ]; then
         printf "%b[!] Download failed. Retaining current working binary (%s).%b\n" "$C_YELLOW" "$cur_bin_ver" "$C_RESET"
     else

@@ -1403,25 +1403,35 @@ update_binary() {
 
     printf "  %b[*] Installed engine version:%b %s\n" "$C_BOLD" "$C_RESET" "${cur_bin_ver:-none}"
 
-    # 2. Query latest release tag from GitHub releases
+    # 2. Query latest release tag from GitHub releases (100% Dynamic Discovery)
     latest_tag=$(curl -sI -m 6 https://github.com/tailscale/tailcat/releases/latest 2>/dev/null | grep -i '^location:' | sed -e 's/.*tag\///' -e 's/[[:space:]\r\n]//g' || true)
-
-    if [ -n "$latest_tag" ]; then
-        printf "  %b[*] Latest release on GitHub:%b  %s\n\n" "$C_BOLD" "$C_RESET" "$latest_tag"
-    else
-        printf "  %b[!] Could not query GitHub releases for latest tag.%b\n\n" "$C_YELLOW" "$C_RESET"
+    if [ -z "$latest_tag" ]; then
+        latest_tag=$(curl -fsSL -m 6 -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/tailscale/tailcat/releases/latest 2>/dev/null | grep '"tag_name":' | head -n 1 | cut -d'"' -f4 || echo "")
     fi
 
+    if [ -z "$latest_tag" ]; then
+        if [ -n "$cur_bin_ver" ]; then
+            printf "  %b[!] Could not query latest release tag from GitHub. Retaining current engine (%s).%b\n\n" "$C_YELLOW" "$cur_bin_ver" "$C_RESET"
+            FLASH_MSG="${C_YELLOW}[*] Could not query latest tag; retained current engine (${cur_bin_ver}).${C_RESET}"
+            return 0
+        else
+            printf "  %b[!] Error: Could not determine latest TailCat release from GitHub. Check internet connection.%b\n\n" "$C_RED" "$C_RESET"
+            FLASH_MSG="${C_RED}[-] Could not determine latest TailCat release tag from GitHub.${C_RESET}"
+            return 1
+        fi
+    fi
+
+    printf "  %b[*] Latest release on GitHub:%b  %s\n\n" "$C_BOLD" "$C_RESET" "$latest_tag"
+
     # 3. Check for difference: if current version matches latest tag, skip download!
-    if [ -n "$cur_bin_ver" ] && [ -n "$latest_tag" ] && [ "$cur_bin_ver" = "$latest_tag" ]; then
+    if [ -n "$cur_bin_ver" ] && [ "$cur_bin_ver" = "$latest_tag" ]; then
         printf "  %b[✓] TailCat engine binary is already up to date (%s). Skipping download.%b\n\n" "$C_GREEN" "$cur_bin_ver" "$C_RESET"
         FLASH_MSG="${C_GREEN}[✓] TailCat engine is up to date (${cur_bin_ver}).${C_RESET}"
         return 0
     fi
 
-    target_tag="${latest_tag:-v0.6.0}"
     mkdir -p "$BIN_DIR"
-    download_url="https://github.com/tailscale/tailcat/releases/download/${target_tag}/tailcat_${target_tag#v}_linux_${pkg_arch}.tar.gz"
+    download_url="https://github.com/tailscale/tailcat/releases/download/${latest_tag}/tailcat_${latest_tag#v}_linux_${pkg_arch}.tar.gz"
     printf "  %b[*] Downloading %s...%b\n" "$C_CYAN" "${download_url}" "$C_RESET"
 
     tmp_extract_dir="/tmp/tailcat_dl_$$"
@@ -1430,7 +1440,7 @@ update_binary() {
 
     if curl -fsSL "$download_url" | tar -xz -C "$tmp_extract_dir" tailcat 2>/dev/null; then
         chmod 755 "${tmp_extract_dir}/tailcat"
-        new_eng_ver=$("${tmp_extract_dir}/tailcat" --version 2>/dev/null || echo "$target_tag")
+        new_eng_ver=$("${tmp_extract_dir}/tailcat" --version 2>/dev/null || echo "$latest_tag")
         mv -f "${tmp_extract_dir}/tailcat" "$TAILCAT_BIN"
         rm -rf "$tmp_extract_dir"
         printf "  %b[+] TailCat engine updated successfully (%s -> %s).%b\n\n" "$C_GREEN" "${cur_bin_ver:-none}" "$new_eng_ver" "$C_RESET"
