@@ -7,7 +7,7 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
 ---
 
 ```text
-  TAILCAT ZER0 v1.7.0              ╱|、
+  TAILCAT ZER0 v1.7.1              ╱|、
                                  (˚ˎ 。7  
                                   |、˜〵          
   Instant Tunnel Manager         じしˍ,)ノ
@@ -176,6 +176,12 @@ rm -rf /jffs/addons/tailcatzero /jffs/addons/tailcat /jffs/scripts/tailcat /jffs
 ---
 
 ## 📝 Changelog
+
+### [v1.7.1] - 2026-09-05
+* **🛡️ View-Only Sandbox Hardening:** Neutralized shell breakouts via `env <cmd>` and interactive pagers (`less`/`more`), blocked in-tool file writing (`sort -o`, `uniq [in out]`, `xxd`), restricted network and WiFi mutation (`route`, `arp`, `wl`), protected sensitive security files (`/etc/shadow`, `.ssh/id_*`, `dropbear`, `.key`), and blocked credential leaks in `nvram show`/`nvram get`.
+* **⚠️ GTFOBin Detection & Threat Warnings:** Host TUI and headless CLI now display explicit high-visibility security warnings when a guest requests permission for binaries with subshell or file-writing capabilities.
+* **🌐 Zero-Config WebGUI Forwarding:** Replaced SOCKS proxy guidance with native `tailcat forward <TOKEN> <port>`, providing instant browser access via `https://localhost:<port>`.
+* **📦 Core Script Harmonization:** Renamed repository script from `tailcat` to `tailcatzero` to align with the router command name.
 
 ### [v1.7.0] - 2026-09-05
 * **🔔 On-Demand Permission Escalation for View-Only Sessions:** Remote support guests and friends connected to restricted view-only sessions can request execution permissions for additional commands in real-time (`request <cmd>`, `req <cmd>`, or interactive `[y/N]` prompt on blocked commands).

@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.7.1] - 2026-09-05
+
+### 🛡️ Security Hardening, Privilege Escalation Prevention & Zero-Config WebGUI Forwarding
+
+* **🛡️ View-Only Sandbox Hardening (`tailcat-view-shell`):**
+  * **Direct Shell Escape Neutralization:** Removed `env` from allowlist. Built-in `env`/`printenv` now strictly displays variables; executing commands via `env <cmd>` is rejected with a security violation error.
+  * **Interactive Pager Breakout Neutralization:** Enforced `LESSSECURE=1` in environment and wrapped `less` / `more` to stream safely via `cat`, permanently eliminating `:!sh` breakout vectors.
+  * **In-Tool File Overwrite Prevention:** Removed `xxd` from allowlist (`hexdump` remains available). Filtered `sort` to block file-writing (`-o`) and compressor execution (`--compress-program`). Filtered `uniq` to prohibit positional output destination arguments (`uniq [in [out]]`).
+  * **Network & Interface Mutation Prevention:** Added verb validation preventing mutating operations across `route` (`add`, `del`), `arp` (`-s`, `-d`, `-f`), and `wl` (`down`, `up`, `join`, `set`, `restart`).
+  * **Credential & Secret Extraction Protection:** Blacklisted access to sensitive security paths (`/etc/shadow`, `/tmp/etc/shadow`, `.ssh/id_*`, `dropbear`, `.key`) across all inspection tools. Blocked plaintext credential dumps via `nvram show` and filtered credential keys in `nvram get` (`*passwd*`, `*psk*`, `*secret*`, `*key*`).
+  * **Multi-line / Control Character Injection Block:** Rejects carriage returns (`\r`) and newlines (`\n`) in input strings before parsing.
+  * **GTFOBin Threat Detection for Host Approvals:** Added automated identification and high-visibility warning banners across TUI and CLI when a guest requests permission for tools capable of executing subshells or modifying files (`awk`, `find`, `python`, `sed`, `tar`, etc.).
+* **🌐 Zero-Config WebGUI Forwarding (`tailcat forward`):**
+  * Replaced client SOCKS proxy guidance with native `tailcat forward <TOKEN> <port>`, providing instant direct browser access via `https://localhost:<port>` without manual SOCKS browser configuration.
+* **📦 Core Script Harmonization:**
+  * Renamed repository root script from `tailcat` to `tailcatzero` to match the router installation target and CLI binary name.
+
+---
+
 ## [1.7.0] - 2026-09-05
 
 ### 🔔 Interactive On-Demand Permission Escalation for View-Only Sessions

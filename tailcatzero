@@ -6,7 +6,7 @@
 
 set -eu
 
-VERSION="1.7.0"
+VERSION="1.7.1"
 CONFIG_DIR="/jffs/addons/tailcatzero"
 CONFIG_FILE="${CONFIG_DIR}/tailcatzero.cfg"
 ADDON_SCRIPT="${CONFIG_DIR}/tailcatzero"
