@@ -2,7 +2,7 @@
 # =========================================================================================================================
 # TAILCAT ZER0 — Ephemeral WireGuard Tunnel & Multi-Service Manager for Asuswrt-Merlin
 # =========================================================================================================================
-# shellcheck disable=SC2153
+# shellcheck disable=SC2153,SC2154
 
 set -eu
 
@@ -74,6 +74,10 @@ is_service_active() {
             kill -9 "$WATCHDOG_PID" 2>/dev/null || true
         fi
         rm -f "$s_file" "/tmp/tailcat_addr_${s_id}.txt" 2>/dev/null || true
+        if [ "$s_id" = "VIEW" ]; then
+            rm -rf "${REQUESTS_DIR:?}"/* "${VIEW_ONCE_DIR:?}"/* 2>/dev/null || true
+            rm -f "$VIEW_APPROVED_FILE" "$VIEW_DENIED_FILE" 2>/dev/null || true
+        fi
     fi
     return 1
 }
@@ -323,7 +327,7 @@ resolve_single_request() {
 
     # Red line safeguard check: permanent block on hardware/flash bricking
     case "${RAW_COMMAND:-}" in
-        *"/dev/mtd"*|*"rm -rf /"*|*"nvram erase"*)
+        *"/dev/mtd"*|*"/dev/nvram"*|*"rm -rf /"*|*"nvram erase"*|*"mtd "*|*"mtd-"*|*"flash_erase"*|*"flashcp"*|*"nandwrite"*)
             status="DENIED"
             ;;
     esac
@@ -369,7 +373,7 @@ allow_command_session() {
     b_cmd=$(basename "$target_cmd" | awk '{print $1}')
 
     case "$b_cmd" in
-        *"/dev/mtd"*|*"rm -rf /"*|*"nvram erase"*)
+        *"/dev/mtd"*|*"/dev/nvram"*|*"rm -rf /"*|*"nvram erase"*|mtd|flash_erase*|flashcp|nandwrite)
             printf "%b[!] Security Error: Destructive hardware / partition operations cannot be approved.%b\n" "$C_RED" "$C_RESET"
             return 1
             ;;
@@ -588,7 +592,15 @@ cli_approve() {
             [ -f "$f" ] || continue
             # shellcheck disable=SC1090
             . "$f"
+            match=0
             if [ "${REQ_ID:-}" = "$target" ] || [ "${BASE_CMD:-}" = "$target" ]; then
+                match=1
+            else
+                case "${RAW_COMMAND:-}" in
+                    *"$target"*) match=1 ;;
+                esac
+            fi
+            if [ "$match" = "1" ]; then
                 found_req="$f"
                 break
             fi
@@ -648,7 +660,15 @@ cli_deny() {
             [ -f "$f" ] || continue
             # shellcheck disable=SC1090
             . "$f"
+            match=0
             if [ "${REQ_ID:-}" = "$target" ] || [ "${BASE_CMD:-}" = "$target" ]; then
+                match=1
+            else
+                case "${RAW_COMMAND:-}" in
+                    *"$target"*) match=1 ;;
+                esac
+            fi
+            if [ "$match" = "1" ]; then
                 found_req="$f"
                 break
             fi
@@ -661,13 +681,18 @@ cli_deny() {
         return 0
     fi
 
+    target_b=$(basename "$target" | awk '{print $1}')
     mkdir -p "$SESSIONS_DIR"
     if [ -f "$VIEW_DENIED_FILE" ]; then
-        grep -Fxv "$target" "$VIEW_DENIED_FILE" > "${VIEW_DENIED_FILE}.tmp" 2>/dev/null || true
+        grep -Fxv "$target_b" "$VIEW_DENIED_FILE" > "${VIEW_DENIED_FILE}.tmp" 2>/dev/null || true
         mv -f "${VIEW_DENIED_FILE}.tmp" "$VIEW_DENIED_FILE" 2>/dev/null || true
     fi
-    echo "$target" >> "$VIEW_DENIED_FILE"
-    printf "%b[-] Added '%s' to denied list for view-only session.%b\n" "$C_RED" "$target" "$C_RESET"
+    echo "$target_b" >> "$VIEW_DENIED_FILE"
+    if [ -f "$VIEW_APPROVED_FILE" ]; then
+        grep -Fxv "$target_b" "$VIEW_APPROVED_FILE" > "${VIEW_APPROVED_FILE}.tmp" 2>/dev/null || true
+        mv -f "${VIEW_APPROVED_FILE}.tmp" "$VIEW_APPROVED_FILE" 2>/dev/null || true
+    fi
+    printf "%b[-] Added '%s' to denied list for view-only session.%b\n" "$C_RED" "$target_b" "$C_RESET"
     return 0
 }
 
@@ -807,7 +832,7 @@ start_tunnel() {
 
     # Wait up to 10 seconds for address file
     count=0
-    while [ $count -lt 10 ]; do
+    while [ "$count" -lt 10 ]; do
         if [ -s "$addr_file" ]; then
             break
         fi

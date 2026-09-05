@@ -162,7 +162,7 @@ request_command_approval() {
 
     # Red lines check: permanent block on partition / flash destruction
     case "$req_input" in
-        *"/dev/mtd"*|*"rm -rf /"*|*"nvram erase"*)
+        *"/dev/mtd"*|*"/dev/nvram"*|*"rm -rf /"*|*"nvram erase"*|*"mtd "*|*"mtd-"*|*"flash_erase"*|*"flashcp"*|*"nandwrite"*)
             printf "%b[!] Security Error: Destructive hardware / partition operations cannot be requested.%b\n" "$C_RED" "$C_RESET"
             return 1
             ;;
@@ -173,17 +173,19 @@ request_command_approval() {
     req_file="${REQUESTS_DIR}/${req_id}.req"
     resp_file="${REQUESTS_DIR}/${req_id}.resp"
 
-    req_input_escaped=$(printf "%s" "$req_input" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')
+    req_input_escaped=$(printf "%s" "$req_input" | tr '\r\n' ' ' | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')
+    req_base_clean=$(printf "%s" "$req_base" | tr -cd 'a-zA-Z0-9_.-')
+
     {
         echo "REQ_ID=\"${req_id}\""
         echo "GUEST_PID=\"$$\""
-        echo "BASE_CMD=\"${req_base}\""
+        echo "BASE_CMD=\"${req_base_clean}\""
         echo "RAW_COMMAND=\"${req_input_escaped}\""
         echo "CREATED_AT=\"$(date +%s)\""
         echo "STATUS=\"PENDING\""
     } > "$req_file"
 
-    logger -t tailcatzero "GUEST PERMISSION REQUEST: '${req_base}' ('${req_input}') [ID: ${req_id}]"
+    logger -t tailcatzero "GUEST PERMISSION REQUEST: '${req_base_clean}' ('${req_input}') [ID: ${req_id}]"
 
     # Notify admin terminals if any
     cur_tty=""
@@ -197,7 +199,7 @@ request_command_approval() {
     done
 
     printf "\n%b[*] Permission request submitted to router host:%b\n" "$C_CYAN" "$C_RESET"
-    printf "    Command: %b%s%b (Tool: %b%s%b)\n" "$C_YELLOW" "$req_input" "$C_RESET" "$C_BOLD" "$req_base" "$C_RESET"
+    printf "    Command: %b%s%b (Tool: %b%s%b)\n" "$C_YELLOW" "$req_input" "$C_RESET" "$C_BOLD" "$req_base_clean" "$C_RESET"
     printf "    ID:      %s\n" "$req_id"
     printf "%b[*] Waiting for host approval (timeout: 60s)...%b " "$C_GRAY" "$C_RESET"
 
@@ -222,19 +224,29 @@ request_command_approval() {
 
     case "$resp_status" in
         APPROVED_SESSION)
-            printf "%b[+] Host APPROVED '%s' for this session! Running command...%b\n\n" "$C_GREEN" "$req_base" "$C_RESET"
-            echo "$req_base" >> "$APPROVED_FILE"
+            printf "%b[+] Host APPROVED '%s' for this session! Running command...%b\n\n" "$C_GREEN" "$req_base_clean" "$C_RESET"
+            if [ -f "$DENIED_FILE" ]; then
+                grep -Fxv "$req_base_clean" "$DENIED_FILE" > "${DENIED_FILE}.tmp" 2>/dev/null || true
+                mv -f "${DENIED_FILE}.tmp" "$DENIED_FILE" 2>/dev/null || true
+            fi
+            if ! grep -Fxq "$req_base_clean" "$APPROVED_FILE" 2>/dev/null; then
+                echo "$req_base_clean" >> "$APPROVED_FILE"
+            fi
+            rm -f "${ONCE_DIR}/${req_base_clean}.token" 2>/dev/null || true
             eval "$req_input"
             return $?
             ;;
         APPROVED_ONCE)
             printf "%b[+] Host APPROVED single execution! Running command...%b\n\n" "$C_GREEN" "$C_RESET"
+            rm -f "${ONCE_DIR}/${req_base_clean}.token" 2>/dev/null || true
             eval "$req_input"
             return $?
             ;;
         DENIED)
-            printf "%b[-] Host DENIED permission for '%s'.%b\n" "$C_RED" "$req_base" "$C_RESET"
-            echo "$req_base" >> "$DENIED_FILE"
+            printf "%b[-] Host DENIED permission for '%s'.%b\n" "$C_RED" "$req_base_clean" "$C_RESET"
+            if ! grep -Fxq "$req_base_clean" "$DENIED_FILE" 2>/dev/null; then
+                echo "$req_base_clean" >> "$DENIED_FILE"
+            fi
             return 1
             ;;
         *)
@@ -279,8 +291,35 @@ validate_and_run() {
                 printf "%bUsage: request <command> [arguments]%b\n" "$C_CYAN" "$C_RESET"
                 return 1
             fi
-            t_base=$(echo "$target_cmd" | awk '{print $1}')
-            t_base=$(basename "$t_base")
+            t_base=""
+            saved_pifs="$IFS"
+            IFS="|"
+            for p_stage in $target_cmd; do
+                IFS="$saved_pifs"
+                p_stage=$(echo "$p_stage" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+                [ -z "$p_stage" ] && continue
+                c_tok=$(echo "$p_stage" | awk '{print $1}')
+                b_tok=$(basename "$c_tok")
+                case "$b_tok" in
+                    uptime|date|free|df|ps|top|uname|dmesg|sysinfo|cpuinfo|meminfo|temperature|lsmod|\
+                    netstat|route|arp|ping|ping6|traceroute|traceroute6|mtr|nslookup|dig|host|wl|ethtool|\
+                    mii-tool|ethctl|robocfg|leases|dhcp-leases|wifi|ports|logs|help|exit|quit|clear|\
+                    cat|head|tail|more|less|grep|egrep|fgrep|rg|tree|ls|dir|vdir|du|wc|sort|uniq|cut|column|\
+                    tr|diff|strings|stat|file|hexdump|xxd|locate|which|whereis|echo|printf|env|who|w|id)
+                        ;;
+                    *)
+                        if ! is_cmd_approved "$b_tok"; then
+                            t_base="$b_tok"
+                            break
+                        fi
+                        ;;
+                esac
+            done
+            IFS="$saved_pifs"
+            if [ -z "$t_base" ]; then
+                t_base=$(echo "$target_cmd" | awk '{print $1}')
+                t_base=$(basename "$t_base")
+            fi
             request_command_approval "$target_cmd" "$t_base"
             return $?
             ;;
