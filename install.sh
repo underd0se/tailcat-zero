@@ -82,10 +82,12 @@ fi
 
 # 6. Install Main CLI Script & View-Only Shell
 printf "%b[*] Installing CLI script to %s...%b\n" "$C_CYAN" "$INSTALL_SCRIPT" "$C_RESET"
-if [ -f "./tailcat" ]; then
+if [ -f "./tailcatzero" ]; then
+    cp -f "./tailcatzero" "$INSTALL_SCRIPT"
+elif [ -f "./tailcat" ]; then
     cp -f "./tailcat" "$INSTALL_SCRIPT"
 else
-    curl -fsSL "${REPO_RAW_URL}/tailcat" -o "$INSTALL_SCRIPT"
+    curl -fsSL "${REPO_RAW_URL}/tailcatzero" -o "$INSTALL_SCRIPT"
 fi
 chmod 755 "$INSTALL_SCRIPT"
 
