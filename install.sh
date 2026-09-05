@@ -54,14 +54,28 @@ printf "%b[+] Detected architecture: %b%s%b (%s)\n" "$C_GREEN" "$C_BOLD" "${pkg_
 mkdir -p "$ADDON_DIR" "$BIN_DIR"
 
 # 4. Download TailCat Static Binary
-download_url="https://github.com/tailscale/tailcat/releases/download/${TAILCAT_VER}/tailcat_${TAILCAT_VER#v}_linux_${pkg_arch}.tar.gz"
-printf "%b[*] Downloading official TailCat binary (%s)...%b\n" "$C_CYAN" "${TAILCAT_VER}" "$C_RESET"
-if curl -fsSL "$download_url" | tar -xz -C "$BIN_DIR" tailcat; then
-    chmod 755 "$TAILCAT_BIN"
-    printf "%b[+] TailCat binary installed at %s%b\n" "$C_GREEN" "$TAILCAT_BIN" "$C_RESET"
+cur_bin_ver=""
+if [ -x "$TAILCAT_BIN" ]; then
+    cur_bin_ver=$("$TAILCAT_BIN" --version 2>/dev/null || true)
+fi
+
+latest_tag=$(curl -sI -m 5 https://github.com/tailscale/tailcat/releases/latest 2>/dev/null | grep -i '^location:' | sed -e 's/.*tag\///' -e 's/[[:space:]\r\n]//g' || true)
+target_bin_ver="${latest_tag:-${TAILCAT_VER}}"
+
+if [ -n "$cur_bin_ver" ] && [ "$cur_bin_ver" = "$target_bin_ver" ]; then
+    printf "%b[✓] TailCat binary is already up to date (%s). Skipping download.%b\n" "$C_GREEN" "$cur_bin_ver" "$C_RESET"
 else
-    printf "%b[!] Failed to download binary from GitHub.%b\n" "$C_RED" "$C_RESET"
-    exit 1
+    download_url="https://github.com/tailscale/tailcat/releases/download/${target_bin_ver}/tailcat_${target_bin_ver#v}_linux_${pkg_arch}.tar.gz"
+    printf "%b[*] Downloading official TailCat binary (%s)...%b\n" "$C_CYAN" "${target_bin_ver}" "$C_RESET"
+    if curl -fsSL "$download_url" | tar -xz -C "$BIN_DIR" tailcat 2>/dev/null; then
+        chmod 755 "$TAILCAT_BIN"
+        printf "%b[+] TailCat binary installed at %s%b\n" "$C_GREEN" "$TAILCAT_BIN" "$C_RESET"
+    elif [ -n "$cur_bin_ver" ]; then
+        printf "%b[!] Download failed. Retaining current working binary (%s).%b\n" "$C_YELLOW" "$cur_bin_ver" "$C_RESET"
+    else
+        printf "%b[!] Failed to download binary from GitHub.%b\n" "$C_RED" "$C_RESET"
+        exit 1
+    fi
 fi
 
 # 5. Dependency Verification (qrencode via firmware or Entware)
