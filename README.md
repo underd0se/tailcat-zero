@@ -56,7 +56,7 @@ TAILCAT ZER0 can also be run directly from scripts or the command line:
 tailcatzero status                    # Display running sessions and connect tokens
 tailcatzero ssh [root|view]           # Start remote shell tunnel (default: root)
 tailcatzero view                      # Start restricted view-only diagnostic shell
-tailcatzero recv [/path/to/inbox]     # Start encrypted file receiver tunnel (default /tmp/tailcat-inbox)
+tailcatzero recv [/path/to/inbox]     # Start encrypted file & directory receiver (default /tmp/tailcat-inbox)
 tailcatzero files [/path] [ro|rw]     # Start SFTP directory share (default /jffs ro)
 tailcatzero webgui                    # Start router WebGUI tunnel
 tailcatzero requests                  # List pending guest permission requests

@@ -17,7 +17,7 @@ Usage:
   tailcatzero stop [all|SVC]            Stop all sessions or a specific service (SSH, VIEW, RECV, FILES, WEBGUI)
   tailcatzero ssh [root|view]           Start remote shell tunnel (default root)
   tailcatzero view                      Start restricted view-only diagnostic shell
-  tailcatzero recv [dir]                Start encrypted file receiver tunnel (default /tmp/tailcat-inbox)
+  tailcatzero recv [dir]                Start encrypted file/folder receiver tunnel (default /tmp/tailcat-inbox)
   tailcatzero files [dir] [ro|rw]       Start SFTP directory share (default /jffs ro)
   tailcatzero webgui                    Start router WebGUI tunnel
   tailcatzero requests                  List pending guest permission requests
@@ -36,7 +36,7 @@ Usage:
 | `status` | *(none)* | Display running sessions, service type, process ID, capability token, and remaining timeout countdown. |
 | `ssh` | `[root \| view]` | Start an ephemeral remote shell tunnel. Defaults to `root` if no argument is provided. |
 | `view` | *(none)* | Shortcut to start a restricted view-only diagnostic shell session directly. |
-| `recv` | `[/path/to/inbox]` | Start encrypted file receiver inbox. Defaults to `/tmp/tailcat-inbox` if omitted. |
+| `recv` | `[/path/to/inbox]` | Start encrypted file and directory receiver inbox (`--accept-dirs`). Defaults to `/tmp/tailcat-inbox` if omitted. |
 | `files` | `[/path] [ro \| rw]` | Start SFTP directory share. Defaults to `/jffs` with `ro` (read-only) mode if omitted. |
 | `webgui` | `[port]` | Start Asuswrt WebGUI proxy tunnel. Defaults to HTTPS port `8443`. |
 | `requests` | *(none)* | List all pending guest command permission escalation requests. |

@@ -6,10 +6,13 @@ TAILCAT ZER0 transforms your Asuswrt-Merlin router into a secure, peer-to-peer f
 
 ## 📥 1. Encrypted File Receiver (`recv`)
 
-The **Encrypted File Receiver** creates an ephemeral one-way inbox on your router. Any client with the capability token can upload files directly to this inbox.
+The **Encrypted File Receiver** creates an ephemeral one-way inbox on your router. Any client with the capability token can upload individual files or recursive folder hierarchies directly to this inbox.
+
+By default, TAILCAT ZER0 starts the receiver with `--accept-dirs`, accepting both single files and full directory trees (`tailcat cp -r`) while preserving original filenames and directory structures.
 
 ### Common Use Cases:
 * Uploading custom firmware (`.trx` / `.pkg`) or rescue images directly to the router.
+* Transferring entire script directories, custom themes, or package folders.
 * Transferring JFFS backup archives (`jffs_backup.tar.gz`) for restoration.
 * Transferring large script packages or diagnostic bundles without setting up SCP or entering passwords.
 
@@ -100,8 +103,29 @@ total 65744
 -rw------- 1 admin root 64.2M Sep  5 22:18 RT-AX86U_3004_388.8_2.trx
 ```
 
+#### Client Terminal: Uploading Entire Folder Hierarchy (`-r`)
+Because `--accept-dirs` is enabled by default, senders can upload full folder trees preserving subdirectories and filenames:
+
+```text
+┌──(user@laptop)-[~/Projects]
+└─$ tailcat cp -r my_scripts/ tcpGFwWCCGsJ9JQ9WPomu5WUUGZY...:
+[+] Connecting to WireGuard peer via DERP relay (fra)...
+[+] Direct WireGuard connection established (UDP 192.168.50.1:51820)
+[+] Transferring: my_scripts/ -> /tmp/tailcat-inbox/my_scripts/
+[✓] Directory tree transferred successfully
+```
+
+#### Router Terminal: Verifying Directory Structure
+```text
+admin@RT-AX86U:/tmp/home/root# ls -laR /tmp/tailcat-inbox/my_scripts/
+/tmp/tailcat-inbox/my_scripts:
+drwxr-xr-x    3 admin    root            80 Sep  5 22:20 .
+drwxr-xr-x    2 admin    root            60 Sep  5 22:20 utils
+-rw-r--r--    1 admin    root          1024 Sep  5 22:20 run.sh
+```
+
 > [!TIP]
-> RAM vs USB: The default `/tmp/tailcat-inbox` directory resides in router RAM. If transferring files larger than your available free RAM (`free -m`), specify a mounted USB disk path instead!
+> RAM vs USB: The default `/tmp/tailcat-inbox` directory resides in router RAM. If transferring files or directories larger than your available free RAM (`free -m`), specify a mounted USB disk path instead!
 
 ---
 

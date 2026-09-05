@@ -887,7 +887,7 @@ start_tunnel() {
 
     # Start tailcat in background with address output file and guaranteed ephemeral key
     if [ "$service_type" = "RECV" ]; then
-        TAILCAT_ADDR_FILE="$addr_file" "$TAILCAT_BIN" --key=new recv "$extra_info" >/dev/null 2>&1 &
+        TAILCAT_ADDR_FILE="$addr_file" "$TAILCAT_BIN" --key=new recv --accept-dirs "$extra_info" >/dev/null 2>&1 &
     elif [ "$service_type" = "VIEW" ]; then
         if [ ! -x "$VIEW_SHELL" ]; then
             ensure_dependencies
@@ -1694,7 +1694,7 @@ main_menu() {
         fi
 
         printf "  %b1.%b 🆘 Remote Support Shell         %b%-34s%b %b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "Full root or view-only access" "$C_RESET" "$b_ssh"
-        printf "  %b2.%b 📥 Receive Files                %b%-34s%b %b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "Direct P2P file transfer" "$C_RESET" "$b_recv"
+        printf "  %b2.%b 📥 Receive Files & Folders      %b%-34s%b %b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "Direct P2P file/folder drop box" "$C_RESET" "$b_recv"
         printf "  %b3.%b 📁 Share Directory (SFTP)       %b%-34s%b %b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "Share a folder from your drive" "$C_RESET" "$b_files"
         printf "  %b4.%b 🌐 Expose Router WebGUI         %b%-34s%b %b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "Access to router's web interface" "$C_RESET" "$b_web"
 
@@ -1811,7 +1811,7 @@ main_menu() {
                     FLASH_MSG="${C_RED}[!] Could not create destination directory: ${target_dir}${C_RESET}"
                     continue
                 fi
-                start_tunnel "RECV" "recv ${target_dir}" "📥 Encrypted File Receiver" "${target_dir}"
+                start_tunnel "RECV" "recv --accept-dirs ${target_dir}" "📥 Encrypted File Receiver" "${target_dir}"
                 ;;
             3)
                 clear_screen
@@ -2011,7 +2011,7 @@ cli_help() {
     printf "  %btailcatzero stop [all|SVC]%b            Stop all sessions or a specific service (SSH, VIEW, RECV, FILES, WEBGUI)\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero ssh [root|view]%b           Start remote shell tunnel (default root)\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero view%b                      Start restricted view-only diagnostic shell\n" "$C_CYAN" "$C_RESET"
-    printf "  %btailcatzero recv [dir]%b                Start encrypted file receiver tunnel (default /tmp/tailcat-inbox)\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero recv [dir]%b                Start encrypted file/folder receiver tunnel (default /tmp/tailcat-inbox)\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero files [dir] [ro|rw]%b       Start SFTP directory share (default /jffs ro)\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero webgui%b                    Start router WebGUI tunnel\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero requests%b                  List pending guest permission requests\n" "$C_CYAN" "$C_RESET"
@@ -2146,7 +2146,7 @@ if [ $# -gt 0 ]; then
         recv)
             target_dir="${2:-/tmp/tailcat-inbox}"
             mkdir -p "$target_dir"
-            start_tunnel "RECV" "recv ${target_dir}" "📥 Encrypted File Receiver" "${target_dir}" 0
+            start_tunnel "RECV" "recv --accept-dirs ${target_dir}" "📥 Encrypted File Receiver" "${target_dir}" 0
             exit 0
             ;;
         files|sftp)
