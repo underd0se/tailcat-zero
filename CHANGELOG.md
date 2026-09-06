@@ -5,7 +5,19 @@ All notable changes to TAILCAT ZER0 are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.2] - 2026-09-06
+
+### Deep Security Review & Remediation
+
+* **Removed `eval` from Request Handling:**
+  * Replaced `eval` array manipulation logic in `show_approval_modal()` with strict POSIX `for`-loops. This eliminates the risk of double-expansion command injection (e.g. `$(reboot)`) if an attacker were to manipulate the names of request files in the `/tmp` directory.
+* **Eliminated TOCTOU IPC File Races:**
+  * Replaced statically named `.tmp` files during approval and denial list mutations with process-ID suffixed files (`.$$.tmp`). This ensures isolated state writes during concurrent admin UI operations, preventing mutual overwrites.
+* **GNU `date -f` File Leakage Protection:**
+  * Added the `date` command to the `is_sensitive_file_access` validation logic within `tailcat-view-shell.c`. GNU `date` via Entware includes a `--file` (`-f`) flag which could have been abused to leak file contents (like `/etc/shadow`) via "invalid date" stderr parsing. Such queries are now strictly blocked.
+
 ---
+
 
 ## [1.10.1] - 2026-09-06
 
@@ -29,7 +41,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **`pwd` and `cd` Built-ins in View Shell:**
   * Implemented `pwd` (calls `getcwd()`) and `cd` (calls `chdir()` with `check_file_path_security()` guard) as native in-process built-ins, eliminating the need for shell invocation. `cd` to sensitive paths (e.g. `/jffs/ssl`, `/etc/ssl`) is blocked. Both commands are added to the `allowed[]` and `allowed_req[]` arrays.
 
----
 
 ## [1.10.0] - 2026-09-06
 
@@ -58,7 +69,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **Automated Unit Testing:**
   * Expanded [`tests/unit/test_unit_helpers.sh`](tests/unit/test_unit_helpers.sh) with dedicated tests for `ensure_file_perm_600`, `is_tailcat_process`, and `broadcast_session_warning` with 100% test pass rate.
 
----
 
 ## [1.9.1] - 2026-09-06
 
@@ -79,7 +89,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **Security Test Suite Expansion (`tests/unit/test_unit_security.sh`):**
   * Expanded security test suite from 24 to 31 tests covering network flushes, leading flags, wireless radio off, option-embedded symlinks, `/proc/*/mem|environ`, unclosed quotes, and dynamic linker sanitization with a 100% pass rate.
 
----
 
 ## [1.9.0] - 2026-09-06
 
@@ -103,7 +112,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **100% Security & Regression Parity:**
   * Verified 100% pass rate across all 24 security test suites in [`tests/unit/test_unit_security.sh`](file:///Users/Baris/tailcat-merlin/tests/unit/test_unit_security.sh) and local helper suites.
 
----
 
 ## [1.8.2] - 2026-09-06
 
@@ -125,7 +133,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **Input Sanitization (`install.sh` & `tailcatzero`):**
   * Sanitized upstream release tags and commit SHAs via `tr -cd 'a-zA-Z0-9_.-'` before URL interpolation.
 
----
 
 ## [1.8.1] - 2026-09-06
 
@@ -146,7 +153,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * **Repository Cleanup:** Removed redundant legacy `tailcat` script from the repository root, standardizing exclusively on `tailcatzero`.
   * **Installer Defensiveness (`install.sh`):** Defined `C_YELLOW` to prevent unbound variable abort under `set -u` during failed GitHub lookups, and removed legacy local `./tailcat` fallback logic.
 
----
 
 ## [1.8.0] - 2026-09-05
 
@@ -169,7 +175,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **📦 Namespace Protection & Compatibility:**
   * Removed all `tailcat` command-name symlinking/hijacking across the installer and CLI to protect the official `tailcat` Go package namespace. Standardized strictly on `tailcatzero`.
 
----
 
 ## [1.7.1] - 2026-09-05
 
@@ -188,7 +193,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **📦 Core Script Harmonization:**
   * Renamed repository root script from `tailcat` to `tailcatzero` to match the router installation target and CLI binary name.
 
----
 
 ## [1.7.0] - 2026-09-05
 
@@ -209,7 +213,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **🛡️ Hardened Flash & Partition Brick Protection:** Critical low-level operations that could permanently brick or corrupt flash partitions (`dd of=/dev/mtd*`, `flash_erase*`, `rm -rf /`, `nvram erase`) are hard-blocked from ever being requested or authorized.
 * **📢 Real-Time Admin Broadcasts:** Automatically notifies the host router admin via syslog (`tailcatzero`) and broadcasts alert banners across active SSH terminals (`/dev/pts/*`).
 
----
 
 ## [1.6.0] - 2026-09-04
 
@@ -222,7 +225,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **🆘 Remote Support Shell Options Menu (Option 1):** Main dashboard Option 1 opens a clean submenu allowing admins to choose between `1. Full Root Shell (Read-Write)` and `2. View-Only Diagnostic Shell (Read-Only)`. Features dynamic visual badge indicators (`[🟢 Root + 🔒 View]`).
 * **🖐️ 5-Slot Multi-Service Concurrency:** Upgraded active session tracking, multi-session card overview, and selective kill confirmations to support 5 concurrent service slots (`svc_1` to `svc_5`).
 
----
 
 ## [1.5.0] - 2026-09-04
 
@@ -236,7 +238,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **🌐 Accurate Protocol & Port Extraction:** Unified `get_webgui_connect_info` across multi-session overview, single-session card, and `tailcatzero status` for seamless HTTP (port 80) and HTTPS (custom ports / 8443) WebGUI access.
 * **🗑️ Comprehensive Uninstaller Hardening:** Added removal of legacy `/opt/bin/tailcat` symlinks, address files, and POSIX case-insensitive `/jffs/scripts/init-start` cleanup.
 
----
 
 ## [1.4.0] - 2026-09-03
 
@@ -250,7 +251,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **🔑 Guaranteed Ephemeral Tokens (`--key=new`):** Enforces `--key=new` across all tunnel spawns so every session generates a fresh, unique cryptographic WireGuard keypair and address token, preventing token reuse.
 * **📋 Streamlined 6-Item Menu:** Consolidated configuration, update, reinstall, and uninstall options into a dedicated management submenu with active status badges.
 
----
 
 ## [1.3.0] - 2026-09-02
 
@@ -263,7 +263,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **✨ Flicker-Free Clean Canvas & Toast Banners:** Integrated VT100 screen-clearing (`clear_screen`) and transient `FLASH_MSG` toast banners across all menus and cancellations to prevent dirty terminal scrolling.
 * **🔤 Natural Underlined Hotkey Styling:** Clean single-character underlined hotkeys (`<u>V</u>iew Sessions | 🛑 <u>S</u>top | ↩️ <u>E</u>xit: `) without redundant `=` symbols.
 
----
 
 ## [1.2.0] - 2026-09-02
 
@@ -275,7 +274,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **🟢 Smart Status Indicators & Menu Badging:** Added prominent visual status badge (`🟢 ACTIVE` vs `⚪ INACTIVE`) and dynamically badges menu options 5 & 6 with active timer and kill labels.
 * **⏱️ Precision Auto-Kill Warning:** Displays `< 1m remaining (expiring soon)` when session timer falls below 60 seconds.
 
----
 
 ## [1.1.3] - 2026-09-02
 
@@ -283,7 +281,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * **↩️ Submenu Cancel Navigation:** Added full support for canceling and returning to the main menu using `e` / `b` / `cancel` from Inbox destination selection, SFTP directory/mode prompts, and Auto-Kill timeout configuration, preventing accidental tunnel launches.
 
----
 
 ## [1.1.2] - 2026-09-02
 
@@ -294,7 +291,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **🛡️ Anti-Bleed Snippet Dividers:** Replaced fixed-width closed boxes with horizontal rule dividers (`───`) so long tokens and commands naturally flow without line-wrap border corruption.
 * **📁 Folder Icon Alignment:** Updated SFTP Directory Sharing icon to `📁` (Folder) for improved visual metaphor.
 
----
 
 ## [1.1.1] - 2026-09-02
 
@@ -302,7 +298,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * **🎨 Enhanced Dark-Theme Readability:** Upgraded Chat Invite Snippets to high-contrast crisp white (`C_WHITE`) and cyan borders (`C_CYAN`) with highlighted yellow commands (`C_YELLOW`), ensuring pristine visibility across dark-background terminals (Ghostty, iTerm2, macOS Terminal).
 
----
 
 ## [1.1.0] - 2026-09-02
 
@@ -315,7 +310,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **🎯 KISS Feature Alignment:** Streamlined menu to the 4 core sharing pillars (Shell, File Receiver, SFTP, WebGUI), eliminating unnecessary feature creep.
 * **💾 Dynamic USB Storage Detection:** Automatically offers mounted USB partitions (`/tmp/mnt/*`) for Inbox storage to avoid RAM exhaustion.
 
----
 
 ## [1.0.0] - 2026-09-02
 

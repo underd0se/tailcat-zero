@@ -9,7 +9,7 @@
 Run `tailcatzero` in your router shell to open the dashboard:
 
 ```text
-  TAILCAT ZER0 v1.10.1             ╱|、
+  TAILCAT ZER0 v1.10.2             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -34,7 +34,7 @@ Run `tailcatzero` in your router shell to open the dashboard:
 When sessions are active and a guest submits an on-demand permission request, the dashboard dynamically alerts you with a notification badge:
 
 ```text
-  TAILCAT ZER0 v1.10.1             ╱|、
+  TAILCAT ZER0 v1.10.2             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -72,7 +72,7 @@ When sessions are active and a guest submits an on-demand permission request, th
 When you select **Option 1 (🆘 Remote Support Shell)** from the main dashboard, TAILCAT ZER0 displays the Remote Support Shell selection submenu:
 
 ```text
-  TAILCAT ZER0 v1.10.1             ╱|、
+  TAILCAT ZER0 v1.10.2             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -110,7 +110,7 @@ The host administrator must type `YES` and press `Enter` to confirm. Hitting `En
 When you launch any service or press `v` (View Sessions), TAILCAT ZER0 renders a dedicated **Active Session Card**:
 
 ```text
-  TAILCAT ZER0 v1.10.1             ╱|、
+  TAILCAT ZER0 v1.10.2             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -150,7 +150,7 @@ When you launch any service or press `v` (View Sessions), TAILCAT ZER0 renders a
 When two or more services run simultaneously, pressing `v` (View Sessions) opens the **Multi-Session Overview**:
 
 ```text
-  TAILCAT ZER0 v1.10.1             ╱|、
+  TAILCAT ZER0 v1.10.2             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -186,7 +186,7 @@ From this overview:
 Pressing `s` (Stop) prompts you to confirm which session to terminate, preventing accidental service interruptions:
 
 ```text
-  TAILCAT ZER0 v1.10.1             ╱|、
+  TAILCAT ZER0 v1.10.2             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -243,7 +243,7 @@ By default, every session is guarded by an ephemeral watchdog timer set to **30 
 Select **Option 5 (Configure Default Timeout)** from the main menu:
 
 ```text
-  TAILCAT ZER0 v1.10.1             ╱|、
+  TAILCAT ZER0 v1.10.2             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -275,7 +275,7 @@ Select **Option 5 (Configure Default Timeout)** from the main menu:
 Select **Option 6 (Manage TAILCAT ZER0)** from the main menu:
 
 ```text
-  TAILCAT ZER0 v1.10.1             ╱|、
+  TAILCAT ZER0 v1.10.2             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -284,7 +284,7 @@ Select **Option 6 (Manage TAILCAT ZER0)** from the main menu:
 
   ⚙️  Manage TAILCAT ZER0:
 
-  1. 🔄 Check & Update TAILCAT ZER0  Update script & engine (v1.10.1 / v0.6.0)
+  1. 🔄 Check & Update TAILCAT ZER0  Update script & engine (v1.10.2 / v0.6.0)
   2. ⚡ Force Reinstall TAILCAT ZER0 Fresh download of script & binary
   3. 🗑️ Complete Uninstall           Remove addon, configs & init hooks
 

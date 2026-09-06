@@ -1131,6 +1131,10 @@ static int validate_stage(const char *stage_raw, const char *orig_input,
             }
         }
     } else if (strcmp(base_cmd, "date") == 0) {
+        if (is_sensitive_file_access(stage_canon, argv, argc)) {
+            fprintf(stderr, "%s[!] Security Error: Access to sensitive system security files is prohibited in view-only mode.%s\n", C_RED, C_RESET);
+            return 1;
+        }
         for (int i = 1; i < argc; i++) {
             const char *a = argv[i];
             if (strcmp(a, "-s") == 0 || strcmp(a, "-S") == 0 || strncmp(a, "--set", 5) == 0 ||

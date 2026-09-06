@@ -6,7 +6,7 @@
 
 set -u
 
-VERSION="1.10.1"
+VERSION="1.10.2"
 CONFIG_DIR="/jffs/addons/tailcatzero"
 CONFIG_FILE="${CONFIG_DIR}/tailcatzero.cfg"
 ADDON_SCRIPT="${CONFIG_DIR}/tailcatzero"
@@ -588,13 +588,13 @@ resolve_single_request() {
     case "$status" in
         APPROVED_SESSION)
             if [ -f "$VIEW_APPROVED_FILE" ]; then
-                grep -Fxv "$BASE_CMD" "$VIEW_APPROVED_FILE" > "${VIEW_APPROVED_FILE}.tmp" 2>/dev/null || true
-                mv -f "${VIEW_APPROVED_FILE}.tmp" "$VIEW_APPROVED_FILE" 2>/dev/null || true
+                grep -Fxv "$BASE_CMD" "$VIEW_APPROVED_FILE" > "${VIEW_APPROVED_FILE}.$$.tmp" 2>/dev/null || true
+                mv -f "${VIEW_APPROVED_FILE}.$$.tmp" "$VIEW_APPROVED_FILE" 2>/dev/null || true
             fi
             echo "$BASE_CMD" >> "$VIEW_APPROVED_FILE"
             if [ -f "$VIEW_DENIED_FILE" ]; then
-                grep -Fxv "$BASE_CMD" "$VIEW_DENIED_FILE" > "${VIEW_DENIED_FILE}.tmp" 2>/dev/null || true
-                mv -f "${VIEW_DENIED_FILE}.tmp" "$VIEW_DENIED_FILE" 2>/dev/null || true
+                grep -Fxv "$BASE_CMD" "$VIEW_DENIED_FILE" > "${VIEW_DENIED_FILE}.$$.tmp" 2>/dev/null || true
+                mv -f "${VIEW_DENIED_FILE}.$$.tmp" "$VIEW_DENIED_FILE" 2>/dev/null || true
             fi
             log_msg "Admin APPROVED session permission for: ${BASE_CMD} (${REQ_ID})"
             ;;
@@ -604,8 +604,8 @@ resolve_single_request() {
             ;;
         DENIED)
             if [ -f "$VIEW_DENIED_FILE" ]; then
-                grep -Fxv "$BASE_CMD" "$VIEW_DENIED_FILE" > "${VIEW_DENIED_FILE}.tmp" 2>/dev/null || true
-                mv -f "${VIEW_DENIED_FILE}.tmp" "$VIEW_DENIED_FILE" 2>/dev/null || true
+                grep -Fxv "$BASE_CMD" "$VIEW_DENIED_FILE" > "${VIEW_DENIED_FILE}.$$.tmp" 2>/dev/null || true
+                mv -f "${VIEW_DENIED_FILE}.$$.tmp" "$VIEW_DENIED_FILE" 2>/dev/null || true
             fi
             echo "$BASE_CMD" >> "$VIEW_DENIED_FILE"
             log_msg "Admin DENIED permission for: ${BASE_CMD} (${REQ_ID})"
@@ -634,13 +634,13 @@ allow_command_session() {
 
     mkdir -p "$SESSIONS_DIR"
     if [ -f "$VIEW_APPROVED_FILE" ]; then
-        grep -Fxv "$b_cmd" "$VIEW_APPROVED_FILE" > "${VIEW_APPROVED_FILE}.tmp" 2>/dev/null || true
-        mv -f "${VIEW_APPROVED_FILE}.tmp" "$VIEW_APPROVED_FILE" 2>/dev/null || true
+        grep -Fxv "$b_cmd" "$VIEW_APPROVED_FILE" > "${VIEW_APPROVED_FILE}.$$.tmp" 2>/dev/null || true
+        mv -f "${VIEW_APPROVED_FILE}.$$.tmp" "$VIEW_APPROVED_FILE" 2>/dev/null || true
     fi
     echo "$b_cmd" >> "$VIEW_APPROVED_FILE"
     if [ -f "$VIEW_DENIED_FILE" ]; then
-        grep -Fxv "$b_cmd" "$VIEW_DENIED_FILE" > "${VIEW_DENIED_FILE}.tmp" 2>/dev/null || true
-        mv -f "${VIEW_DENIED_FILE}.tmp" "$VIEW_DENIED_FILE" 2>/dev/null || true
+        grep -Fxv "$b_cmd" "$VIEW_DENIED_FILE" > "${VIEW_DENIED_FILE}.$$.tmp" 2>/dev/null || true
+        mv -f "${VIEW_DENIED_FILE}.$$.tmp" "$VIEW_DENIED_FILE" 2>/dev/null || true
     fi
 
     if [ -d "$REQUESTS_DIR" ]; then
@@ -663,8 +663,8 @@ revoke_command_session() {
     b_cmd=$(basename "$target_cmd" | awk '{print $1}')
 
     if [ -f "$VIEW_APPROVED_FILE" ]; then
-        grep -Fxv "$b_cmd" "$VIEW_APPROVED_FILE" > "${VIEW_APPROVED_FILE}.tmp" 2>/dev/null || true
-        mv -f "${VIEW_APPROVED_FILE}.tmp" "$VIEW_APPROVED_FILE" 2>/dev/null || true
+        grep -Fxv "$b_cmd" "$VIEW_APPROVED_FILE" > "${VIEW_APPROVED_FILE}.$$.tmp" 2>/dev/null || true
+        mv -f "${VIEW_APPROVED_FILE}.$$.tmp" "$VIEW_APPROVED_FILE" 2>/dev/null || true
         printf "%b[+] Revoked '%s' from approved view session commands.%b\n" "$C_GREEN" "$b_cmd" "$C_RESET"
         log_msg "Admin revoked command: ${b_cmd}"
     else
@@ -696,7 +696,6 @@ show_approval_modal() {
         printf "  • %b[%d] Tool:%b     %b%-16s%b %b(Age: %ds)%b\n" "$C_BOLD" "$idx" "$C_RESET" "$C_YELLOW" "${BASE_CMD}" "$C_RESET" "$C_GRAY" "$age" "$C_RESET"
         printf "    %bCommand:%b  %b%s%b\n" "$C_BOLD" "$C_RESET" "$C_WHITE" "${RAW_COMMAND}" "$C_RESET"
         printf "    %bID:%b       %s\n\n" "$C_BOLD" "$C_RESET" "${REQ_ID}"
-        eval "req_file_${idx}=\"$f\""
         idx=$((idx + 1))
     done
     total_req=$((idx - 1))
@@ -729,7 +728,15 @@ show_approval_modal() {
     fi
 
     chosen_f=""
-    eval "chosen_f=\"\$req_file_${sel_req}\""
+    idx=1
+    for f in "${REQUESTS_DIR}"/*.req; do
+        [ -f "$f" ] || continue
+        if [ "$idx" -eq "$sel_req" ]; then
+            chosen_f="$f"
+            break
+        fi
+        idx=$((idx + 1))
+    done
     if [ ! -f "$chosen_f" ]; then
         FLASH_MSG="${C_RED}[!] Request is no longer active.${C_RESET}"
         return
@@ -942,13 +949,13 @@ cli_deny() {
     target_b=$(basename "$target" | awk '{print $1}')
     mkdir -p "$SESSIONS_DIR"
     if [ -f "$VIEW_DENIED_FILE" ]; then
-        grep -Fxv "$target_b" "$VIEW_DENIED_FILE" > "${VIEW_DENIED_FILE}.tmp" 2>/dev/null || true
-        mv -f "${VIEW_DENIED_FILE}.tmp" "$VIEW_DENIED_FILE" 2>/dev/null || true
+        grep -Fxv "$target_b" "$VIEW_DENIED_FILE" > "${VIEW_DENIED_FILE}.$$.tmp" 2>/dev/null || true
+        mv -f "${VIEW_DENIED_FILE}.$$.tmp" "$VIEW_DENIED_FILE" 2>/dev/null || true
     fi
     echo "$target_b" >> "$VIEW_DENIED_FILE"
     if [ -f "$VIEW_APPROVED_FILE" ]; then
-        grep -Fxv "$target_b" "$VIEW_APPROVED_FILE" > "${VIEW_APPROVED_FILE}.tmp" 2>/dev/null || true
-        mv -f "${VIEW_APPROVED_FILE}.tmp" "$VIEW_APPROVED_FILE" 2>/dev/null || true
+        grep -Fxv "$target_b" "$VIEW_APPROVED_FILE" > "${VIEW_APPROVED_FILE}.$$.tmp" 2>/dev/null || true
+        mv -f "${VIEW_APPROVED_FILE}.$$.tmp" "$VIEW_APPROVED_FILE" 2>/dev/null || true
     fi
     printf "%b[-] Added '%s' to denied list for view-only session.%b\n" "$C_RED" "$target_b" "$C_RESET"
     return 0
@@ -1539,7 +1546,7 @@ save_timeout_config() {
     mkdir -p "$CONFIG_DIR"
     if [ -f "$CONFIG_FILE" ]; then
         if grep -q '^TIMEOUT_MINUTES=' "$CONFIG_FILE" 2>/dev/null; then
-            sed -e "s|^TIMEOUT_MINUTES=.*|TIMEOUT_MINUTES=${new_timeout}|" "$CONFIG_FILE" > "${CONFIG_FILE}.tmp" 2>/dev/null && mv -f "${CONFIG_FILE}.tmp" "$CONFIG_FILE" 2>/dev/null || true
+            sed -e "s|^TIMEOUT_MINUTES=.*|TIMEOUT_MINUTES=${new_timeout}|" "$CONFIG_FILE" > "${CONFIG_FILE}.$$.tmp" 2>/dev/null && mv -f "${CONFIG_FILE}.$$.tmp" "$CONFIG_FILE" 2>/dev/null || true
         else
             echo "TIMEOUT_MINUTES=${new_timeout}" >> "$CONFIG_FILE"
         fi
@@ -1869,10 +1876,10 @@ reinstall_tailcat() {
 
     script_ok=0
     printf "  %b[*] Updating %s...%b\n" "$C_CYAN" "$ADDON_SCRIPT" "$C_RESET"
-    if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcatzero" -o "${ADDON_SCRIPT}.tmp" 2>/dev/null || \
-       curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcat" -o "${ADDON_SCRIPT}.tmp" 2>/dev/null; then
-        chmod 755 "${ADDON_SCRIPT}.tmp"
-        mv -f "${ADDON_SCRIPT}.tmp" "$ADDON_SCRIPT"
+    if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcatzero" -o "${ADDON_SCRIPT}.$$.tmp" 2>/dev/null || \
+       curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcat" -o "${ADDON_SCRIPT}.$$.tmp" 2>/dev/null; then
+        chmod 755 "${ADDON_SCRIPT}.$$.tmp"
+        mv -f "${ADDON_SCRIPT}.$$.tmp" "$ADDON_SCRIPT"
         mkdir -p /jffs/scripts
         ln -sf "$ADDON_SCRIPT" /jffs/scripts/tailcatzero 2>/dev/null || true
         rm -rf /jffs/scripts/tailcat /jffs/scripts/tailcat-merlin 2>/dev/null || true
@@ -1895,11 +1902,11 @@ reinstall_tailcat() {
 
     # Update View-Only Shell Binary
     v_arch=$(get_pkg_arch)
-    if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/bin/tailcat-view-shell-${v_arch}" -o "${VIEW_SHELL}.tmp" 2>/dev/null || \
-       curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcat-view-shell" -o "${VIEW_SHELL}.tmp" 2>/dev/null; then
+    if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/bin/tailcat-view-shell-${v_arch}" -o "${VIEW_SHELL}.$$.tmp" 2>/dev/null || \
+       curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcat-view-shell" -o "${VIEW_SHELL}.$$.tmp" 2>/dev/null; then
         mkdir -p "$BIN_DIR"
-        chmod 755 "${VIEW_SHELL}.tmp"
-        mv -f "${VIEW_SHELL}.tmp" "$VIEW_SHELL"
+        chmod 755 "${VIEW_SHELL}.$$.tmp"
+        mv -f "${VIEW_SHELL}.$$.tmp" "$VIEW_SHELL"
     fi
 
     if [ "$script_ok" = "1" ]; then
