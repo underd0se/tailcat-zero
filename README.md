@@ -9,7 +9,7 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
 ---
 
 ```text
-  TAILCAT ZER0 v1.10.0             ╱|、
+  TAILCAT ZER0 v1.10.1             ╱|、
                                  (˚ˎ 。7  
                                   |、˜〵          
   Instant Tunnel Manager         じしˍ,)ノ
@@ -183,6 +183,15 @@ rm -rf /jffs/addons/tailcatzero /jffs/addons/tailcat /jffs/scripts/tailcat /jffs
 ---
 
 ## 📝 Changelog
+
+### [v1.10.1] - 2026-09-06
+* **🐛 `is_tailcat_process()` False Positive:** Basename-extracted `cmdline` tokens before matching `*tailcat*`, preventing a script running from a `tailcat`-named directory path from being misidentified as a tailcat process and killed.
+* **🐛 `get_webgui_connect_info()` Port Extraction:** Fixed naked-IP URL parsing where `http://192.168.1.1` extracted `192` as the port. Protocol prefix is now stripped before numeric matching; bare IP URLs default to `80` (HTTP) or `8443` (HTTPS).
+* **🐛 `save_timeout_config()` Non-Destructive Update:** Replaced full config overwrite with `sed -i` in-place key update, preserving custom entries like `DERP_URL`.
+* **🐛 Watchdog Orphaned `sleep` Processes:** Watchdog subshells now trap `SIGTERM`/`SIGHUP` and kill their tracked `sleep` child PID, eliminating zombie sleep processes after `tailcatzero stop`. `stop_single_session()` sends `SIGTERM` before `SIGKILL` to allow graceful cleanup.
+* **🔒 `/proc/meminfo` False Positive in View Shell:** `check_proc_component()` now matches only exact path components (`/proc/X/mem`), allowing `/proc/meminfo` while still blocking `/proc/<pid>/mem`.
+* **🔒 `cut`/`column` Sensitive File Disclosure:** Both commands now pass through `is_sensitive_file_access()` checks, closing a bypass that allowed `cut -d: -f1 /etc/shadow`.
+* **✨ `pwd`/`cd` Built-ins in View Shell:** Implemented as native in-process built-ins using `getcwd()`/`chdir()`. `cd` enforces `check_file_path_security()` to block navigation into sensitive directories.
 
 ### [v1.10.0] - 2026-09-06
 * **🔒 Zero-Trust Inversion & Root Escalation Guard:** Inverted `start_ssh_menu` defaults so Option 1 (Default) starts the safe View-Only Diagnostic Shell. Full Root Shell (Option 2) requires explicit deliberate opt-in via a security warning modal requiring typing `YES` to confirm.

@@ -198,6 +198,22 @@ static const char *case_str_search(const char *haystack, const char *needle) {
     return NULL;
 }
 
+static int check_proc_component(const char *path, const char *comp) {
+    size_t clen = strlen(comp);
+    const char *ptr = path;
+    while ((ptr = case_str_search(ptr, comp)) != NULL) {
+        if (ptr > path && *(ptr - 1) == '/') {
+            char next = ptr[clen];
+            if (next == '\0' || next == '/' || next == ' ' || next == '\t' ||
+                next == '"' || next == '\'' || next == '|') {
+                return 1;
+            }
+        }
+        ptr += clen;
+    }
+    return 0;
+}
+
 static int check_sensitive_target(const char *p) {
     if (!p || !*p) return 0;
 
@@ -225,7 +241,7 @@ static int check_sensitive_target(const char *p) {
             "cmdline", "fd", "cwd", "root", "sysrq-trigger", NULL
         };
         for (int i = 0; proc_blocked[i]; i++) {
-            if (case_str_search(p, proc_blocked[i]) != NULL) {
+            if (check_proc_component(p, proc_blocked[i])) {
                 return 1;
             }
         }
@@ -963,7 +979,8 @@ static int is_builtin(const char *base) {
             strcmp(base, "sysinfo") == 0 || strcmp(base, "leases") == 0 || strcmp(base, "dhcp-leases") == 0 ||
             strcmp(base, "wifi") == 0 || strcmp(base, "ports") == 0 || strcmp(base, "logs") == 0 ||
             strcmp(base, "clear") == 0 || strcmp(base, "exit") == 0 || strcmp(base, "quit") == 0 ||
-            strcmp(base, "q") == 0 || strcmp(base, "env") == 0 || strcmp(base, "printenv") == 0);
+            strcmp(base, "q") == 0 || strcmp(base, "env") == 0 || strcmp(base, "printenv") == 0 ||
+            strcmp(base, "pwd") == 0 || strcmp(base, "cd") == 0);
 }
 
 static int run_builtin(const char *base, int argc, char *argv[]) {
@@ -971,6 +988,31 @@ static int run_builtin(const char *base, int argc, char *argv[]) {
     (void)argv;
     if (strcmp(base, "help") == 0 || strcmp(base, "h") == 0 || strcmp(base, "?") == 0) {
         show_help();
+        return 0;
+    }
+    if (strcmp(base, "pwd") == 0) {
+        char cwd[PATH_MAX];
+        if (getcwd(cwd, sizeof(cwd))) {
+            printf("%s\n", cwd);
+        } else {
+            perror("pwd");
+        }
+        return 0;
+    }
+    if (strcmp(base, "cd") == 0) {
+        const char *target_dir = (argc > 1) ? argv[1] : NULL;
+        if (!target_dir || !*target_dir) {
+            target_dir = getenv("HOME");
+            if (!target_dir || !*target_dir) target_dir = "/tmp";
+        }
+        if (check_file_path_security(target_dir)) {
+            fprintf(stderr, "%s[!] Security Error: Access to sensitive system security directories is prohibited in view-only mode.%s\n", C_RED, C_RESET);
+            return 1;
+        }
+        if (chdir(target_dir) != 0) {
+            fprintf(stderr, "cd: %s: %s\n", target_dir, strerror(errno));
+            return 1;
+        }
         return 0;
     }
     if (strcmp(base, "sysinfo") == 0) {
@@ -1043,7 +1085,7 @@ static int validate_stage(const char *stage_raw, const char *orig_input,
         "grep", "egrep", "fgrep", "rg", "tree", "ls", "dir", "vdir",
         "du", "wc", "sort", "uniq", "diff", "strings", "hexdump", "stat",
         "file", "route", "arp", "wl", "nvram", "opkg", "ip", "ifconfig",
-        "logread", "env", "printenv", NULL
+        "logread", "env", "printenv", "pwd", "cd", NULL
     };
 
     int in_allowed = 0;
@@ -1166,7 +1208,8 @@ static int validate_stage(const char *stage_raw, const char *orig_input,
                strcmp(base_cmd, "vdir") == 0 || strcmp(base_cmd, "du") == 0 ||
                strcmp(base_cmd, "wc") == 0 || strcmp(base_cmd, "diff") == 0 ||
                strcmp(base_cmd, "strings") == 0 || strcmp(base_cmd, "hexdump") == 0 ||
-               strcmp(base_cmd, "stat") == 0 || strcmp(base_cmd, "file") == 0) {
+               strcmp(base_cmd, "stat") == 0 || strcmp(base_cmd, "file") == 0 ||
+               strcmp(base_cmd, "cut") == 0 || strcmp(base_cmd, "column") == 0) {
         if (is_sensitive_file_access(stage_canon, argv, argc)) {
             fprintf(stderr, "%s[!] Security Error: Access to sensitive system security files is prohibited in view-only mode.%s\n", C_RED, C_RESET);
             return 1;
@@ -1190,6 +1233,11 @@ static int validate_stage(const char *stage_raw, const char *orig_input,
         }
         if (strcmp(base_cmd, "less") == 0 || strcmp(base_cmd, "more") == 0) {
             *p_is_safe_stream = 1;
+        }
+    } else if (strcmp(base_cmd, "cd") == 0) {
+        if (argc > 1 && check_file_path_security(argv[1])) {
+            fprintf(stderr, "%s[!] Security Error: Access to sensitive system security directories is prohibited in view-only mode.%s\n", C_RED, C_RESET);
+            return 1;
         }
     } else if (strcmp(base_cmd, "sort") == 0) {
         for (int i = 1; i < argc; i++) {
@@ -1661,7 +1709,7 @@ static int validate_and_run(const char *raw_input) {
                             "cat", "head", "tail", "more", "less", "grep", "egrep", "fgrep", "rg",
                             "tree", "ls", "dir", "vdir", "du", "wc", "sort", "uniq", "cut", "column",
                             "tr", "diff", "strings", "stat", "file", "hexdump", "locate", "which",
-                            "whereis", "echo", "printf", "who", "w", "id", NULL
+                            "whereis", "echo", "printf", "who", "w", "id", "pwd", "cd", NULL
                         };
                         int is_a = 0;
                         for (int i = 0; allowed_req[i]; i++) {

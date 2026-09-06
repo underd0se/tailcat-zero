@@ -60,6 +60,7 @@ The sandbox provides access to all standard diagnostic tools:
 | **System Logs** | `logread`, `cat /tmp/syslog.log` |
 | **Entware Package Queries** | `opkg list`, `opkg info`, `opkg status`, `opkg find`, `opkg search`, `opkg depends` |
 | **Text Processing & Inspection** | `cat`, `head`, `tail`, `more`, `less`, `grep`, `egrep`, `fgrep`, `rg`, `cut`, `column`, `tr`, `stat`, `file`, `strings`, `hexdump`, `wc`, `diff`, `tree`, `sort`, `uniq` *(Note: `awk` and `sed` are classified as GTFOBins and require host approval via `request`)* |
+| **Navigation** | `pwd` (prints working directory), `cd` (changes directory; access to sensitive paths is blocked by `check_file_path_security()`) |
 | **Pipelines** | Full Unix pipelines (`\|`) permitted between allowed inspection tools (e.g. `ps \| grep dnsmasq`) |
 
 ---
@@ -102,6 +103,7 @@ Direct access to raw block/character device nodes and sensitive kernel diagnosti
 * `/dev/sd*`, `/dev/nvme*`, `/dev/mmcblk*` (raw storage disk devices).
 * **Character Device Flood & DoS Defense:** Direct reads from raw character devices (`/dev/zero`, `/dev/urandom`, `/dev/random`, `/dev/console`, `/dev/tty*`) are prohibited to prevent tunnel saturation and CPU starvation, while explicitly preserving `/dev/null`.
 * `/proc/kmsg` (prevents blocking and ring buffer consumption) and `/proc/kallsyms` (prevents kernel symbol address disclosure).
+* **Path-Component Precision:** `/proc/meminfo` and similar aggregate stats files are **permitted**. Blocking applies only to per-process memory nodes (e.g. `/proc/<pid>/mem`). `check_proc_component()` enforces this by matching exact path components — a preceding `/` and a trailing `/`, `\0`, or whitespace — so substring matches like `mem` in `meminfo` are never triggered.
 
 ### 7. Network & Interface Mutation Prevention
 * **Route & Address Flush DoS:** `ip route flush` and `ip addr flush` are explicitly blocked, preventing malicious or accidental routing table wiping and interface disconnects.
@@ -188,7 +190,7 @@ Sep  5 22:15:30 RT-AX86U tailcat-view-shell[30142]: Guest submitted permission r
 Press `P` on the main dashboard or active session card to open the **Pending Requests Modal**:
 
 ```text
-  TAILCAT ZER0 v1.10.0             ╱|、
+  TAILCAT ZER0 v1.10.1             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -215,7 +217,7 @@ Press `P` on the main dashboard or active session card to open the **Pending Req
 If multiple requests are pending, TAILCAT ZER0 presents an interactive selection picker first:
 
 ```text
-  TAILCAT ZER0 v1.10.0             ╱|、
+  TAILCAT ZER0 v1.10.1             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ

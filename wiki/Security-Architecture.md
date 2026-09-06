@@ -84,7 +84,8 @@ Every session launched by TAILCAT ZER0 is assigned a dedicated background watchd
    * **5 Minutes Remaining:** Broadcasts a notice to active host TUIs (`/tmp/tailcat_sessions/active_tuis`) and remote guest PTYs (`/dev/pts/*`).
    * **1 Minute Remaining:** Broadcasts a high-priority alert (`⚠️ Warning: Session will terminate in 60 seconds`).
 3. **PID Rollover & Identity Validation:** Before issuing any kill signals, the watchdog executes `is_tailcat_process("$pid")`, inspecting `/proc/$pid/comm` and `/proc/$pid/cmdline`. If the original process died and the Linux kernel recycled the PID to another system daemon (e.g. `dnsmasq`, `httpd`), `kill -9` is strictly suppressed to prevent friendly fire.
-4. **Clean Teardown:** Session files, address files, and approval tokens are unlinked, rendering the capability token instantly dead.
+4. **Graceful SIGTERM Teardown:** `stop_single_session()` sends `SIGTERM` first, giving the watchdog subshell time to fire its `trap 'kill $SLEEP_PID; exit 0' TERM INT HUP` handler and reap any tracked `sleep` child processes. `SIGKILL` is issued only after a 0.1 s grace period if the process has not yet exited, eliminating zombie `sleep` processes after session teardown.
+5. **Clean Teardown:** Session files, address files, and approval tokens are unlinked, rendering the capability token instantly dead.
 
 ---
 
@@ -116,4 +117,6 @@ Every session launched by TAILCAT ZER0 is assigned a dedicated background watchd
 | **Broadcom Radio Shutdown DoS** | Disabling router Wi-Fi radios from view shell | *`wl radio off`, `wl channel`, `wl ssid`, `wl reinit`, and `wl reset` are prohibited in view-only mode.* |
 | **Option-Embedded Symlink Traversal** | Reading sensitive files via `--file=/path` or `-f/path` | *Tokens with embedded paths (`=`, `-f`) are resolved through canonical `realpath()` checks; `sort --files0-from` is hard-blocked.* |
 | **Process Memory / Credential Extraction** | Stealing NVRAM secrets from `/proc/<pid>/environ` | *Access to `/proc/<pid>/environ`, `/proc/<pid>/mem`, `/proc/<pid>/cmdline`, and `/proc/<pid>/fd/*` is completely blocked.* |
-
+| **`/proc/meminfo` False Positive Blocking** | Denying access to safe memory stats | *`check_proc_component()` matches only full path components, allowing `/proc/meminfo` while still blocking `/proc/<pid>/mem`.* |
+| **Sensitive File Dump via `cut` / `column`** | Extracting `/etc/shadow` fields with text tools | *`cut` and `column` are routed through `is_sensitive_file_access()` checks, blocking access to credentials and restricted paths.* |
+| **Directory Traversal via `cd`** | Navigating into sensitive directories from view shell | *`cd` is a native in-process built-in (`chdir()`) guarded by `check_file_path_security()`, blocking paths under `/jffs/ssl`, `/etc/ssl`, and similar restricted trees.* |

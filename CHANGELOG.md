@@ -7,7 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.10.1] - 2026-09-06
+
+### Bug Fixes & Security Hardening
+
+* **`is_tailcat_process()` False Positive on Development Hosts:**
+  * Basename-extracted `/proc/<pid>/cmdline[0]` and `/proc/<pid>/cmdline[1]` via `${_pcmd##*/}` before matching `*tailcat*`. Previously, a script running from a directory whose **path** contained `tailcat` (e.g. `~/tailcat-merlin/tests/`) was misidentified as a tailcat process, causing watchdog kills to abort the current shell.
+  * BSD/macOS `ps -o comm=` / `ps -o command=` fallback paths apply the same basename normalization.
+* **`get_webgui_connect_info()` Port Parsing Glitch:**
+  * Replaced the loose `grep -oE '[0-9]+'` fallback with protocol-aware stripping (`${w_info#*://}`), then matching only a colon-prefixed port or a purely numeric token. A naked IP URL like `http://192.168.1.1` previously extracted `192` (first octet) as the port; it now correctly defaults to `80` (HTTP) or `8443` (HTTPS).
+* **`save_timeout_config()` Destructive Overwrite:**
+  * Replaced full config file overwrite with `sed -i` in-place key update, preserving any user-defined `DERP_URL` or custom keys. Falls back to `>>` append if the key is absent, or creates a fresh file only when none exists.
+* **Watchdog Orphaned `sleep` Processes:**
+  * Watchdog subshells now set `trap 'kill $SLEEP_PID 2>/dev/null; exit 0' TERM INT HUP` and use a `_safe_sleep()` wrapper that tracks the child `sleep` PID and reaps it on SIGTERM, eliminating zombie `sleep` processes after `tailcatzero stop`.
+  * `stop_single_session()` sends `SIGTERM` first (allowing the trap to fire), then `SIGKILL` after a 0.1 s grace period if the process is still alive.
+  * `FILES` branch tunnel args are now re-quoted cleanly before passing to the watchdog subshell, fixing word-splitting on USB mount paths containing spaces.
+* **`/proc/meminfo` False Positive in View Shell:**
+  * Replaced loose substring `case_str_search(p, "mem")` with a new `check_proc_component()` path-component matcher that requires a preceding `/` and a trailing `/`, `\0`, or whitespace. `/proc/meminfo` is now correctly permitted; `/proc/<pid>/mem` remains blocked.
+* **`cut` and `column` Sensitive File Disclosure:**
+  * Added `cut` and `column` to the `is_sensitive_file_access()` branch in `validate_stage()`. Both commands now go through the same credential and sensitive-path checks as `cat`, `head`, `grep`, etc., closing a bypass where `cut -d: -f1 /etc/shadow` was permitted.
+* **`pwd` and `cd` Built-ins in View Shell:**
+  * Implemented `pwd` (calls `getcwd()`) and `cd` (calls `chdir()` with `check_file_path_security()` guard) as native in-process built-ins, eliminating the need for shell invocation. `cd` to sensitive paths (e.g. `/jffs/ssl`, `/etc/ssl`) is blocked. Both commands are added to the `allowed[]` and `allowed_req[]` arrays.
+
+---
+
 ## [1.10.0] - 2026-09-06
+
 
 ### Zero-Trust UX Defaults, Flash Wear Elimination, PID Rollover Hardening & Expiration Warnings
 
