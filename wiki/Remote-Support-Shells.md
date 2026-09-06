@@ -32,7 +32,7 @@ The **View-Only Shell** is built for zero-trust scenarios. When an external help
 1. Run `tailcatzero` and select **Option 1 (🆘 Remote Support Shell)**:
 
 ```text
-  TAILCAT ZER0 v1.9.1              ╱|、
+  TAILCAT ZER0 v1.10.0             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -41,19 +41,19 @@ The **View-Only Shell** is built for zero-trust scenarios. When an external help
 
   🆘 Remote Support Shell Options:
 
-  1. 🔓 Full Root Shell (Read-Write)     Full admin shell with unrestricted root  [⚪ Inactive]
-  2. 🔒 View-Only Diagnostic Shell       Safe inspection; writes blocked          [⚪ Inactive]
+  1. 🔒 View-Only Diagnostic Shell       Safe inspection; writes blocked (Default) [⚪ Inactive]
+  2. 🔓 Full Root Shell (Read-Write)     Full admin shell with unrestricted root   [⚪ Inactive]
 
 ========================================================================
 
-  🔓 Root (Default)  |  🔒 View-Only  |  ↩️ Back: 
+  🔒 View-Only (Default)  |  🔓 Root  |  ↩️ Back: 
 ```
 
-2. Select **Option 2 (Restricted View-Only Shell)** (or press `v`).
+2. Select **Option 1 (🔒 View-Only Diagnostic Shell)** (or simply press `Enter` / `v`).
 3. The dedicated Active Session Card will display your capability token and copy-paste invite snippet:
 
 ```text
-  TAILCAT ZER0 v1.9.1              ╱|、
+  TAILCAT ZER0 v1.10.0             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -113,11 +113,19 @@ The **Root Shell** provides complete, unrestricted administrative root access to
 ### Starting a Root Shell:
 
 #### Via Interactive TUI:
-1. Run `tailcatzero` ➔ select **Option 1 (🆘 Remote Support Shell)** ➔ select **Option 1 (Full Root Shell)** (or press `r` / `Enter`).
-2. The Root Active Session Card is displayed:
+1. Run `tailcatzero` ➔ select **Option 1 (🆘 Remote Support Shell)** ➔ select **Option 2 (Full Root Shell)** (or press `r`).
+2. An explicit security warning modal is displayed:
+```text
+  ⚠️  SECURITY WARNING: Full Root Shell
+  Root access grants unrestricted authority to inspect Wi-Fi credentials,
+  dump NVRAM plaintext secrets, and reconfigure router flash memory.
+
+  Type YES to confirm or press Enter to cancel: 
+```
+3. Type `YES` and press Enter to confirm. The Root Active Session Card is displayed:
 
 ```text
-  TAILCAT ZER0 v1.9.1              ╱|、
+  TAILCAT ZER0 v1.10.0             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ

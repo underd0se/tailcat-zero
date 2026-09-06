@@ -188,7 +188,7 @@ Sep  5 22:15:30 RT-AX86U tailcat-view-shell[30142]: Guest submitted permission r
 Press `P` on the main dashboard or active session card to open the **Pending Requests Modal**:
 
 ```text
-  TAILCAT ZER0 v1.9.1              ╱|、
+  TAILCAT ZER0 v1.10.0             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -215,7 +215,7 @@ Press `P` on the main dashboard or active session card to open the **Pending Req
 If multiple requests are pending, TAILCAT ZER0 presents an interactive selection picker first:
 
 ```text
-  TAILCAT ZER0 v1.9.1              ╱|、
+  TAILCAT ZER0 v1.10.0             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ

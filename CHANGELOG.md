@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.10.0] - 2026-09-06
+
+### Zero-Trust UX Defaults, Flash Wear Elimination, PID Rollover Hardening & Expiration Warnings
+
+* **Zero-Trust Default Inversion & Explicit Root Confirmation (`start_ssh_menu`):**
+  * **View-Only as Default:** Inverted the remote support shell options in the TUI dashboard so Option 1 (Default) launches the safe **🔒 View-Only Diagnostic Shell** with all mutation commands strictly sandboxed.
+  * **Deliberate Opt-in for Root Access:** Full Root Shell (Option 2) now requires explicit deliberate opt-in: displays an interactive security warning modal highlighting risk of credential exposure and flash reconfiguration, requiring typing `YES` to proceed.
+* **PID Rollover & "Friendly Fire" Termination Safeguards:**
+  * **Process Identity Validation:** Added `is_tailcat_process()` helper checking `/proc/$pid/comm` and `/proc/$pid/cmdline` on Linux / Asuswrt firmware before issuing process kill commands.
+  * **Immunity to Recycled PIDs:** Prevents long-running sleep watchdogs and teardown routines from accidentally killing unrelated router daemons (e.g. `dnsmasq`, `httpd`, `dropbear`) if a `tailcat` PID rolled over on high-churn router environments.
+* **Flash Storage (JFFS) Inode Wear Elimination:**
+  * **Stat-Guarded Permission Updates:** Introduced `ensure_file_perm_600()` using `stat` to check existing file permissions before executing `chmod 600`.
+  * **Zero Flash Metadata Churn:** Eliminates redundant `ctime` updates and NAND/SPI flash writes on router startup and configuration inspections when permissions are already set to 0600.
+* **Phased Auto-Kill Timeout Countdown Warnings:**
+  * **Staged Expiration Notices:** Watchdog subshells now proactively broadcast warnings prior to terminating ephemeral sessions:
+    * **5-Minute Warning:** Notifies connected operators that session will expire in 5 minutes.
+    * **1-Minute Warning:** Emits high-priority alert (`⚠️ Warning: Session will terminate in 60 seconds`).
+    * **Expiry:** Broadcasts final termination notice upon session shutdown.
+  * **Dual-Channel Delivery:** Dispatches warnings directly to all active host TUI terminals (`/tmp/tailcat_sessions/active_tuis`) and remote guest PTYs (`/dev/pts/*`).
+* **WebGUI Localhost / HSTS Browser Guidance:**
+  * Added informational notes in session cards and `tailcatzero status` explaining how to handle modern browser SSL domain mismatch or HSTS blocks on `localhost` (by proceeding past self-signed certificates or forwarding the HTTP port).
+* **Interactive TUI Runtime Resilience:**
+  * Relaxed top-level shell mode from `set -eu` to `set -u`, catching unbound variables while preventing BusyBox `ash` from abruptly crashing interactive TUI sessions on harmless non-zero pipeline returns.
+* **Automated Unit Testing:**
+  * Expanded [`tests/unit/test_unit_helpers.sh`](tests/unit/test_unit_helpers.sh) with dedicated tests for `ensure_file_perm_600`, `is_tailcat_process`, and `broadcast_session_warning` with 100% test pass rate.
+
+---
+
 ## [1.9.1] - 2026-09-06
 
 ### Penetration Hardening, Containment & Denial-of-Service Remediation

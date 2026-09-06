@@ -65,7 +65,7 @@ tailcatzero --version
 ```
 *Expected output:*
 ```text
-TAILCAT ZER0 v1.9.1 [547f02c9] (engine v0.6.0)
+TAILCAT ZER0 v1.10.0 [547f02c9] (engine v0.6.0)
 ```
 
 Check the initial service status:
@@ -83,14 +83,14 @@ tailcatzero
 ```
 
 ```text
-  TAILCAT ZER0 v1.9.1              ╱|、
+  TAILCAT ZER0 v1.10.0             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
 
 ========================================================================
 
-  1. 🆘 Remote Support Shell         Full root or view-only access      [⚪ Inactive]
+  1. 🆘 Remote Support Shell         View-only (safe) or full root      [⚪ Inactive]
   2. 📥 Receive Files & Folders      Direct P2P file/folder drop box    [⚪ Inactive]
   3. 📁 Share Directory (SFTP)       Share a folder from your drive     [⚪ Inactive]
   4. 🌐 Expose Router WebGUI         Access to router's web interface   [⚪ Inactive]
@@ -129,7 +129,7 @@ tailcatzero update
 ========================================================================
 
   [1/2] Checking TAILCAT ZER0 Script:
-        Current: v1.9.1 | Remote: v1.9.1
+        Current: v1.10.0 | Remote: v1.10.0
         [✓] Script is up to date (hash: 547f02c9).
 
   [2/2] Checking TailCat Engine Binary:
@@ -147,7 +147,7 @@ If you ever wish to completely remove TAILCAT ZER0 from your router:
 Launch `tailcatzero` ➔ select **Option 6 (Manage TAILCAT ZER0)** ➔ select **Option 3 (Complete Uninstall)**:
 
 ```text
-  TAILCAT ZER0 v1.9.1              ╱|、
+  TAILCAT ZER0 v1.10.0             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ

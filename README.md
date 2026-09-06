@@ -9,14 +9,14 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
 ---
 
 ```text
-  TAILCAT ZER0 v1.9.1              ╱|、
+  TAILCAT ZER0 v1.10.0             ╱|、
                                  (˚ˎ 。7  
                                   |、˜〵          
   Instant Tunnel Manager         じしˍ,)ノ
 
 ========================================================================
 
-  1. 🆘 Remote Support Shell         Full root or view-only access     [🟢 Root + 🔒 View]
+  1. 🆘 Remote Support Shell         View-only (safe) or full root     [🟢 Root + 🔒 View]
   2. 📥 Receive Files & Folders      Direct P2P file/folder drop box   [⚪ Inactive]
   3. 📁 Share Directory (SFTP)       Share a folder from your drive    [🟢 Active: 28m]
   4. 🌐 Expose Router WebGUI         Access to router's web interface  [⚪ Inactive]
@@ -179,6 +179,14 @@ rm -rf /jffs/addons/tailcatzero /jffs/addons/tailcat /jffs/scripts/tailcat /jffs
 ---
 
 ## 📝 Changelog
+
+### [v1.10.0] - 2026-09-06
+* **🔒 Zero-Trust Inversion & Root Escalation Guard:** Inverted `start_ssh_menu` defaults so Option 1 (Default) starts the safe View-Only Diagnostic Shell. Full Root Shell (Option 2) requires explicit deliberate opt-in via a security warning modal requiring typing `YES` to confirm.
+* **🛡️ PID Rollover "Friendly Fire" Safeguards:** Added `is_tailcat_process()` validation inspecting `/proc/$pid/comm` and `/proc/$pid/cmdline` before executing any process kills, preventing watchdogs and teardown routines from accidentally killing recycled PIDs of unrelated system daemons (`dnsmasq`, `httpd`, `dropbear`).
+* **⚡ JFFS Flash Storage Inode Wear Elimination:** Added `ensure_file_perm_600()` using `stat` checks to eliminate redundant `chmod 600` inode `ctime` updates and NAND/SPI flash writes when config files already have 0600 permissions.
+* **⏱️ Phased Auto-Kill Timeout Countdown Warnings:** Watchdog subshells now proactively broadcast staged warnings at 5 minutes and 1 minute remaining directly to active host TUIs (`/tmp/tailcat_sessions/active_tuis`) and remote guest PTYs (`/dev/pts/*`).
+* **🌐 WebGUI Localhost / HSTS Guidance:** Added troubleshooting tips in connection cards and CLI status for modern browsers enforcing HSTS or SSL certificate domain mismatches on `localhost` port forwards.
+* **🛠️ TUI Stability (`set -u`):** Replaced `set -eu` with `set -u` in `tailcatzero`, preventing BusyBox `ash` from abruptly terminating interactive TUI sessions on minor non-zero subshell exits while preserving variable safety.
 
 ### [v1.9.1] - 2026-09-06
 * **🛡️ View-Only Sandbox Penetration Hardening:** Sanitized dynamic linker and execution controls (`LD_PRELOAD`, `LD_LIBRARY_PATH`, `LD_AUDIT`, `DYLD_*`, `BASH_ENV`) in `main()`, blocked network table flush DoS (`ip route flush`, `ip addr flush`), resolved leading option parsing in `ip` and `opkg` subcommands (enabling `ip -4 route` while closing mutation evasion), blocked Broadcom wireless radio shutdown (`wl radio off`), prevented option-embedded symlink traversal (`--file=/path`, `-f/path`, `sort --files0-from`), contained process memory and credential extraction (`/proc/*/environ`, `/proc/*/mem`), enforced atomic 0600 IPC permission request file creation with quote escaping, and rejected unclosed quotes and input line overflows with explicit syntax errors.
