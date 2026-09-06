@@ -9,7 +9,7 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
 ---
 
 ```text
-  TAILCAT ZER0 v1.8.0              ╱|、
+  TAILCAT ZER0 v1.8.1              ╱|、
                                  (˚ˎ 。7  
                                   |、˜〵          
   Instant Tunnel Manager         じしˍ,)ノ
@@ -179,6 +179,12 @@ rm -rf /jffs/addons/tailcatzero /jffs/addons/tailcat /jffs/scripts/tailcat /jffs
 ---
 
 ## 📝 Changelog
+
+### [v1.8.1] - 2026-09-06
+* **🛡️ View-Only Sandbox Hardening:** Added input canonicalization (quotes/backslashes stripped before checks) to prevent blacklist evasion, wildcard glob expansion checks blocking sensitive file dumps (`/etc/pas*`, `/tmp/etc/sha*`), access blocks on raw device nodes (`/dev/mtd*`, `/dev/mem`, `/proc/kcore`), multi-argument validation in `nvram get` queries, internal flag inspection for `tree -o`, `sort -o`, `diff --diff-program`, `dmesg -c`, `ping -f`, `date -s`, and complete prohibition of background process execution (`&`).
+* **🔒 Host IPC & Parser Security:** Replaced shell sourcing (`. "$f"`) of guest request files and session state files with deterministic key-value parsers, completely eliminating command injection risks during host approval and status inspections.
+* **🔐 Permission Hardening:** Enforced `chmod 700` across runtime/session directories and `chmod 600` on configurations and address files.
+* **📦 Repository & Installer Standardization:** Removed legacy `tailcat` script from the repository root, standardizing exclusively on `tailcatzero`. Fixed unbound `$C_YELLOW` variable in `install.sh` under `set -u`.
 
 ### [v1.8.0] - 2026-09-05
 * **📥 Recursive Folder Support by Default (`--accept-dirs`):** Senders can now upload entire directory trees (`tailcat cp -r`) as well as single files to the encrypted file drop box, preserving original filenames and subfolders.

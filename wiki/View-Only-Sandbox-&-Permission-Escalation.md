@@ -18,16 +18,18 @@ When a guest connects to a view-only session, TailCat attaches their PTY to `tai
                                    v
                +----------------------------------------+
                |           tailcat-view-shell           |
+               |  (Pre-Parse Quote/Escape Normalizer)   |
                +----------------------------------------+
                                    |
            +-----------------------+-----------------------+
            |                       |                       |
            v                       v                       v
-    [Syntax Check]       [Path & Credential]        [GTFOBin Check]
- - No redirects (>, <)   - Block /etc/shadow        - No 'sort -o'
- - No subshells ($())    - Block .ssh/id_*          - No 'env <cmd>'
- - No chaining (; &&)    - Block dropbear keys      - No interactive
- - Pipe check (A | B)    - Filter 'nvram show'        pager breakouts
+    [Syntax Check]       [Path & Device Check]      [GTFOBin Flag Check]
+ - No redirects (>, <)   - Block /etc/shadow, passwd - No 'sort -o', 'tree -o'
+ - No subshells ($())      (including wildcard globs)- No 'diff --diff-program'
+ - No chaining (; && ||) - Block raw /dev/mtd*, mem  - No 'dmesg -c', 'ping -f'
+ - No backgrounding (&)  - Block .ssh, dropbear keys - No 'date -s'
+ - Validated pipelines   - Filter multi-var nvram    - Streamless pagers
            |                       |                       |
            +-----------------------+-----------------------+
                                    |
@@ -54,41 +56,60 @@ The sandbox provides access to all standard diagnostic tools:
 |---|---|
 | **System Health** | `uptime`, `free`, `df`, `ps`, `top` (batch mode), `dmesg`, `sysinfo`, `uname`, `cat /proc/*` |
 | **Network & WiFi** | `ip addr`, `ip route`, `ip neigh`, `ifconfig`, `netstat`, `route`, `ports`, `ping`, `mtr`, `wl`, `leases`, `wifi` |
-| **NVRAM & Configs** | `nvram get <var>`, `nvram show` *(sanitized)* |
+| **NVRAM & Configs** | `nvram get <var>` *(credential and account list keys blocked)*, `nvram show` *(sanitized)* |
 | **System Logs** | `logread`, `cat /tmp/syslog.log` |
 | **Entware Package Queries** | `opkg list`, `opkg info`, `opkg status`, `opkg find`, `opkg search`, `opkg depends` |
-| **Text Processing & Inspection** | `cat`, `head`, `tail`, `grep`, `egrep`, `fgrep`, `rg`, `sed`, `awk`, `cut`, `wc`, `diff`, `tree`, `sort`, `uniq` |
+| **Text Processing & Inspection** | `cat`, `head`, `tail`, `more`, `less`, `grep`, `egrep`, `fgrep`, `rg`, `cut`, `column`, `tr`, `stat`, `file`, `strings`, `hexdump`, `wc`, `diff`, `tree`, `sort`, `uniq` *(Note: `awk` and `sed` are classified as GTFOBins and require host approval via `request`)* |
 | **Pipelines** | Full Unix pipelines (`\|`) permitted between allowed inspection tools (e.g. `ps \| grep dnsmasq`) |
 
 ---
 
 ## 🚫 Blocked Syntax & Threat Mitigations
 
-To prevent shell escapes and system tampering, the following syntax patterns are strictly rejected:
+To prevent shell escapes and system tampering, the following security controls are strictly enforced:
 
 ### 1. Output Redirection (`>`, `>>`, `<`)
 * Guests cannot redirect command output to files or overwrite arbitrary locations.
 * Example blocked: `echo "malicious" > /jffs/scripts/post-mount`
 
-### 2. Command Chaining (`;`, `&&`, `||`)
-* Commands must be single operations or standard Unix pipes (`|`). Chaining commands to sneak unallowed binaries past filters is blocked.
-* Example blocked: `uptime; rm -rf /jffs`
+### 2. Command Chaining & Background Execution (`;`, `&&`, `||`, `&`)
+* Commands must be single operations or standard Unix pipes (`|`). Chaining commands or backgrounding tasks with `&` to bypass parser containment is prohibited.
+* Example blocked: `uptime; rm -rf /jffs` or `uptime & touch /tmp/pwned`
 
 ### 3. Subshells & Command Substitution (`$()`, `` ` ``)
 * Nesting command execution inside arguments or variables is forbidden.
 * Example blocked: `cat $(which nvram)`
 
-### 4. Sensitive File & Credential Protection
-Access to router credential repositories is denied, even using `cat`, `head`, or `grep`:
-* `/etc/shadow`, `/tmp/etc/shadow`, `/tmp/shadow`
-* `/jffs/ssl/`, `/etc/dropbear/`, `/jffs/.ssh/id_*`
-* `nvram show` and `nvram get` automatically filter and redact password and key variables (such as `http_passwd`, `wpa_psk`, `acc_webdav_password`).
+### 4. Input Canonicalization (Quote & Backslash Defense)
+* Attackers often split strings across quotes or backslashes (e.g. `cat '/tmp/etc/sha''dow'`, `route "add"`, `wl \down`) to evade regex filters.
+* All input tokens are canonicalized (quotes and backslashes stripped, whitespace normalized) prior to validation.
 
-### 5. GTFOBin Defenses
-Many standard Unix utilities include secondary flags capable of writing files or invoking subshells. TAILCAT ZER0 explicitly hardens against these:
-* **`sort -o <file>`**: Blocked because `-o` writes output directly to a file.
-* **`uniq [input] [output]`**: Two-argument invocation blocked to prevent file overwrites.
-* **`xxd -r`**: Reverse hex dump writing blocked.
+### 5. Sensitive File & Wildcard Glob Protection
+Access to router credential repositories is denied, including when using wildcard globs:
+* `/etc/shadow`, `/tmp/etc/shadow`, `/etc/passwd`, `/etc/master.passwd`
+* Wildcard attempts like `cat /etc/pas*` or `grep root /tmp/etc/sha*` are expanded and validated against the sensitive blacklist before execution.
+* `/jffs/ssl/`, `/etc/dropbear/`, `/jffs/.ssh/id_*`, `/jffs/.sys*`
+* Session runtime tokens (`tailcat_sessions`, `tailcat_addr_*.txt`, `tailcatzero.cfg`).
+
+### 6. Hardware Flash & Raw Memory Protection
+Direct access to raw block/character device nodes is blocked across all tools:
+* `/dev/mtd*`, `/dev/mtdblock*`, `/dev/ubi*` (raw flash partitions containing firmware, Wi-Fi keys, and root hashes).
+* `/dev/mem`, `/dev/kmem`, `/dev/port`, `/proc/kcore` (physical and kernel RAM).
+* `/dev/sd*`, `/dev/nvme*`, `/dev/mmcblk*` (raw storage disk devices).
+
+### 7. NVRAM Multi-Variable Query & Account List Filtering
+* `nvram get` validates **all** trailing arguments in multi-key queries (`nvram get lan_ipaddr http_passwd`), preventing password extraction via trailing parameters.
+* Account list keys (`acc_list`, `acc_webdavusers`) storing router administrator and Samba user passwords are restricted alongside standard password variables.
+
+### 8. GTFOBin & In-Tool Flag Defenses
+Many standard Unix utilities include secondary flags capable of writing files, clearing buffers, or invoking subshells. TAILCAT ZER0 explicitly hardens against these:
+* **`sort -o <file>` / `--compress-program`**: Blocked to prevent file writing and external compressor execution.
+* **`tree -o <file>`**: Output file redirection blocked.
+* **`diff --diff-program=<bin>`**: External comparison binary execution blocked.
+* **`uniq [input] [output]`**: Positional output destination arguments blocked.
+* **`dmesg -c` / `-C`**: Kernel ring buffer clearing blocked.
+* **`ping -f`**: ICMP flood denial of service blocked.
+* **`date -s` / `--set`**: System clock mutation blocked.
 * **`env <command>`**: Blocked from launching arbitrary child executables.
 * **`less` / `more`**: Interactive pager shell breakout (`!`) is stripped or redirected to non-interactive streaming mode.
 
@@ -99,6 +120,7 @@ Many standard Unix utilities include secondary flags capable of writing files or
 Certain destructive commands can cause permanent flash memory corruption or brick router hardware. These commands are designated as **Hard Red Lines** and are **hard-blocked from ever being requested, approved, or executed under any circumstances**:
 
 * `dd of=/dev/mtd*` or writing to any `/dev/mtdblock*`
+* Accessing `/dev/mem` or `/dev/kmem`
 * `flash_erase*` or `nandwrite`
 * `rm -rf /` or `rm -rf /jffs`
 * `nvram erase` or `nvram restore`
@@ -152,7 +174,7 @@ Sep  5 22:15:30 RT-AX86U tailcat-view-shell[30142]: Guest submitted permission r
 Press `P` on the main dashboard or active session card to open the **Pending Requests Modal**:
 
 ```text
-  TAILCAT ZER0 v1.8.0              ╱|、
+  TAILCAT ZER0 v1.8.1              ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -179,7 +201,7 @@ Press `P` on the main dashboard or active session card to open the **Pending Req
 If multiple requests are pending, TAILCAT ZER0 presents an interactive selection picker first:
 
 ```text
-  TAILCAT ZER0 v1.8.0              ╱|、
+  TAILCAT ZER0 v1.8.1              ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ

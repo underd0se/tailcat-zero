@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.8.1] - 2026-09-06
+
+### Security Hardening, Privilege Escalation Prevention & Repository Standardization
+
+* **View-Only Sandbox Filter Evasion Hardening (`tailcat-view-shell`):**
+  * **Input Canonicalization:** Strips quote combinations and backslash escapes before validation, preventing blacklist filter evasion.
+  * **Wildcard Glob Inspection:** Expands and inspects file path globs against sensitive system files (`/etc/shadow`, `/etc/passwd`), blocking glob-based credential dumps (`cat /etc/pas*`, `grep root /tmp/etc/sha*`).
+  * **Hardware & Memory Device Node Protection:** Restricted direct access to raw flash partitions, memory nodes, and block devices (`/dev/mtd*`, `/dev/mem`, `/dev/kmem`, `/dev/port`, `/proc/kcore`). Added `/dev/mem` and `/dev/kmem` to the non-escalatable permanent blocklist.
+  * **Multi-Variable NVRAM Query Filtering:** Iterates and validates every variable token in multi-argument queries (`nvram get <var1> <var2>`), preventing credential extraction via trailing arguments. Added account lists (`acc_list`, `acc_webdavusers`) and certificates (`*crt*`) to restricted targets.
+  * **In-Tool Flag Inspections:** Prohibits destructive or execution flags across diagnostic utilities (`tree -o`, `sort -o`, `diff --diff-program`, `dmesg -c`, `ping -f`, `date -s`).
+  * **Tool Coverage:** Extended sensitive file checks across `stat`, `file`, and `uniq`.
+  * **Operator Prohibition:** Disallowed background process execution (`&`) alongside command chaining.
+* **Host IPC & Parser Security (`tailcatzero`):**
+  * **Deterministic Key-Value Parsing:** Replaced shell sourcing (`. "$f"`) of guest request files (`.req`) and session state files (`.env`) with safe `IFS='=' read -r` line parsers, eliminating command injection risks during host approval and status inspections.
+  * **Permission Hardening:** Enforced `chmod 700` on session, request, and active TUI directories, and `chmod 600` on configuration and address files.
+* **Repository & Installer Standardization:**
+  * **Repository Cleanup:** Removed redundant legacy `tailcat` script from the repository root, standardizing exclusively on `tailcatzero`.
+  * **Installer Defensiveness (`install.sh`):** Defined `C_YELLOW` to prevent unbound variable abort under `set -u` during failed GitHub lookups, and removed legacy local `./tailcat` fallback logic.
+
+---
+
 ## [1.8.0] - 2026-09-05
 
 ### 📥 Default Recursive Drop Box, Hash-Based Auto-Updates & Namespace Protection

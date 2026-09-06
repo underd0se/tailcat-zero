@@ -53,16 +53,29 @@ In TAILCAT ZER0, access is **capability-based**:
 
 ---
 
-## 🧠 3. Volatile State & Clean Reboot Teardown
+## 🧠 3. Volatile State & Permission Hardening
 
-Router security tools must not leave accidental backdoors open if power is lost or a process crashes. TAILCAT ZER0 strictly enforces volatile memory storage:
+Router security tools must not leave accidental backdoors open if power is lost or a process crashes. TAILCAT ZER0 strictly enforces volatile memory storage and restrictive POSIX permissions:
 
-* **Session Locks & PIDs:** Stored exclusively in volatile memory (`/tmp/tailcat-*` and `/tmp/tailcatzero-*`), which is backed by router RAM (`tmpfs`).
+* **Session Locks & PIDs:** Stored exclusively in volatile memory (`/tmp/tailcat_sessions/`), which is backed by router RAM (`tmpfs`).
+* **Strict Filesystem Permissions:**
+  * Runtime directories (`/tmp/tailcat_sessions/`, `requests/`, `VIEW_ONCE/`, `active_tuis/`) are strictly locked down to `0700` (`rwx------`), preventing local unprivileged users or compromised daemons from snooping IPC state.
+  * Capability address files and `.env` session profiles are restricted to `0600` (`rw-------`).
+  * Configuration files (`tailcatzero.cfg`) in `/jffs/addons/tailcatzero/` are set to `0600`.
 * **Clean Boot Guarantee:** Nothing is written to `/jffs/scripts/services-start` or persistent startup scripts unless explicitly automated by the user. If the router reboots, all tunnels are terminated and all state is automatically wiped clean.
 
 ---
 
-## ⏱️ 4. The Ephemeral Watchdog
+## 🔒 4. Host IPC Isolation & Parser Defense
+
+When view-only guests request elevated permissions via `request <command>`, IPC communication flows via request files (`.req`) and response tokens (`.resp`) in `/tmp/tailcat_sessions/requests/`.
+
+* **Deterministic Key-Value Parsing:** The router host and view shell parse `.req` and `.env` files using deterministic, line-by-line key-value parsers (`IFS='=' read -r key val`).
+* **Zero Shell Sourcing:** Sourcing external files (`. "$file"`) and `eval` on serialized state are strictly prohibited, preventing guests from embedding command substitutions (`$(...)`) into serialized request attributes.
+
+---
+
+## ⏱️ 5. The Ephemeral Watchdog
 
 Every session launched by TAILCAT ZER0 is assigned a dedicated background watchdog process.
 
@@ -73,13 +86,19 @@ Every session launched by TAILCAT ZER0 is assigned a dedicated background watchd
 
 ---
 
-## 🛡️ 5. Threat Model Analysis
+## 🛡️ 6. Threat Model Analysis
 
 | Threat Scenario | Potential Impact | TAILCAT ZER0 Defense |
 |---|---|---|
 | **Token Interception / Leaked Token** | Unauthorized connection to running session | *Tokens are ephemeral (auto-kill in 30m) and can be revoked instantly via `tailcatzero stop` or pressing `s` in TUI.* |
 | **Malicious Guest in Root Shell** | Full router compromise | *User is warned: Root shell should only be shared with 100% trusted individuals. Use View-Only Shell for third parties.* |
-| **Sandbox Breakout in View Shell** | Privilege escalation to root | *Multi-layer parser blocks redirections (`>`), subshells (`$()`), chaining (`;`), sensitive files (`/etc/shadow`), and GTFOBin vectors (`sort -o`, `env`).* |
-| **Hardware Flash Corruption** | Permanent router bricking | *Hard Red Lines strictly prohibit `dd of=/dev/mtd*`, `flash_erase*`, `rm -rf /`, and `nvram erase` from ever running.* |
+| **Sandbox Breakout via Filter Obfuscation** | Executing unauthorized commands | *Pre-parse canonicalization strips quotes and backslashes before validation, preventing quote-splitting and backslash-escape filter evasions.* |
+| **Wildcard Glob File Extraction** | Dumping `/etc/shadow` or `/etc/passwd` | *Multi-layer path checks inspect stage strings, token paths, and filesystem glob expansions (`cat /etc/pas*`), blocking glob-based credential access.* |
+| **Direct Hardware Memory / Partition Access** | Extracting keys or firmware corruption | *Access to raw device nodes (`/dev/mtd*`, `/dev/mem`, `/dev/kmem`, `/dev/port`, `/proc/kcore`) is blocked across all tools.* |
+| **Host Privilege Escalation via IPC** | Root command execution by host admin | *Host IPC uses deterministic line-by-line parsing; shell sourcing (`. "$file"`) of guest `.req` files is eliminated.* |
+| **Multi-Variable NVRAM Extraction** | Stealing admin passwords via trailing arguments | *All arguments in `nvram get` are evaluated; account lists (`acc_list`) and certificate keys are restricted.* |
+| **GTFOBin Flag Exploits** | File writing or subshell spawning via allowed tools | *Flag-level checks prohibit `-o`/`--output` (`sort`, `tree`), `--diff-program` (`diff`), `-c` (`dmesg`), `-f` (`ping`), and `-s` (`date`).* |
+| **Background Execution / Chaining** | Running commands outside parser containment | *Backgrounding (`&`) and command chaining (`;`, `&&`, `||`) are prohibited; only linear pipelines (`\|`) with allowed tools are permitted.* |
+| **Hardware Flash Corruption** | Permanent router bricking | *Hard Red Lines strictly prohibit `dd of=/dev/mtd*`, `flash_erase*`, `rm -rf /`, `nvram erase`, and raw memory nodes from being requested or approved.* |
 | **MITM on Relay Network** | Eavesdropping on session traffic | *Traffic is protected with Noise/WireGuard end-to-end encryption. DERP relays have zero visibility into plaintext data.* |
-| **Credential Harvesting** | Storing passwords or stealing keys | *`nvram show` automatically scrubs credentials; `/etc/shadow` and SSH private keys are blocked from read commands.* |
+| **Local Privilege Snooping in `/tmp`** | Unauthorized process reading active tokens | *Directory permissions enforced at `0700` and address files at `0600`.* |
