@@ -84,34 +84,40 @@ To prevent shell escapes and system tampering, the following security controls a
 * Attackers often split strings across quotes or backslashes (e.g. `cat '/tmp/etc/sha''dow'`, `route "add"`, `wl \down`) to evade regex filters.
 * All input tokens are canonicalized (quotes and backslashes stripped, whitespace normalized) prior to validation.
 
-### 5. Sensitive File & Wildcard Glob Protection
-Access to router credential repositories is denied, including when using wildcard globs:
+### 5. Sensitive File, Symlink & Escalation Protection
+Access to router credential repositories and private keys is strictly prohibited:
 * `/etc/shadow`, `/tmp/etc/shadow`, `/etc/passwd`, `/etc/master.passwd`
 * Wildcard attempts like `cat /etc/pas*` or `grep root /tmp/etc/sha*` are expanded and validated against the sensitive blacklist before execution.
-* `/jffs/ssl/`, `/etc/dropbear/`, `/jffs/.ssh/id_*`, `/jffs/.sys*`
+* **Symlink Resolution:** All tokens are resolved to their canonical target paths using `readlink -f`, preventing both direct and multi-hop symlink bypasses.
+* **Request Escalation Defense:** Requests targeting sensitive system files or credentials (e.g. `request cat /etc/shadow` or pipeline-smuggled `request echo ok | cat /etc/shadow`) are immediately rejected before request creation.
+* **Strict Sensitive Isolation:** Approving a tool session-wide (e.g. `cat` or `grep`) never whitelists sensitive files; inspection utilities remain barred from reading credential repositories under all conditions.
+* `/jffs/ssl/`, `/etc/dropbear/`, `/jffs/.ssh/id_*`, `/jffs/.sys*`, WireGuard configs (`/etc/wireguard/`, `*.ovpn`).
 * Session runtime tokens (`tailcat_sessions`, `tailcat_addr_*.txt`, `tailcatzero.cfg`).
 
-### 6. Hardware Flash & Raw Memory Protection
-Direct access to raw block/character device nodes is blocked across all tools:
+### 6. Hardware Flash, Device Node & Kernel Protection
+Direct access to raw block/character device nodes and sensitive kernel diagnostic endpoints is blocked:
 * `/dev/mtd*`, `/dev/mtdblock*`, `/dev/ubi*` (raw flash partitions containing firmware, Wi-Fi keys, and root hashes).
 * `/dev/mem`, `/dev/kmem`, `/dev/port`, `/proc/kcore` (physical and kernel RAM).
 * `/dev/sd*`, `/dev/nvme*`, `/dev/mmcblk*` (raw storage disk devices).
+* **Character Device Flood & DoS Defense:** Direct reads from raw character devices (`/dev/zero`, `/dev/urandom`, `/dev/random`, `/dev/console`, `/dev/tty*`) are prohibited to prevent tunnel saturation and CPU starvation, while explicitly preserving `/dev/null`.
+* `/proc/kmsg` (prevents blocking and ring buffer consumption) and `/proc/kallsyms` (prevents kernel symbol address disclosure).
 
-### 7. NVRAM Multi-Variable Query & Account List Filtering
+### 7. NVRAM Multi-Variable Query & Credential Filtering
 * `nvram get` validates **all** trailing arguments in multi-key queries (`nvram get lan_ipaddr http_passwd`), preventing password extraction via trailing parameters.
-* Account list keys (`acc_list`, `acc_webdavusers`) storing router administrator and Samba user passwords are restricted alongside standard password variables.
+* **Extended Credential Filtering:** Filters cover `pass` (including `http_pass`, `admin_pass`), `cert` (`vpn_client1_cert`, `https_cert`), `priv` (`wgc1_priv`), `ovpn` (`vpn_client1_ovpn`), `wg` (`wgs_priv`), `hash`, `salt`, `secret`, `key`, `token`, `auth`, `user`, and account lists (`acc_list`, `acc_webdavusers`) unconditionally.
 
 ### 8. GTFOBin & In-Tool Flag Defenses
-Many standard Unix utilities include secondary flags capable of writing files, clearing buffers, or invoking subshells. TAILCAT ZER0 explicitly hardens against these:
-* **`sort -o <file>` / `--compress-program`**: Blocked to prevent file writing and external compressor execution.
+Standard Unix utilities with secondary execution or write capabilities are neutralized:
+* **`sort -o <file>` / `--compress*`**: Blocked to prevent file writing and external compressor execution, including GNU prefix evasions (`--compress-prog`).
 * **`tree -o <file>`**: Output file redirection blocked.
-* **`diff --diff-program=<bin>`**: External comparison binary execution blocked.
+* **`diff --diff*`**: External comparison binary execution blocked, including GNU prefix evasions (`--diff-prog`).
 * **`uniq [input] [output]`**: Positional output destination arguments blocked.
 * **`dmesg -c` / `-C`**: Kernel ring buffer clearing blocked.
 * **`ping -f`**: ICMP flood denial of service blocked.
 * **`date -s` / `--set`**: System clock mutation blocked.
 * **`env <command>`**: Blocked from launching arbitrary child executables.
-* **`less` / `more`**: Interactive pager shell breakout (`!`) is stripped or redirected to non-interactive streaming mode.
+* **`top`**: Automatically rewritten with non-interactive batch flags (`-b -n 1` on Linux, `-l 1 -n 0` on macOS) across all pipeline stages, preventing interactive process signal killing (`k`).
+* **`less` / `more`**: Pipeline commands invoking `less`, `more`, or explicit filesystem paths (`/bin/less`, `/usr/bin/more`) are rewritten through `safe_stream()`, filtering non-portable flags and streaming via `cat` to eliminate pager shell breakouts (`!`).
 
 ---
 
@@ -174,7 +180,7 @@ Sep  5 22:15:30 RT-AX86U tailcat-view-shell[30142]: Guest submitted permission r
 Press `P` on the main dashboard or active session card to open the **Pending Requests Modal**:
 
 ```text
-  TAILCAT ZER0 v1.8.1              ╱|、
+  TAILCAT ZER0 v1.8.2              ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -201,7 +207,7 @@ Press `P` on the main dashboard or active session card to open the **Pending Req
 If multiple requests are pending, TAILCAT ZER0 presents an interactive selection picker first:
 
 ```text
-  TAILCAT ZER0 v1.8.1              ╱|、
+  TAILCAT ZER0 v1.8.2              ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ

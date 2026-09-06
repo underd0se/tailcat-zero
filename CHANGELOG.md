@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.8.2] - 2026-09-06
+
+### Penetration Hardening, Sandbox Isolation & Denial-of-Service Mitigations
+
+* **View-Only Sandbox Hardening (`tailcat-view-shell`):**
+  * **Sensitive File Request Escalation Defense:** Added `is_sensitive_file_access` validation to `request_command_approval()`. Host requests targeting sensitive system files or credentials (e.g. `request cat /etc/shadow` or pipeline-smuggled `request echo ok | cat /etc/shadow`) are rejected immediately before request creation.
+  * **Strict Sensitive File Protection:** Disallowed session-wide tool approvals (`APPROVED_FILE`) from bypassing sensitive file access controls for inspection utilities (`cat`, `sort`, `uniq`, `grep`, `head`, `tail`, `more`, `less`). Sensitive security files remain strictly prohibited in view-only mode.
+  * **Symlink Traversal Prevention:** Extended `is_sensitive_file_access()` to inspect all path tokens via `[ -L "$_tok" ]` and resolve canonical destinations using `readlink -f`, preventing direct and multi-hop symlink evasions.
+  * **Pipeline `top` Batch Enforcement:** Rebuilt pipeline stage execution into a sanitized pipeline (`sanitized_pipeline`). Any pipeline stage invoking `top` (e.g. `ps | top`) is dynamically rewritten with non-interactive batch flags (`-b -n 1` on Linux, `-l 1 -n 0` on macOS), eliminating interactive process termination (`k`) escapes.
+  * **Non-Interactive Pager Streaming:** Implemented `safe_stream()` to filter non-portable flags and stream pager commands (`less`, `more`, `/bin/less`, `/usr/bin/more`) directly through `cat`, preventing interactive pager escapes via explicit binary paths.
+  * **Character Device Flood & DoS Mitigation:** Restricted direct reading of raw character devices (`/dev/zero`, `/dev/urandom`, `/dev/random`, `/dev/console`, `/dev/tty*`) and sensitive kernel diagnostic files (`/proc/kmsg`, `/proc/kallsyms`), while preserving `/dev/null`.
+  * **Extended NVRAM Credential Blocking:** Expanded `nvram get` credential pattern filters to cover `*[pP][aA][sS][sS]*`, `*[cC][eE][rR][tT]*`, `*[pP][rR][iI][vV]*`, `*[oO][vV][pP][nN]*`, `*[wW][gG]*`, `*[hH][aA][sS][hH]*`, and `*[sS][aA][lL][tT]*` unconditionally.
+  * **GNU Option Prefix Evasion Defense:** Broadened option inspection patterns for GNU `diff` (`--diff*`) and `sort` (`--compress*`) to prevent abbreviated flag bypasses.
+  * **Unbound Variable Defensiveness:** Defined `VIEW_ONCE_DIR="${SESSIONS_DIR}/VIEW_ONCE"` to prevent `set -u` termination during permission request handling.
+* **Service Watchdog & Teardown Parity (`tailcatzero`):**
+  * **Watchdog Cleanup Parity:** Enhanced the background timeout watchdog in `start_tunnel()` to clean up `VIEW_APPROVED_FILE`, `VIEW_DENIED_FILE`, `REQUESTS_DIR`, and `VIEW_ONCE_DIR` upon session expiration.
+  * **Safeguard Parity:** Included `/dev/mem` and `/dev/kmem` in `resolve_single_request()` and `allow_command_session()` red-line checks.
+* **Input Sanitization (`install.sh` & `tailcatzero`):**
+  * Sanitized upstream release tags and commit SHAs via `tr -cd 'a-zA-Z0-9_.-'` before URL interpolation.
+
+---
+
 ## [1.8.1] - 2026-09-06
 
 ### Security Hardening, Privilege Escalation Prevention & Repository Standardization

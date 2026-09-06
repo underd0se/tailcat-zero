@@ -9,7 +9,7 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
 ---
 
 ```text
-  TAILCAT ZER0 v1.8.1              ╱|、
+  TAILCAT ZER0 v1.8.2              ╱|、
                                  (˚ˎ 。7  
                                   |、˜〵          
   Instant Tunnel Manager         じしˍ,)ノ
@@ -179,6 +179,11 @@ rm -rf /jffs/addons/tailcatzero /jffs/addons/tailcat /jffs/scripts/tailcat /jffs
 ---
 
 ## 📝 Changelog
+
+### [v1.8.2] - 2026-09-06
+* **🛡️ View-Only Sandbox Penetration Hardening:** Added sensitive file request denial in `request_command_approval()` to block request-based credential leaks (`request cat /etc/shadow`), prohibited session tool approvals (`APPROVED_FILE`) from bypassing sensitive file access controls, implemented canonical symlink resolution (`readlink -f`) preventing direct and multi-hop symlink evasions, enforced non-interactive batch mode on `top` across all pipeline stages, neutralized interactive pager escapes (`less`/`more`) via `safe_stream` pipeline rewriting, mitigated character device DoS/tunnel flooding (`/dev/zero`, `/dev/urandom`), expanded `nvram get` credential filters (`pass`, `cert`, `priv`, `ovpn`, `wg`), defended against GNU option prefix evasions (`--diff*`, `--compress*`), and resolved a `VIEW_ONCE_DIR` unbound variable termination under `set -u`.
+* **🔄 Service Watchdog & Safeguard Parity:** Synchronized background timeout watchdog to clean up view escalation state and tokens upon session expiry. Added `/dev/mem` and `/dev/kmem` to headless safeguard red lines.
+* **🔒 Input Sanitization:** Sanitized upstream release tags and commit SHAs with `tr -cd 'a-zA-Z0-9_.-'` before URL interpolation in `install.sh` and `tailcatzero`.
 
 ### [v1.8.1] - 2026-09-06
 * **🛡️ View-Only Sandbox Hardening:** Added input canonicalization (quotes/backslashes stripped before checks) to prevent blacklist evasion, wildcard glob expansion checks blocking sensitive file dumps (`/etc/pas*`, `/tmp/etc/sha*`), access blocks on raw device nodes (`/dev/mtd*`, `/dev/mem`, `/proc/kcore`), multi-argument validation in `nvram get` queries, internal flag inspection for `tree -o`, `sort -o`, `diff --diff-program`, `dmesg -c`, `ping -f`, `date -s`, and complete prohibition of background process execution (`&`).

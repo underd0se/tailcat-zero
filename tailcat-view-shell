@@ -15,15 +15,31 @@ export LESSSECURE=1
 export LESS="-M -R"
 
 # Function wrappers to stream pagers non-interactively
-less() { cat "$@"; }
-more() { cat "$@"; }
+safe_stream() {
+    _stream_args=""
+    for _arg in "$@"; do
+        case "$_arg" in
+            -*) ;;
+            +*) ;;
+            *) _stream_args="${_stream_args} \"$_arg\"" ;;
+        esac
+    done
+    if [ -z "$_stream_args" ]; then
+        cat
+    else
+        eval "cat $_stream_args"
+    fi
+}
+less() { safe_stream "$@"; }
+more() { safe_stream "$@"; }
 
 # IPC File Paths for On-Demand Permission Escalation
 SESSIONS_DIR="/tmp/tailcat_sessions"
 REQUESTS_DIR="${SESSIONS_DIR}/requests"
 APPROVED_FILE="${SESSIONS_DIR}/VIEW_APPROVED.txt"
 DENIED_FILE="${SESSIONS_DIR}/VIEW_DENIED.txt"
-ONCE_DIR="${SESSIONS_DIR}/VIEW_ONCE"
+VIEW_ONCE_DIR="${SESSIONS_DIR}/VIEW_ONCE"
+ONCE_DIR="$VIEW_ONCE_DIR"
 ACTIVE_TUIS_DIR="${SESSIONS_DIR}/active_tuis"
 
 # ANSI Colors
@@ -178,11 +194,25 @@ is_gtfobin() {
 check_sensitive_target() {
     _p="$1"
     case "$_p" in
-        *"shadow"*|*"passwd"*|*"etc/sha"*|*"etc/pas"*|*".ssh"*|*"dropbear"*|*"/openvpn/"*|*".key"*|\
+        "/dev/null")
+            return 1
+            ;;
+        *"/dev/null"*)
+            _p_nonull=$(printf "%s" "$_p" | sed -e 's|/dev/null||g')
+            case "$_p_nonull" in
+                *"/dev/"*) return 0 ;;
+            esac
+            ;;
+        *"/dev/"*)
+            return 0
+            ;;
+    esac
+    case "$_p" in
+        *"shadow"*|*"passwd"*|*"etc/sha"*|*"etc/pas"*|*".ssh"*|*"dropbear"*|*"/openvpn"*|*"openvpn/"*|*".key"*|\
         *"/jffs/ssl/"*|*"/jffs/.sys"*|*"tailcat_sessions"*|*"tailcat_addr"*|*"authorized_keys"*|\
-        *"id_rsa"*|*"id_ed25519"*|*"id_ecdsa"*|*".crt"*|*".pem"*|*"/nvram"*|*"nvram.nvm"*|\
-        *"tailcatzero.cfg"*|*"tailcat.cfg"*|*"/dev/mtd"*|*"/dev/mem"*|*"/dev/kmem"*|*"/dev/port"*|\
-        *"/dev/sd"*|*"/dev/nvme"*|*"/dev/mmcblk"*|*"/dev/ubi"*|*"/proc/kcore"*)
+        *"id_"*|*".crt"*|*".pem"*|*".pfx"*|*".p12"*|*".der"*|*"/nvram"*|*"nvram.nvm"*|\
+        *"tailcatzero.cfg"*|*"tailcat.cfg"*|*"/addons/tailcat"*|*"/proc/kcore"*|*"/proc/kmsg"*|*"/proc/kallsyms"*|\
+        *"/proc/keys"*|*"/proc/key-users"*|*"wireguard"*|*"/wg"*|*".ovpn"*)
             return 0
             ;;
     esac
@@ -195,10 +225,20 @@ is_sensitive_file_access() {
     if check_sensitive_target "$_stage"; then
         return 0
     fi
-    # 2. Check each token and any filesystem glob expansion
+    # 2. Check each token, direct symlink, and any filesystem glob expansion
     for _tok in $_stage; do
         if check_sensitive_target "$_tok"; then
             return 0
+        fi
+        if [ -L "$_tok" ]; then
+            _link_target=$(readlink "$_tok" 2>/dev/null || true)
+            if [ -n "$_link_target" ] && check_sensitive_target "$_link_target"; then
+                return 0
+            fi
+            _canon_target=$(readlink -f "$_tok" 2>/dev/null || true)
+            if [ -n "$_canon_target" ] && check_sensitive_target "$_canon_target"; then
+                return 0
+            fi
         fi
         case "$_tok" in
             *"*"*|*"?"*|*"["*)
@@ -210,6 +250,10 @@ is_sensitive_file_access() {
                         if [ -L "$_exp" ]; then
                             _link_target=$(readlink "$_exp" 2>/dev/null || true)
                             if [ -n "$_link_target" ] && check_sensitive_target "$_link_target"; then
+                                return 0
+                            fi
+                            _canon_target=$(readlink -f "$_exp" 2>/dev/null || true)
+                            if [ -n "$_canon_target" ] && check_sensitive_target "$_canon_target"; then
                                 return 0
                             fi
                         fi
@@ -235,6 +279,12 @@ request_command_approval() {
             return 1
             ;;
     esac
+
+    # Sensitive files check: cannot request access to passwords, shadow, keys, certificates
+    if is_sensitive_file_access "$req_input_canon"; then
+        printf "%b[!] Security Error: Requests targeting sensitive system security files are prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
+        return 1
+    fi
 
     mkdir -p "$REQUESTS_DIR" "$VIEW_ONCE_DIR"
     chmod 700 "$SESSIONS_DIR" "$REQUESTS_DIR" "$VIEW_ONCE_DIR" 2>/dev/null || true
@@ -466,6 +516,12 @@ validate_and_run() {
     esac
 
     # 3. Validate each pipeline stage
+    sanitized_pipeline=""
+    top_flag="-b -n 1"
+    if [ "$(uname -s 2>/dev/null || echo "")" = "Darwin" ]; then
+        top_flag="-l 1 -n 0"
+    fi
+
     saved_ifs="$IFS"
     IFS="|"
     for stage in $clean_input; do
@@ -586,10 +642,8 @@ validate_and_run() {
                 ;;
             cat|head|tail|more|less|grep|egrep|fgrep|rg|tree|ls|dir|vdir|du|wc|diff|strings|hexdump|stat|file)
                 if is_sensitive_file_access "$stage_canon"; then
-                    if ! is_cmd_approved "$base_cmd"; then
-                        printf "%b[!] Security Error: Access to sensitive system security files is restricted in view-only mode.%b\n" "$C_RED" "$C_RESET"
-                        return 1
-                    fi
+                    printf "%b[!] Security Error: Access to sensitive system security files is prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
+                    return 1
                 fi
 
                 if [ "$base_cmd" = "tree" ]; then
@@ -606,7 +660,7 @@ validate_and_run() {
                     for d_tok in $stage_canon; do
                         case "$d_tok" in
                             diff) ;;
-                            --diff-program*|-*[D]*)
+                            --diff*|-*[D]*)
                                 printf "%b[!] Security Error: 'diff' external program execution is prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
                                 return 1
                             ;;
@@ -619,7 +673,7 @@ validate_and_run() {
                 for s_tok in $stage_canon; do
                     case "$s_tok" in
                         sort) ;;
-                        -*[oO]*|--output*|--compress-program*)
+                        -*[oO]*|--output*|--compress*)
                             sort_has_out=1
                             break
                             ;;
@@ -630,10 +684,8 @@ validate_and_run() {
                     return 1
                 fi
                 if is_sensitive_file_access "$stage_canon"; then
-                    if ! is_cmd_approved "sort"; then
-                        printf "%b[!] Security Error: Access to sensitive system security files is restricted in view-only mode.%b\n" "$C_RED" "$C_RESET"
-                        return 1
-                    fi
+                    printf "%b[!] Security Error: Access to sensitive system security files is prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
+                    return 1
                 fi
                 ;;
             uniq)
@@ -650,10 +702,8 @@ validate_and_run() {
                     return 1
                 fi
                 if is_sensitive_file_access "$stage_canon"; then
-                    if ! is_cmd_approved "uniq"; then
-                        printf "%b[!] Security Error: Access to sensitive system security files is restricted in view-only mode.%b\n" "$C_RED" "$C_RESET"
-                        return 1
-                    fi
+                    printf "%b[!] Security Error: Access to sensitive system security files is prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
+                    return 1
                 fi
                 ;;
             route)
@@ -784,15 +834,14 @@ validate_and_run() {
                             if [ "$is_nv_after_get" -eq 1 ]; then
                                 case "$nv_tok" in
                                     -*) ;;
-                                    *[pP][aA][sS][sS][wW][dD]*|*[pP][aA][sS][sS][wW][oO][rR][dD]*|\
-                                    *[pP][sS][kK]*|*[sS][eE][cC][rR][eE][tT]*|*[pP][rR][iI][vV][aA][tT][eE]*|\
-                                    *[kK][eE][yY]*|*[pP][iI][nN]*|*[tT][oO][kK][eE][nN]*|*[aA][uU][tT][hH]*|\
-                                    *[uU][sS][eE][rR][nN][aA][mM][eE]*|*[aA][cC][cC]_[lL][iI][sS][tT]*|\
-                                    *[aA][cC][cC]_[wW][eE][bB][dD][aA][vV]*|*[cC][rR][tT]*)
-                                        if ! is_cmd_approved "nvram"; then
-                                            printf "%b[!] Security Error: Access to sensitive nvram credential variable '%s' is prohibited in view-only mode.%b\n" "$C_RED" "$nv_tok" "$C_RESET"
-                                            return 1
-                                        fi
+                                    *[pP][aA][sS][sS]*|*[cC][eE][rR][tT]*|*[cC][rR][tT]*|\
+                                    *[pP][rR][iI][vV]*|*[sS][eE][cC][rR][eE][tT]*|*[kK][eE][yY]*|\
+                                    *[pP][sS][kK]*|*[pP][iI][nN]*|*[tT][oO][kK][eE][nN]*|*[aA][uU][tT][hH]*|\
+                                    *[uU][sS][eE][rR]*|*[aA][cC][cC]_*|*[hH][aA][sS][hH]*|\
+                                    *[sS][aA][lL][tT]*|*[cC][rR][eE][dD]*|*[sS][eE][eE][dD]*|\
+                                    *[oO][vV][pP][nN]*|*[wW][gG]*)
+                                        printf "%b[!] Security Error: Access to sensitive nvram credential variable '%s' is prohibited in view-only mode.%b\n" "$C_RED" "$nv_tok" "$C_RESET"
+                                        return 1
                                         ;;
                                 esac
                             fi
@@ -992,24 +1041,29 @@ validate_and_run() {
                 fi
                 ;;
         esac
+
+        sanitized_stage="$stage"
+        if [ "$base_cmd" = "less" ] || [ "$base_cmd" = "more" ]; then
+            sanitized_stage=$(printf "%s" "$stage" | sed -e 's|^[[:space:]]*[^[:space:]]*|safe_stream|')
+        elif [ "$base_cmd" = "top" ]; then
+            case "$stage_canon" in
+                *-b*|*-n*|*-l*) ;;
+                *)
+                    sanitized_stage=$(printf "%s" "$stage" | sed -e "s|^[[:space:]]*${cmd_token}|${cmd_token} ${top_flag}|")
+                    ;;
+            esac
+        fi
+
+        if [ -z "$sanitized_pipeline" ]; then
+            sanitized_pipeline="$sanitized_stage"
+        else
+            sanitized_pipeline="${sanitized_pipeline} | ${sanitized_stage}"
+        fi
     done
     IFS="$saved_ifs"
 
     # 4. Execute validated pipeline with safe environment
-    # Intercept 'top' to execute non-interactively in batch snapshot mode
-    exec_input="$clean_input"
-    case "$exec_input" in
-        top|top\ *)
-            if top -b -n 1 >/dev/null 2>&1; then
-                exec_input=$(echo "$exec_input" | sed -e 's/^top/top -b -n 1/')
-            elif top -n 1 >/dev/null 2>&1; then
-                exec_input=$(echo "$exec_input" | sed -e 's/^top/top -n 1/')
-            elif top -l 1 >/dev/null 2>&1; then
-                exec_input=$(echo "$exec_input" | sed -e 's/^top/top -l 1/')
-            fi
-            ;;
-    esac
-
+    exec_input="${sanitized_pipeline:-$clean_input}"
     eval "$exec_input"
     return $?
 }

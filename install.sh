@@ -6,7 +6,7 @@
 
 set -eu
 
-VERSION="v1.8.1"
+VERSION="v1.8.2"
 REPO_RAW_URL="https://raw.githubusercontent.com/underd0se/tailcat-zero/main"
 
 # ANSI Colors
@@ -63,6 +63,7 @@ latest_tag=$(curl -sI -m 6 https://github.com/tailscale/tailcat/releases/latest 
 if [ -z "$latest_tag" ]; then
     latest_tag=$(curl -fsSL -m 6 -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/tailscale/tailcat/releases/latest 2>/dev/null | grep '"tag_name":' | head -n 1 | cut -d'"' -f4 || echo "")
 fi
+latest_tag=$(printf "%s" "$latest_tag" | tr -cd 'a-zA-Z0-9_.-')
 
 if [ -z "$latest_tag" ]; then
     if [ -n "$cur_bin_ver" ]; then

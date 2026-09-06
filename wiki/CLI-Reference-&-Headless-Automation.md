@@ -9,7 +9,7 @@ While TAILCAT ZER0 features a full interactive TUI, all features are exposed via
 Run `tailcatzero -h` or `tailcatzero --help`:
 
 ```text
-TAILCAT ZER0 v1.8.1 — Ephemeral WireGuard Tunnel & Multi-Service Manager
+TAILCAT ZER0 v1.8.2 — Ephemeral WireGuard Tunnel & Multi-Service Manager
 
 Usage:
   tailcatzero                           Launch interactive TUI dashboard (default)

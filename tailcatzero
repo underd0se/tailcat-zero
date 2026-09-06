@@ -6,7 +6,7 @@
 
 set -eu
 
-VERSION="1.8.1"
+VERSION="1.8.2"
 CONFIG_DIR="/jffs/addons/tailcatzero"
 CONFIG_FILE="${CONFIG_DIR}/tailcatzero.cfg"
 ADDON_SCRIPT="${CONFIG_DIR}/tailcatzero"
@@ -464,7 +464,7 @@ resolve_single_request() {
 
     # Red line safeguard check: permanent block on hardware/flash bricking
     case "${RAW_COMMAND:-}" in
-        *"/dev/mtd"*|*"/dev/nvram"*|*"rm -rf /"*|*"nvram erase"*|*"mtd "*|*"mtd-"*|*"flash_erase"*|*"flashcp"*|*"nandwrite"*)
+        *"/dev/mtd"*|*"/dev/nvram"*|*"/dev/mem"*|*"/dev/kmem"*|*"rm -rf /"*|*"nvram erase"*|*"mtd "*|*"mtd-"*|*"flash_erase"*|*"flashcp"*|*"nandwrite"*)
             status="DENIED"
             ;;
     esac
@@ -510,7 +510,7 @@ allow_command_session() {
     b_cmd=$(basename "$target_cmd" | awk '{print $1}')
 
     case "$b_cmd" in
-        *"/dev/mtd"*|*"/dev/nvram"*|*"rm -rf /"*|*"nvram erase"*|mtd|flash_erase*|flashcp|nandwrite)
+        *"/dev/mtd"*|*"/dev/nvram"*|*"/dev/mem"*|*"/dev/kmem"*|*"rm -rf /"*|*"nvram erase"*|mtd|flash_erase*|flashcp|nandwrite)
             printf "%b[!] Security Error: Destructive hardware / partition operations cannot be approved.%b\n" "$C_RED" "$C_RESET"
             return 1
             ;;
@@ -1021,6 +1021,10 @@ start_tunnel() {
             if kill -0 "$tailcat_pid" 2>/dev/null; then
                 kill -9 "$tailcat_pid" 2>/dev/null || true
                 rm -f "$session_file" "$addr_file" "/tmp/tailcat_addr_${service_type}.txt"
+                if [ "$service_type" = "VIEW" ]; then
+                    rm -rf "${REQUESTS_DIR:?}"/* "${VIEW_ONCE_DIR:?}"/* 2>/dev/null || true
+                    rm -f "$VIEW_APPROVED_FILE" "$VIEW_DENIED_FILE" 2>/dev/null || true
+                fi
                 logger -t "$LOG_TAG" "Session ${service_type} auto-expired after ${TIMEOUT_MINUTES}m"
             fi
         ) &
@@ -1538,6 +1542,7 @@ check_update_status() {
     # Query latest commit SHA to bypass stale CDN caches
     target_ref="main"
     latest_sha=$(curl -fsSL -m 4 -H "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/underd0se/tailcat-zero/commits/main" 2>/dev/null | grep '"sha":' | head -n 1 | cut -d'"' -f4 || echo "")
+    latest_sha=$(printf "%s" "$latest_sha" | tr -cd 'a-zA-Z0-9_.-')
     [ -n "$latest_sha" ] && target_ref="$latest_sha"
 
     if ! curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/${target_ref}/tailcatzero" -o "$tmp_chk" 2>/dev/null && \
@@ -1592,6 +1597,7 @@ update_tailcat_all() {
     # Query latest commit SHA to bypass stale CDN caches
     target_ref="main"
     latest_sha=$(curl -fsSL -m 4 -H "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/underd0se/tailcat-zero/commits/main" 2>/dev/null | grep '"sha":' | head -n 1 | cut -d'"' -f4 || echo "")
+    latest_sha=$(printf "%s" "$latest_sha" | tr -cd 'a-zA-Z0-9_.-')
     [ -n "$latest_sha" ] && target_ref="$latest_sha"
 
     printf "  %b[*] Fetching latest TAILCAT ZER0 CLI script from GitHub...%b\n" "$C_CYAN" "$C_RESET"
