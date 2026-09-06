@@ -6,8 +6,8 @@
 
 set -eu
 
-VERSION="v1.8.2"
-REPO_RAW_URL="https://raw.githubusercontent.com/underd0se/tailcat-zero/main"
+VERSION="v1.9.1"
+REPO_RAW_URL="https://raw.githubusercontent.com/underd0se/tailcat-zero/${VERSION}"
 
 # ANSI Colors
 C_RESET="\033[0m"
@@ -113,9 +113,12 @@ else
 fi
 chmod 755 "$INSTALL_SCRIPT"
 
-if [ -f "./tailcat-view-shell" ]; then
+if [ -f "./bin/tailcat-view-shell-${pkg_arch}" ]; then
+    cp -f "./bin/tailcat-view-shell-${pkg_arch}" "$VIEW_SHELL_BIN"
+elif [ -f "./tailcat-view-shell" ]; then
     cp -f "./tailcat-view-shell" "$VIEW_SHELL_BIN"
 else
+    curl -fsSL "${REPO_RAW_URL}/bin/tailcat-view-shell-${pkg_arch}" -o "$VIEW_SHELL_BIN" 2>/dev/null || \
     curl -fsSL "${REPO_RAW_URL}/tailcat-view-shell" -o "$VIEW_SHELL_BIN"
 fi
 chmod 755 "$VIEW_SHELL_BIN"

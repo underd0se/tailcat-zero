@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.9.1] - 2026-09-06
+
+### Penetration Hardening, Containment & Denial-of-Service Remediation
+
+* **View-Only Sandbox Penetration Hardening (`src/tailcat-view-shell.c`):**
+  * **Dynamic Linker & Environment Sanitization:** At shell entry (`main()`), aggressively unsets dangerous linker, dynamic loader, and execution controls (`LD_PRELOAD`, `LD_LIBRARY_PATH`, `LD_AUDIT`, `LD_DEBUG`, `DYLD_INSERT_LIBRARIES`, `DYLD_LIBRARY_PATH`, `DYLD_FRAMEWORK_PATH`, `BASH_ENV`, `ENV`, `IFS`, `CDPATH`, `GLOBIGNORE`) before launching any child process, completely neutralizing dynamic library hijacking attacks on child `execvp()`.
+  * **Network Route & Interface Flush DoS Prevention:** Added `flush`, `save`, and `restore` to the `ip` mutation blacklist. Blocks `ip route flush table main` and `ip addr flush dev eth0`, preventing malicious or accidental routing table wiping and interface disconnects.
+  * **Leading Option Parsing in Subcommand Validators:** Upgraded `ip` and `opkg` argument parsers to scan past leading option flags (`-`) to locate the genuine sub-command verb. Safe queries like `ip -4 route`, `ip -6 addr`, `ip -br link`, and `opkg -V 2 list` are now properly supported, while flags placed before mutations (e.g. `ip -4 route flush`) can no longer evade detection.
+  * **Broadcom Wireless Radio Shutdown Mitigation:** Added `radio`, `off`, `reinit`, `reset`, `txpower`, `channel`, `ssid`, `wep`, and `wpa` to the `wl` state-changing blacklist, preventing guests from shutting down physical radios (`wl radio off`) or modifying wireless frequencies.
+  * **Option-Embedded Sensitive Path & Symlink Traversal:** Created `check_file_path_security()` to inspect full tokens and extract embedded values following `=` or `-f` prefixes (e.g. `--file=/path`, `-f/path`). Symlinks are resolved to canonical destinations via `readlink()` and `realpath()`. Explicitly hard-blocked `sort --files0-from` and `--batch-size`.
+  * **Process Memory & Credential Extraction Defense:** Extended `check_sensitive_target()` to block all `/proc/` access targeting `environ`, `mem`, `cmdline`, `fd`, `cwd`, `root`, and `sysrq-trigger`. Prevents dumping process memory or extracting plaintext NVRAM tokens via `/proc/1/environ` or `/proc/self/environ`. Implemented case-insensitive pattern matching (`case_str_search()`) across all sensitive paths and NVRAM credential keys (`cookie`, `session`, `otp`, `totp`, `api`).
+  * **Atomic 0600 IPC Request Creation:** Enforced atomic creation of `.req` permission files using `open(req_file, O_WRONLY | O_CREAT | O_EXCL, 0600)`. Escapes quotes, backslashes, `$`, and ``` `` ``` when serializing `RAW_COMMAND` to prevent malformed IPC parsing. Validated tool names against empty strings, `.`, and `..`.
+  * **Unclosed Quote & Buffer Length Error Handling:** `split_pipeline()` and `tokenize_stage()` now explicitly reject unclosed single/double quotes or trailing escapes with clear syntax error messages. Input lines exceeding `MAX_LINE_LEN` (4096) are rejected instead of silently truncated.
+  * **Pipeline File Descriptor Cleanup & `waitpid` Interruption Handling:** Fixed pipe descriptor leaks on pipeline setup failures, and wrapped `waitpid()` in an `errno == EINTR` loop.
+* **Host Approval IPC Hardening (`tailcatzero`):**
+  * **Strict Request Attribute Sanitization:** Hardened `parse_request_file()` to sanitize `REQ_ID`, `BASE_CMD`, `GUEST_PID`, and `CREATED_AT` against path traversal and command injection.
+* **Security Test Suite Expansion (`tests/unit/test_unit_security.sh`):**
+  * Expanded security test suite from 24 to 31 tests covering network flushes, leading flags, wireless radio off, option-embedded symlinks, `/proc/*/mem|environ`, unclosed quotes, and dynamic linker sanitization with a 100% pass rate.
+
+---
+
+## [1.9.0] - 2026-09-06
+
+### Architectural Evolution: C99 Musl Static View-Only Shell & Complete Shell Trap Elimination
+
+* **Complete C99 Rewrite of `tailcat-view-shell` (`src/tailcat-view-shell.c`):**
+  * **Elimination of the Shell Parsing Trap:** Replaced the legacy shell script wrapper with a high-performance, strictly bounded C99 binary. Commands and pipeline stages are tokenized directly into native argument vectors (`argv[]`) without ever invoking `/bin/sh` or `eval`.
+  * **Kernel-Level Pipeline Execution:** Multi-stage pipelines (e.g. `uptime | grep -o 'up' | wc -l`) are created directly via POSIX `pipe()`, `fork()`, `dup2()`, and `execvp()` system calls. Unvalidated shell expansions, subshell injections (`$()`, ``` `` ```), file redirections (`>`, `<`), and command chaining (`;`, `&&`, `||`) are impossible by construction.
+  * **Zero Dynamic Heap Allocation:** Token buffers, stage arrays, and string canonicalizations operate strictly on fixed, bounded stack and static buffers with compile-time limits (`snprintf`, length bounds), completely eliminating memory leak and buffer overflow attack surfaces.
+  * **Musl Libc Static Linking via Zig CC:** Built using `zig cc` targeting Musl libc, creating ultra-lean, self-contained static ELF binaries requiring **zero shared library dependencies** on router firmware:
+    * `armv7` (RT-AC68U, RT-AC86U 32-bit compatibility): **132 KB**
+    * `arm64` (RT-AX86U, GT-AX6000, modern Wi-Fi 6/6E/7 models): **136 KB**
+    * `amd64` (Merlin x86 test environments and virtual routers): **132 KB**
+    * `native` (macOS development host): **92 KB**
+  * **Built-in Pipeline Support:** Internal commands (`help`, `sysinfo`, `leases`, `wifi`, `ports`, `logs`, `env`, `clear`) can be executed standalone or piped directly into allowed inspection tools with automated standard I/O buffer flushing.
+* **Build System & Toolchain Automation:**
+  * **`build.sh` & `Makefile`:** Added unified build tooling for cross-compiling static Musl binaries (`make musl`), building native host binaries (`make native`), and executing full test suites (`make test`).
+* **Architecture-Aware Installation & Upgrades (`install.sh` & `tailcatzero`):**
+  * **Dynamic CPU Architecture Detection:** `get_pkg_arch` detects `armv7`, `arm64`, or `amd64` to download or copy the appropriate precompiled static Musl binary during installation and automatic updates.
+  * **Root Dispatcher (`tailcat-view-shell`):** Provided a seamless top-level launcher script for local checkouts that executes the appropriate precompiled binary or automatically compiles native binaries on the fly.
+* **100% Security & Regression Parity:**
+  * Verified 100% pass rate across all 24 security test suites in [`tests/unit/test_unit_security.sh`](file:///Users/Baris/tailcat-merlin/tests/unit/test_unit_security.sh) and local helper suites.
+
+---
+
 ## [1.8.2] - 2026-09-06
 
 ### Penetration Hardening, Sandbox Isolation & Denial-of-Service Mitigations

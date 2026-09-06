@@ -1,14 +1,14 @@
 # 🛡️ View-Only Sandbox & Permission Escalation
 
-The **Restricted View-Only Shell** in TAILCAT ZER0 is implemented by a dedicated hardened wrapper script: [`tailcat-view-shell`](file:///Users/Baris/tailcat-merlin/tailcat-view-shell).
+The **Restricted View-Only Shell** in TAILCAT ZER0 is implemented by a dedicated hardened C99 binary statically linked with Musl libc: [`src/tailcat-view-shell.c`](file:///Users/Baris/tailcat-merlin/src/tailcat-view-shell.c) (distributed via [`bin/tailcat-view-shell-<arch>`](file:///Users/Baris/tailcat-merlin/bin)).
 
-It delivers a zero-trust diagnostic environment for external technicians, script developers, and forum helpers. It allows read-only visibility into system health, routing, NVRAM, and logs while strictly preventing state modification, data theft, and hardware corruption.
+It delivers a zero-trust diagnostic environment for external technicians, script developers, and forum helpers. It allows read-only visibility into system health, routing, NVRAM, and logs while strictly preventing state modification, data theft, and hardware corruption. Because it is compiled in C99 without dynamic allocations, it completely bypasses `/bin/sh` and `eval`, executing pipelines directly via POSIX kernel syscalls.
 
 ---
 
 ## 🏗️ Sandbox Architecture
 
-When a guest connects to a view-only session, TailCat attaches their PTY to `tailcat-view-shell` instead of `/bin/sh`. Every command entered by the guest is intercepted, tokenized, and evaluated against multi-layer security rules before anything reaches the kernel.
+When a guest connects to a view-only session, TailCat attaches their PTY directly to `tailcat-view-shell` instead of `/bin/sh`. Every command entered by the guest is tokenized directly into an argument vector (`argv[]`) and evaluated against multi-layer security rules before anything reaches the kernel:
 
 ```text
                +----------------------------------------+
@@ -18,7 +18,7 @@ When a guest connects to a view-only session, TailCat attaches their PTY to `tai
                                    v
                +----------------------------------------+
                |           tailcat-view-shell           |
-               |  (Pre-Parse Quote/Escape Normalizer)   |
+               |       (C99 Musl Static Binary)         |
                +----------------------------------------+
                                    |
            +-----------------------+-----------------------+
@@ -84,11 +84,12 @@ To prevent shell escapes and system tampering, the following security controls a
 * Attackers often split strings across quotes or backslashes (e.g. `cat '/tmp/etc/sha''dow'`, `route "add"`, `wl \down`) to evade regex filters.
 * All input tokens are canonicalized (quotes and backslashes stripped, whitespace normalized) prior to validation.
 
-### 5. Sensitive File, Symlink & Escalation Protection
-Access to router credential repositories and private keys is strictly prohibited:
+### 5. Sensitive File, Symlink, Memory & Escalation Protection
+Access to router credential repositories, process memory, and private keys is strictly prohibited:
 * `/etc/shadow`, `/tmp/etc/shadow`, `/etc/passwd`, `/etc/master.passwd`
 * Wildcard attempts like `cat /etc/pas*` or `grep root /tmp/etc/sha*` are expanded and validated against the sensitive blacklist before execution.
-* **Symlink Resolution:** All tokens are resolved to their canonical target paths using `readlink -f`, preventing both direct and multi-hop symlink bypasses.
+* **Symlink Resolution & Option Embedding:** All tokens and option-embedded file paths (e.g. `--file=/path`, `-f/path`) are inspected and resolved to their canonical target paths using `readlink` and `realpath`, preventing both direct, multi-hop, and flag-embedded symlink evasions.
+* **Process Memory & Credential Extraction Defense:** Access to `/proc/<pid>/environ` (exposing process environment variables and plaintext NVRAM secrets), `/proc/<pid>/mem`, `/proc/<pid>/cmdline`, and `/proc/<pid>/fd/*` is strictly blocked.
 * **Request Escalation Defense:** Requests targeting sensitive system files or credentials (e.g. `request cat /etc/shadow` or pipeline-smuggled `request echo ok | cat /etc/shadow`) are immediately rejected before request creation.
 * **Strict Sensitive Isolation:** Approving a tool session-wide (e.g. `cat` or `grep`) never whitelists sensitive files; inspection utilities remain barred from reading credential repositories under all conditions.
 * `/jffs/ssl/`, `/etc/dropbear/`, `/jffs/.ssh/id_*`, `/jffs/.sys*`, WireGuard configs (`/etc/wireguard/`, `*.ovpn`).
@@ -102,13 +103,20 @@ Direct access to raw block/character device nodes and sensitive kernel diagnosti
 * **Character Device Flood & DoS Defense:** Direct reads from raw character devices (`/dev/zero`, `/dev/urandom`, `/dev/random`, `/dev/console`, `/dev/tty*`) are prohibited to prevent tunnel saturation and CPU starvation, while explicitly preserving `/dev/null`.
 * `/proc/kmsg` (prevents blocking and ring buffer consumption) and `/proc/kallsyms` (prevents kernel symbol address disclosure).
 
-### 7. NVRAM Multi-Variable Query & Credential Filtering
-* `nvram get` validates **all** trailing arguments in multi-key queries (`nvram get lan_ipaddr http_passwd`), preventing password extraction via trailing parameters.
-* **Extended Credential Filtering:** Filters cover `pass` (including `http_pass`, `admin_pass`), `cert` (`vpn_client1_cert`, `https_cert`), `priv` (`wgc1_priv`), `ovpn` (`vpn_client1_ovpn`), `wg` (`wgs_priv`), `hash`, `salt`, `secret`, `key`, `token`, `auth`, `user`, and account lists (`acc_list`, `acc_webdavusers`) unconditionally.
+### 7. Network & Interface Mutation Prevention
+* **Route & Address Flush DoS:** `ip route flush` and `ip addr flush` are explicitly blocked, preventing malicious or accidental routing table wiping and interface disconnects.
+* **Leading Option Support:** Subcommand argument parsing skips leading flags (e.g. `ip -4 route`, `ip -6 addr`, `ip -br link`), ensuring diagnostic inspections work seamlessly while checking all tokens for mutation verbs (`add`, `del`, `delete`, `change`, `replace`, `set`, `flush`, `save`, `restore`).
+* **Broadcom Wi-Fi Radio Shutdown:** `wl radio off`, `wl channel`, `wl ssid`, `wl reinit`, and `wl reset` are blocked, preventing guests from shutting down wireless radios or disrupting client connections.
+* **Interface Configuration Mutations:** `ifconfig` blocks interface state toggling (`up`/`down`), IPv6 address addition/deletion (`add`/`del`), and promiscuous mode manipulation.
 
-### 8. GTFOBin & In-Tool Flag Defenses
+### 8. NVRAM Multi-Variable Query & Credential Filtering
+* `nvram get` validates **all** trailing arguments in multi-key queries (`nvram get lan_ipaddr http_passwd`), preventing password extraction via trailing parameters.
+* **Extended Credential Filtering:** Filters cover `pass` (including `http_pass`, `admin_pass`), `cert` (`vpn_client1_cert`, `https_cert`), `priv` (`wgc1_priv`), `ovpn` (`vpn_client1_ovpn`), `wg` (`wgs_priv`), `hash`, `salt`, `secret`, `key`, `token`, `auth`, `user`, `cookie`, `session`, `otp`, `totp`, `api`, and account lists (`acc_list`, `acc_webdavusers`) unconditionally.
+
+### 9. GTFOBin & In-Tool Flag Defenses
 Standard Unix utilities with secondary execution or write capabilities are neutralized:
-* **`sort -o <file>` / `--compress*`**: Blocked to prevent file writing and external compressor execution, including GNU prefix evasions (`--compress-prog`).
+* **Dynamic Linker Sanitization:** `main()` strips `LD_PRELOAD`, `LD_LIBRARY_PATH`, `LD_AUDIT`, and `DYLD_*` before executing any child process.
+* **`sort -o <file>` / `--compress*` / `--files0-from`**: Blocked to prevent file writing, external compressor execution, and option-embedded file reading, including GNU prefix evasions (`--compress-prog`).
 * **`tree -o <file>`**: Output file redirection blocked.
 * **`diff --diff*`**: External comparison binary execution blocked, including GNU prefix evasions (`--diff-prog`).
 * **`uniq [input] [output]`**: Positional output destination arguments blocked.
@@ -180,7 +188,7 @@ Sep  5 22:15:30 RT-AX86U tailcat-view-shell[30142]: Guest submitted permission r
 Press `P` on the main dashboard or active session card to open the **Pending Requests Modal**:
 
 ```text
-  TAILCAT ZER0 v1.8.2              ╱|、
+  TAILCAT ZER0 v1.9.1              ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -207,7 +215,7 @@ Press `P` on the main dashboard or active session card to open the **Pending Req
 If multiple requests are pending, TAILCAT ZER0 presents an interactive selection picker first:
 
 ```text
-  TAILCAT ZER0 v1.8.2              ╱|、
+  TAILCAT ZER0 v1.9.1              ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ

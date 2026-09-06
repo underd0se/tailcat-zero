@@ -6,3 +6,4 @@ tests/
 .DS_Store
 forum_post*
 *.txt
+bin/*-native

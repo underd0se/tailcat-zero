@@ -6,7 +6,7 @@
 
 set -eu
 
-VERSION="1.8.2"
+VERSION="1.9.1"
 CONFIG_DIR="/jffs/addons/tailcatzero"
 CONFIG_FILE="${CONFIG_DIR}/tailcatzero.cfg"
 ADDON_SCRIPT="${CONFIG_DIR}/tailcatzero"
@@ -150,11 +150,23 @@ parse_request_file() {
     while IFS='=' read -r _k _v || [ -n "$_k" ]; do
         _v=$(printf "%s" "$_v" | sed -e 's/^[[:space:]]*"//' -e 's/"[[:space:]]*$//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
         case "$_k" in
-            REQ_ID) REQ_ID="$_v" ;;
-            GUEST_PID) GUEST_PID="$_v" ;;
-            BASE_CMD) BASE_CMD="$_v" ;;
+            REQ_ID)
+                REQ_ID=$(printf "%s" "$_v" | tr -cd 'a-zA-Z0-9_')
+                ;;
+            GUEST_PID)
+                GUEST_PID=$(printf "%s" "$_v" | tr -cd '0-9')
+                ;;
+            BASE_CMD)
+                BASE_CMD=$(printf "%s" "$_v" | tr -cd 'a-zA-Z0-9_.-')
+                if [ "$BASE_CMD" = "." ] || [ "$BASE_CMD" = ".." ]; then
+                    BASE_CMD=""
+                fi
+                ;;
             RAW_COMMAND) RAW_COMMAND="$_v" ;;
-            CREATED_AT) CREATED_AT="$_v" ;;
+            CREATED_AT)
+                CREATED_AT=$(printf "%s" "$_v" | tr -cd '0-9')
+                [ -z "$CREATED_AT" ] && CREATED_AT=0
+                ;;
             IS_GTFOBIN) IS_GTFOBIN="$_v" ;;
             STATUS) STATUS="$_v" ;;
         esac
@@ -180,6 +192,15 @@ get_file_hash() {
     else
         cksum "$target_f" 2>/dev/null | awk '{print $1}'
     fi
+}
+
+get_pkg_arch() {
+    case "$(uname -m 2>/dev/null || echo "")" in
+        armv7*|armv6*|arm) echo "armv7" ;;
+        aarch64*|arm64*)  echo "arm64" ;;
+        x86_64*|amd64*)   echo "amd64" ;;
+        *) echo "unknown" ;;
+    esac
 }
 
 is_service_active() {
@@ -863,12 +884,16 @@ ensure_dependencies() {
         /opt/bin/opkg install qrencode >/dev/null 2>&1 || true
     fi
 
-    # 3. View-Only Shell script
+    # 3. View-Only Shell binary
     if [ ! -x "$VIEW_SHELL" ]; then
         mkdir -p "$BIN_DIR"
-        if [ -f "./tailcat-view-shell" ]; then
+        v_arch=$(get_pkg_arch)
+        if [ -f "./bin/tailcat-view-shell-${v_arch}" ]; then
+            cp -f "./bin/tailcat-view-shell-${v_arch}" "$VIEW_SHELL"
+        elif [ -f "./tailcat-view-shell" ]; then
             cp -f "./tailcat-view-shell" "$VIEW_SHELL"
         else
+            curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/bin/tailcat-view-shell-${v_arch}" -o "$VIEW_SHELL" 2>/dev/null || \
             curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcat-view-shell" -o "$VIEW_SHELL" 2>/dev/null || true
         fi
         chmod 755 "$VIEW_SHELL" 2>/dev/null || true
@@ -1639,10 +1664,12 @@ update_tailcat_all() {
         printf "  %b[!] Could not reach GitHub. Keeping current script.%b\n\n" "$C_YELLOW" "$C_RESET"
     fi
 
-    # Update View-Only Shell Script via Hash Check
+    # Update View-Only Shell Binary via Hash Check
     tmp_view="/tmp/tailcat-view-shell.update.$$"
     rm -f "$tmp_view"
-    if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/${target_ref}/tailcat-view-shell" -o "$tmp_view" 2>/dev/null; then
+    v_arch=$(get_pkg_arch)
+    if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/${target_ref}/bin/tailcat-view-shell-${v_arch}" -o "$tmp_view" 2>/dev/null || \
+       curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/${target_ref}/tailcat-view-shell" -o "$tmp_view" 2>/dev/null; then
         local_view_hash=$(get_file_hash "$VIEW_SHELL")
         remote_view_hash=$(get_file_hash "$tmp_view")
         if [ -n "$remote_view_hash" ] && [ "$remote_view_hash" != "$local_view_hash" ]; then
@@ -1650,11 +1677,11 @@ update_tailcat_all() {
             chmod 755 "$tmp_view"
             mv -f "$tmp_view" "$VIEW_SHELL"
             view_hash_short=$(printf "%s" "$remote_view_hash" | cut -c 1-8)
-            printf "  %b[+] View-only shell script updated (hash: %s).%b\n\n" "$C_GREEN" "$view_hash_short" "$C_RESET"
+            printf "  %b[+] View-only shell binary updated (hash: %s).%b\n\n" "$C_GREEN" "$view_hash_short" "$C_RESET"
         else
             rm -f "$tmp_view"
             view_hash_short=$(printf "%s" "$local_view_hash" | cut -c 1-8)
-            printf "  %b[✓] View-only shell script is up to date (hash: %s).%b\n\n" "$C_GREEN" "${view_hash_short:-none}" "$C_RESET"
+            printf "  %b[✓] View-only shell binary is up to date (hash: %s).%b\n\n" "$C_GREEN" "${view_hash_short:-none}" "$C_RESET"
         fi
     fi
 
@@ -1718,8 +1745,10 @@ reinstall_tailcat() {
         printf "  %b[*] Keeping current script version.%b\n\n" "$C_GRAY" "$C_RESET"
     fi
 
-    # Update View-Only Shell Script
-    if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcat-view-shell" -o "${VIEW_SHELL}.tmp" 2>/dev/null; then
+    # Update View-Only Shell Binary
+    v_arch=$(get_pkg_arch)
+    if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/bin/tailcat-view-shell-${v_arch}" -o "${VIEW_SHELL}.tmp" 2>/dev/null || \
+       curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcat-view-shell" -o "${VIEW_SHELL}.tmp" 2>/dev/null; then
         mkdir -p "$BIN_DIR"
         chmod 755 "${VIEW_SHELL}.tmp"
         mv -f "${VIEW_SHELL}.tmp" "$VIEW_SHELL"

@@ -9,7 +9,7 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
 ---
 
 ```text
-  TAILCAT ZER0 v1.8.2              ╱|、
+  TAILCAT ZER0 v1.9.1              ╱|、
                                  (˚ˎ 。7  
                                   |、˜〵          
   Instant Tunnel Manager         じしˍ,)ノ
@@ -179,6 +179,15 @@ rm -rf /jffs/addons/tailcatzero /jffs/addons/tailcat /jffs/scripts/tailcat /jffs
 ---
 
 ## 📝 Changelog
+
+### [v1.9.1] - 2026-09-06
+* **🛡️ View-Only Sandbox Penetration Hardening:** Sanitized dynamic linker and execution controls (`LD_PRELOAD`, `LD_LIBRARY_PATH`, `LD_AUDIT`, `DYLD_*`, `BASH_ENV`) in `main()`, blocked network table flush DoS (`ip route flush`, `ip addr flush`), resolved leading option parsing in `ip` and `opkg` subcommands (enabling `ip -4 route` while closing mutation evasion), blocked Broadcom wireless radio shutdown (`wl radio off`), prevented option-embedded symlink traversal (`--file=/path`, `-f/path`, `sort --files0-from`), contained process memory and credential extraction (`/proc/*/environ`, `/proc/*/mem`), enforced atomic 0600 IPC permission request file creation with quote escaping, and rejected unclosed quotes and input line overflows with explicit syntax errors.
+* **🧪 31 Automated Security Tests:** Expanded unit security test suite to 31 tests covering all identified penetration attack vectors with 100% test pass rate.
+
+### [v1.9.0] - 2026-09-06
+* **⚡ C99 Musl Static View-Only Shell (`tailcat-view-shell`):** Completely rewrote the restricted view-only support shell in pure C99 (`src/tailcat-view-shell.c`) statically linked against Musl libc using `zig cc`. Eliminates `/bin/sh` and `eval` entirely—all commands and pipelines execute via direct kernel syscalls (`pipe()`, `fork()`, `dup2()`, `execvp()`), physically immunizing the sandbox against shell injection, variable expansion, and quote-escaping bugs.
+* **🪶 Ultra-Lean Static Binaries:** Cross-compiled self-contained static ELF binaries for `armv7` (132 KB), `arm64` (136 KB), and `amd64` (132 KB), requiring zero runtime dependencies on router JFFS flash.
+* **🛠️ Build & Architecture Automation:** Added `build.sh` and `Makefile` for automated Musl cross-compilation (`make musl`) and native host testing (`make test`). Updated `install.sh` and `tailcatzero` to automatically detect router architecture and install the appropriate static binary.
 
 ### [v1.8.2] - 2026-09-06
 * **🛡️ View-Only Sandbox Penetration Hardening:** Added sensitive file request denial in `request_command_approval()` to block request-based credential leaks (`request cat /etc/shadow`), prohibited session tool approvals (`APPROVED_FILE`) from bypassing sensitive file access controls, implemented canonical symlink resolution (`readlink -f`) preventing direct and multi-hop symlink evasions, enforced non-interactive batch mode on `top` across all pipeline stages, neutralized interactive pager escapes (`less`/`more`) via `safe_stream` pipeline rewriting, mitigated character device DoS/tunnel flooding (`/dev/zero`, `/dev/urandom`), expanded `nvram get` credential filters (`pass`, `cert`, `priv`, `ovpn`, `wg`), defended against GNU option prefix evasions (`--diff*`, `--compress*`), and resolved a `VIEW_ONCE_DIR` unbound variable termination under `set -u`.

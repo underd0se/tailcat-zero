@@ -107,3 +107,9 @@ Every session launched by TAILCAT ZER0 is assigned a dedicated background watchd
 | **Pager Shell Escape via Direct Paths** | Spawning root shells via `/bin/less` or `/usr/bin/more` | *Pipeline stages are rewritten to `safe_stream()`, stripping non-portable flags and streaming exclusively through `cat`.* |
 | **MITM on Relay Network** | Eavesdropping on session traffic | *Traffic is protected with Noise/WireGuard end-to-end encryption. DERP relays have zero visibility into plaintext data.* |
 | **Local Privilege Snooping in `/tmp`** | Unauthorized process reading active tokens | *Directory permissions enforced at `0700` and address files at `0600`.* |
+| **Dynamic Linker Hijacking (`LD_PRELOAD`)** | Hijacking child process execution via preloaded shared libraries | *`main()` strips `LD_PRELOAD`, `LD_LIBRARY_PATH`, `LD_AUDIT`, `DYLD_*`, and `BASH_ENV` before executing child binaries.* |
+| **Network Route / Address Flush DoS** | Wiping routing tables and disconnecting interfaces | *`ip route flush` and `ip addr flush` are blacklisted, preserving tunnel connectivity and interface routing.* |
+| **Broadcom Radio Shutdown DoS** | Disabling router Wi-Fi radios from view shell | *`wl radio off`, `wl channel`, `wl ssid`, `wl reinit`, and `wl reset` are prohibited in view-only mode.* |
+| **Option-Embedded Symlink Traversal** | Reading sensitive files via `--file=/path` or `-f/path` | *Tokens with embedded paths (`=`, `-f`) are resolved through canonical `realpath()` checks; `sort --files0-from` is hard-blocked.* |
+| **Process Memory / Credential Extraction** | Stealing NVRAM secrets from `/proc/<pid>/environ` | *Access to `/proc/<pid>/environ`, `/proc/<pid>/mem`, `/proc/<pid>/cmdline`, and `/proc/<pid>/fd/*` is completely blocked.* |
+
