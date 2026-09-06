@@ -76,8 +76,8 @@ tailcatzero --version                 # Display version & active script hash
 
 ## 🌟 Key Features
 
-* **🔒 Restricted View-Only Diagnostic Shell:**
-  * Zero-trust, read-only inspection shell designed for untrusted assistance or safe remote triage.
+* **🔒 Restricted View-Only Diagnostic Shell (Default Mode):**
+  * **Zero-Trust by Default:** When launching a Remote Support Shell (Option 1), TAILCAT ZER0 defaults directly to the safe **View-Only Diagnostic Shell** (`Option 1 -> 1` or pressing `Enter`). Full Root Shell (`Option 1 -> 2`) is protected by an explicit confirmation gate requiring the host admin to type `YES` to a security warning modal before access is granted.
   * **Extensive Inspection Commands:** System health (`uptime`, `free`, `df`, `ps`, `top`, `dmesg`, `sysinfo`), networking & WiFi (`ip`, `netstat`, `route`, `ping`, `mtr`, `wl`, `leases`, `wifi`, `ports`), NVRAM queries (`nvram get`, `nvram show`, `logread`), text processing (`cat`, `head`, `tail`, `grep`, `rg`, `tree`, `sort`, `uniq`, `diff`), and Entware queries (`opkg list/info/find/status/search/depends`).
   * **🔔 On-Demand Permission Escalation:** Remote technicians or friends can run `request <command>` (or respond `y` when prompted on unapproved commands) to request live host authorization. The host router admin receives real-time notification alerts across admin terminals, syslog, and the TUI dashboard (`🔔 [P]ending Requests`), and can approve session-wide, approve once, or deny.
   * **🛡️ Hardened Multi-Layer Security Sandbox:** Prohibits file redirections (`>`, `>>`, `<`), subshells (`` ` `` / `$()`), command chaining (`;`, `&&`, `||`), mutating binaries (`rm`, `mv`, `cp`, `touch`, `chmod`, `dd`), state mutations (`nvram set/commit`, `reboot`, `kill`), and package changes (`opkg install/remove`).
@@ -97,9 +97,10 @@ tailcatzero --version                 # Display version & active script hash
 * **📁 SFTP Directory Share:**
   * Serve any router directory (e.g. `/jffs` or USB mount) read-only or read-write to remote clients using native SFTP.
 * **🌐 WebGUI Remote Access:**
-  * Expose local WebUI (port 8443 / 80) over a secure token without opening WAN firewall ports.
-* **⏱️ Flexible Auto-Kill & Persistent Mode:**
+  * Expose local WebUI (port 8443 / 80) over a secure token without opening WAN firewall ports. Includes built-in browser guidance for `localhost` HSTS/SSL certificate domain handling.
+* **⏱️ Flexible Auto-Kill & Phased Countdown Warnings:**
   * All tunnels support custom auto-kill countdown timers (default: **30 minutes**) or **`0` for Persistent mode** (runs until manually stopped).
+  * Watchdog subshells broadcast staged notices at **5 minutes** and **1 minute** remaining directly to active host TUIs and remote guest terminals (`/dev/pts/*`).
 
 ---
 
@@ -108,9 +109,12 @@ tailcatzero --version                 # Display version & active script hash
 | Security Measure | Implementation |
 |---|---|
 | **Capability-Based Tokens** | 256-bit cryptographically secure ephemeral tokens. Possession is permission. |
-| **Restricted View Shell** | Dedicated read-only shell wrapper blocking write binaries, redirections, subshells, chaining, and state mutation. |
+| **Zero-Trust Menu Inversion** | View-Only Diagnostic Shell is the default #1 choice; Full Root Shell requires deliberate `YES` confirmation. |
+| **Restricted View Shell** | Dedicated read-only C99 Musl static binary blocking write binaries, redirections, subshells, chaining, and state mutation. |
+| **PID Rollover Safeguard** | Kernel cmdline and process comm validation before killing, preventing "friendly fire" against recycled PIDs. |
+| **Flash (JFFS) Wear Reduction** | `stat` permission checking guards `chmod 600`, eliminating redundant NAND/SPI flash inode updates. |
 | **No WAN Ports Open** | Uses DERP relays and UDP NAT hole-punching. Zero incoming firewall holes opened. |
-| **Configurable Auto-Kill** | Background watchdog automatically kills tunnels on expiry, or persists when set to `0`. |
+| **Configurable Auto-Kill** | Background watchdog automatically kills tunnels on expiry with 5m/1m warnings, or persists when set to `0`. |
 | **Clean Reboot Teardown** | Session locks and state are stored in volatile memory (`/tmp`) and cleaned up on reboot. |
 
 ---

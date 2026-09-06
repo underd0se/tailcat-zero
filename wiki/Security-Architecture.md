@@ -79,10 +79,12 @@ When view-only guests request elevated permissions via `request <command>`, IPC 
 
 Every session launched by TAILCAT ZER0 is assigned a dedicated background watchdog process.
 
-1. At startup, the watchdog records the creation timestamp and calculated expiration time.
-2. The watchdog decrements the session lifetime continuously.
-3. Upon reaching zero, the watchdog sends a `SIGTERM` signal to the service process, waits 3 seconds, and follows up with `SIGKILL` if the process has not exited.
-4. Volatile PID and token files are unlinked, rendering the capability token instantly dead.
+1. At startup, the watchdog records the creation timestamp, calculated expiration time, and kernel PID of the service process.
+2. **Phased Expiration Warnings:** If the timeout exceeds 5 minutes, the watchdog proactively broadcasts warnings prior to session termination:
+   * **5 Minutes Remaining:** Broadcasts a notice to active host TUIs (`/tmp/tailcat_sessions/active_tuis`) and remote guest PTYs (`/dev/pts/*`).
+   * **1 Minute Remaining:** Broadcasts a high-priority alert (`⚠️ Warning: Session will terminate in 60 seconds`).
+3. **PID Rollover & Identity Validation:** Before issuing any kill signals, the watchdog executes `is_tailcat_process("$pid")`, inspecting `/proc/$pid/comm` and `/proc/$pid/cmdline`. If the original process died and the Linux kernel recycled the PID to another system daemon (e.g. `dnsmasq`, `httpd`), `kill -9` is strictly suppressed to prevent friendly fire.
+4. **Clean Teardown:** Session files, address files, and approval tokens are unlinked, rendering the capability token instantly dead.
 
 ---
 
@@ -91,7 +93,9 @@ Every session launched by TAILCAT ZER0 is assigned a dedicated background watchd
 | Threat Scenario | Potential Impact | TAILCAT ZER0 Defense |
 |---|---|---|
 | **Token Interception / Leaked Token** | Unauthorized connection to running session | *Tokens are ephemeral (auto-kill in 30m) and can be revoked instantly via `tailcatzero stop` or pressing `s` in TUI.* |
-| **Malicious Guest in Root Shell** | Full router compromise | *User is warned: Root shell should only be shared with 100% trusted individuals. Use View-Only Shell for third parties.* |
+| **Malicious Guest in Root Shell** | Full router compromise | *Zero-Trust Inversion & Confirmation Gate: Option 1 defaults to View-Only Diagnostic Shell. Full Root Shell requires explicit deliberate opt-in and typing 'YES' to an interactive security warning modal.* |
+| **PID Rollover / "Friendly Fire" Kill Trap** | Terminating unrelated system daemons upon timeout | *`is_tailcat_process()` validates process identity via `/proc/<pid>/comm` and `/proc/<pid>/cmdline` before executing kill signals.* |
+| **Flash Storage (JFFS) Wear Churn** | Premature NAND/SPI flash exhaustion from repeated runs | *`ensure_file_perm_600()` uses `stat` to check permissions before invoking `chmod 600`, eliminating redundant inode metadata writes.* |
 | **Sandbox Breakout via Filter Obfuscation** | Executing unauthorized commands | *Pre-parse canonicalization strips quotes and backslashes before validation, preventing quote-splitting and backslash-escape filter evasions.* |
 | **Wildcard Glob File Extraction** | Dumping `/etc/shadow` or `/etc/passwd` | *Multi-layer path checks inspect stage strings, token paths, and filesystem glob expansions (`cat /etc/pas*`), blocking glob-based credential access.* |
 | **Direct Hardware Memory / Partition Access** | Extracting keys or firmware corruption | *Access to raw device nodes (`/dev/mtd*`, `/dev/mem`, `/dev/kmem`, `/dev/port`, `/proc/kcore`) is blocked across all tools.* |

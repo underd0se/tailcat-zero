@@ -24,10 +24,10 @@ Whether you need to let a trusted forum helper diagnose a routing issue, securel
 ## 🚀 Core Value Propositions
 
 * 🔒 **Zero Disclosed Passwords / Zero Keys to Manage:** Connections are authenticated using single-use 256-bit cryptographically secure capability tokens. Possession is permission.
-* 🛡️ **Zero-Trust View-Only Diagnostic Shell:** Let remote technicians or forum helpers inspect logs, routes, interfaces, and NVRAM variables in an aggressively restricted sandbox where destructive actions, file modifications, subshells, and sensitive credential files are completely blocked.
+* 🛡️ **Zero-Trust View-Only Diagnostic Shell (Default):** Let remote technicians or forum helpers inspect logs, routes, interfaces, and NVRAM variables in an aggressively restricted sandbox where destructive actions, file modifications, subshells, and sensitive credential files are completely blocked. View-Only is the default selection, with Full Root Shell gated behind an explicit 'YES' confirmation modal.
 * 🔔 **Live On-Demand Permission Escalation:** Need a guest to run a specific command outside the default sandbox? They run `request <cmd>`, and you can review and approve it directly from your terminal or TUI with a single keystroke.
 * 🌐 **Zero WAN Ports Opened:** Penetrates carrier-grade NATs (CGNAT), cellular modems, and corporate firewalls seamlessly using Tailscale's global DERP relay fabric and STUN UDP hole-punching.
-* ⏱️ **Automatic Ephemeral Teardown:** Every session has an automatic watchdog countdown (default: 30 minutes) or can run persistently until manually stopped. Volatile memory locks ensure zero remnants survive a router reboot.
+* ⏱️ **Automatic Ephemeral Teardown & Phased Warnings:** Every session has an automatic watchdog countdown (default: 30 minutes) or can run persistently until manually stopped. Staged broadcast warnings at 5m and 1m remaining alert active TUIs and connected remote PTYs before teardown. Volatile memory locks ensure zero remnants survive a router reboot.
 * 🖐️ **5-Slot Multi-Service Concurrency:** Run root shells, view-only triage sessions, File Receivers, SFTP shares, and WebGUI proxies concurrently on independent WireGuard nodes.
 
 ---

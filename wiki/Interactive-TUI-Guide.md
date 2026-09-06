@@ -67,6 +67,44 @@ When sessions are active and a guest submits an on-demand permission request, th
 
 ---
 
+## 🆘 Remote Support Shell Options Menu (Submenu 1)
+
+When you select **Option 1 (🆘 Remote Support Shell)** from the main dashboard, TAILCAT ZER0 displays the Remote Support Shell selection submenu:
+
+```text
+  TAILCAT ZER0 v1.10.0             ╱|、
+                                 (˚ˎ 。7
+                                  |、˜〵
+  Instant Tunnel Manager         じしˍ,)ノ
+
+========================================================================
+
+  🆘 Remote Support Shell Options:
+
+  1. 🔒 View-Only Diagnostic Shell       Safe inspection; writes blocked (Default) [⚪ Inactive]
+  2. 🔓 Full Root Shell (Read-Write)     Full admin shell with unrestricted root   [⚪ Inactive]
+
+========================================================================
+
+  🔒 View-Only (Default)  |  🔓 Root  |  ↩️ Back: 
+```
+
+### Zero-Trust Inverted Defaults & Safety Gate
+* **Option 1 — 🔒 View-Only Diagnostic Shell (Default):** Pressing `1`, `v`, or simply hitting `Enter` immediately spins up the sandboxed diagnostic shell. Safe by design: external technicians receive comprehensive inspection powers while system mutations, NVRAM credential dumps, file writes, and shell breakouts remain strictly blocked.
+* **Option 2 — 🔓 Full Root Shell (Read-Write):** Selecting `2` or `r` targets full administrative root access. Because root access grants unrestricted authority over router flash memory, firewall rules, and plaintext credentials, TAILCAT ZER0 enforces an **explicit confirmation gate**:
+
+```text
+  ⚠️  SECURITY WARNING: Full Root Shell
+  Root access grants unrestricted authority to inspect Wi-Fi credentials,
+  dump NVRAM plaintext secrets, and reconfigure router flash memory.
+
+  Type YES to confirm or press Enter to cancel: 
+```
+
+The host administrator must type `YES` and press `Enter` to confirm. Hitting `Enter` with an empty string, pressing `b`, or typing anything else immediately aborts root creation and returns to the dashboard with a cancellation flash notice.
+
+---
+
 ## 📱 The Active Session Card
 
 When you launch any service or press `v` (View Sessions), TAILCAT ZER0 renders a dedicated **Active Session Card**:

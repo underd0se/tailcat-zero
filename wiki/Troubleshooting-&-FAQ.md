@@ -86,10 +86,19 @@ Test whether the compiled engine binary runs without missing libraries or archit
 
 ---
 
-### 5. "WebGUI shows SSL certificate security warning"
-* **Symptom:** Browsing `https://localhost:8443` displays a browser warning: *Your connection is not private*.
-* **Explanation:** Asuswrt-Merlin uses a self-signed SSL certificate by default. This is completely expected behavior.
-* **Fix:** Click **Advanced ➔ Proceed to localhost (unsafe)** to open the login page. The connection remains fully encrypted through the WireGuard tunnel.
+### 5. "WebGUI shows SSL certificate security warning / HSTS error"
+* **Symptom:** Browsing `https://localhost:8443` displays a browser warning: *Your connection is not private* (`SSL_ERROR_BAD_CERT_DOMAIN` or HSTS block).
+* **Explanation:** 
+  * Asuswrt uses self-signed SSL certificates by default.
+  * If you have a custom DDNS domain (`*.asuscomm.com`) with Let's Encrypt and HSTS enabled on your router, modern browsers (Chrome, Safari, Edge) strictly block `https://localhost:<port>` because the certificate domain does not match `localhost`, and HSTS prevents the browser from showing a "Proceed" button.
+* **Fix Options:**
+  1. **Forward HTTP Port (Recommended):** Forward port 80 instead of 8443. The connection remains fully encrypted through the WireGuard P2P tunnel, and browser SSL/HSTS validation is bypassed entirely:
+     ```sh
+     tailcat forward <TOKEN> 80
+     # Then open in browser: http://localhost:80
+     ```
+  2. **Accept Self-Signed Certificate:** If HSTS is not enforced, click **Advanced ➔ Proceed to localhost (unsafe)** to open the login page.
+  3. **Chrome Bypass:** If Chrome blocks localhost via HSTS with no proceed button, click anywhere on the error page and type the bypass phrase `thisisunsafe`.
 
 ---
 
