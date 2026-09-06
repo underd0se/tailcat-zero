@@ -14,6 +14,7 @@ C_RESET="\033[0m"
 C_BOLD="\033[1m"
 C_GREEN="\033[1;32m"
 C_CYAN="\033[1;36m"
+C_YELLOW="\033[1;33m"
 C_RED="\033[1;31m"
 
 ADDON_DIR="/jffs/addons/tailcatzero"
@@ -106,8 +107,6 @@ fi
 printf "%b[*] Installing CLI script to %s...%b\n" "$C_CYAN" "$INSTALL_SCRIPT" "$C_RESET"
 if [ -f "./tailcatzero" ]; then
     cp -f "./tailcatzero" "$INSTALL_SCRIPT"
-elif [ -f "./tailcat" ]; then
-    cp -f "./tailcat" "$INSTALL_SCRIPT"
 else
     curl -fsSL "${REPO_RAW_URL}/tailcatzero" -o "$INSTALL_SCRIPT"
 fi
@@ -145,6 +144,7 @@ if [ ! -f "$CFG_FILE" ]; then
 TIMEOUT_MINUTES=30
 DERP_URL="https://tailcat.dev/derpmap.json"
 EOF
+    chmod 600 "$CFG_FILE" 2>/dev/null || true
     printf "%b[+] Created default configuration: %s%b\n" "$C_GREEN" "$CFG_FILE" "$C_RESET"
 fi
 

@@ -70,12 +70,30 @@ fi
 
 # Load Config if exists
 if [ -f "$CONFIG_FILE" ]; then
-    # shellcheck disable=SC1090
-    . "$CONFIG_FILE"
+    chmod 600 "$CONFIG_FILE" 2>/dev/null || true
+    while IFS='=' read -r _ck _cv || [ -n "$_ck" ]; do
+        _cv=$(printf "%s" "$_cv" | sed -e 's/^[[:space:]]*"//' -e 's/"[[:space:]]*$//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+        case "$_ck" in
+            TIMEOUT_MINUTES)
+                case "$_cv" in
+                    ''|*[!0-9]*) ;;
+                    *) TIMEOUT_MINUTES="$_cv" ;;
+                esac
+                ;;
+            DERP_URL)
+                DERP_URL="$_cv"
+                export DERP_URL
+                ;;
+        esac
+    done < "$CONFIG_FILE"
 fi
 
 TIMEOUT_MINUTES="${TIMEOUT_MINUTES:-$DEFAULT_TIMEOUT}"
-mkdir -p "$SESSIONS_DIR"
+if [ -L "$SESSIONS_DIR" ]; then
+    rm -rf "$SESSIONS_DIR" 2>/dev/null || true
+fi
+mkdir -p "$SESSIONS_DIR" "$REQUESTS_DIR" "$VIEW_ONCE_DIR" "$ACTIVE_TUIS_DIR"
+chmod 700 "$SESSIONS_DIR" "$REQUESTS_DIR" "$VIEW_ONCE_DIR" "$ACTIVE_TUIS_DIR" 2>/dev/null || true
 FLASH_MSG=""
 
 # -------------------------------------------------------------------------------------------------------------------------
@@ -85,6 +103,62 @@ clear_screen() {
     if [ -t 1 ]; then
         printf "\033[2J\033[H"
     fi
+}
+
+# shellcheck disable=SC2034
+parse_session_file() {
+    _sf="$1"
+    PID=""
+    WATCHDOG_PID=""
+    SERVICE_ID=""
+    DESC=""
+    TOKEN=""
+    EXTRA_INFO=""
+    START_EPOCH=0
+    EXPIRE_EPOCH=0
+    TIMEOUT_MINUTES=0
+    [ -f "$_sf" ] || return 1
+
+    while IFS='=' read -r _k _v || [ -n "$_k" ]; do
+        _v=$(printf "%s" "$_v" | sed -e 's/^[[:space:]]*"//' -e 's/"[[:space:]]*$//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+        case "$_k" in
+            PID) PID="$_v" ;;
+            WATCHDOG_PID) WATCHDOG_PID="$_v" ;;
+            SERVICE_ID) SERVICE_ID="$_v" ;;
+            DESC) DESC="$_v" ;;
+            TOKEN) TOKEN="$_v" ;;
+            EXTRA_INFO) EXTRA_INFO="$_v" ;;
+            START_EPOCH) START_EPOCH="$_v" ;;
+            EXPIRE_EPOCH) EXPIRE_EPOCH="$_v" ;;
+            TIMEOUT_MINUTES) TIMEOUT_MINUTES="$_v" ;;
+        esac
+    done < "$_sf"
+}
+
+# shellcheck disable=SC2034
+parse_request_file() {
+    _rf="$1"
+    REQ_ID=""
+    GUEST_PID=""
+    BASE_CMD=""
+    RAW_COMMAND=""
+    CREATED_AT=0
+    IS_GTFOBIN="NO"
+    STATUS=""
+    [ -f "$_rf" ] || return 1
+
+    while IFS='=' read -r _k _v || [ -n "$_k" ]; do
+        _v=$(printf "%s" "$_v" | sed -e 's/^[[:space:]]*"//' -e 's/"[[:space:]]*$//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+        case "$_k" in
+            REQ_ID) REQ_ID="$_v" ;;
+            GUEST_PID) GUEST_PID="$_v" ;;
+            BASE_CMD) BASE_CMD="$_v" ;;
+            RAW_COMMAND) RAW_COMMAND="$_v" ;;
+            CREATED_AT) CREATED_AT="$_v" ;;
+            IS_GTFOBIN) IS_GTFOBIN="$_v" ;;
+            STATUS) STATUS="$_v" ;;
+        esac
+    done < "$_rf"
 }
 
 log_msg() {
@@ -112,15 +186,14 @@ is_service_active() {
     s_id="$1"
     s_file="${SESSIONS_DIR}/${s_id}.env"
     if [ -f "$s_file" ]; then
-        # shellcheck disable=SC1090
-        . "$s_file"
+        parse_session_file "$s_file"
         if [ -n "${PID:-}" ] && kill -0 "$PID" 2>/dev/null; then
             return 0
         fi
         if [ -n "${WATCHDOG_PID:-}" ]; then
             kill -9 "$WATCHDOG_PID" 2>/dev/null || true
         fi
-        rm -f "$s_file" "/tmp/tailcat_addr_${s_id}.txt" 2>/dev/null || true
+        rm -f "$s_file" "${SESSIONS_DIR}/tailcat_addr_${s_id}.txt" "/tmp/tailcat_addr_${s_id}.txt" 2>/dev/null || true
         if [ "$s_id" = "VIEW" ]; then
             rm -rf "${REQUESTS_DIR:?}"/* "${VIEW_ONCE_DIR:?}"/* 2>/dev/null || true
             rm -f "$VIEW_APPROVED_FILE" "$VIEW_DENIED_FILE" 2>/dev/null || true
@@ -161,8 +234,7 @@ get_service_time_left() {
     s_id="$1"
     s_file="${SESSIONS_DIR}/${s_id}.env"
     if is_service_active "$s_id"; then
-        # shellcheck disable=SC1090
-        . "$s_file"
+        parse_session_file "$s_file"
         if [ "${EXPIRE_EPOCH:-0}" -eq 0 ]; then
             printf "Persistent"
             return
@@ -214,10 +286,9 @@ get_shell_service_badge() {
 stop_single_session() {
     s_id="$1"
     s_file="${SESSIONS_DIR}/${s_id}.env"
-    addr_file="/tmp/tailcat_addr_${s_id}.txt"
+    addr_file="${SESSIONS_DIR}/tailcat_addr_${s_id}.txt"
     if [ -f "$s_file" ]; then
-        # shellcheck disable=SC1090
-        . "$s_file"
+        parse_session_file "$s_file"
         if [ -n "${PID:-}" ]; then
             kill -9 "$PID" 2>/dev/null || true
             wait "$PID" 2>/dev/null || true
@@ -226,7 +297,7 @@ stop_single_session() {
             kill -9 "$WATCHDOG_PID" 2>/dev/null || true
             wait "$WATCHDOG_PID" 2>/dev/null || true
         fi
-        rm -f "$s_file" "$addr_file"
+        rm -f "$s_file" "$addr_file" "/tmp/tailcat_addr_${s_id}.txt"
         if [ "$s_id" = "VIEW" ]; then
             rm -rf "${REQUESTS_DIR:?}"/* "${VIEW_ONCE_DIR:?}"/* 2>/dev/null || true
             rm -f "$VIEW_APPROVED_FILE" "$VIEW_DENIED_FILE" 2>/dev/null || true
@@ -234,7 +305,7 @@ stop_single_session() {
         log_msg "TailCat session stopped: ${s_id}"
         printf "\n%b[+] Stopped session: %s%b\n" "$C_GREEN" "${DESC:-$s_id}" "$C_RESET"
     else
-        rm -f "$s_file" "$addr_file"
+        rm -f "$s_file" "$addr_file" "/tmp/tailcat_addr_${s_id}.txt"
         if [ "$s_id" = "VIEW" ]; then
             rm -rf "${REQUESTS_DIR:?}"/* "${VIEW_ONCE_DIR:?}"/* 2>/dev/null || true
             rm -f "$VIEW_APPROVED_FILE" "$VIEW_DENIED_FILE" 2>/dev/null || true
@@ -276,8 +347,7 @@ stop_sessions_with_confirmation() {
         if is_service_active "$s"; then
             eval "svc_${idx}=\"\$s\""
             s_file="${SESSIONS_DIR}/${s}.env"
-            # shellcheck disable=SC1090
-            . "$s_file"
+            parse_session_file "$s_file"
             tl=$(get_service_time_left "$s")
             printf "  %b%d.%b %b%-30s%b %b(PID: %s, %s)%b\n" "$C_BOLD" "$idx" "$C_RESET" "$C_CYAN" "${DESC}" "$C_RESET" "$C_GRAY" "${PID:-unknown}" "$tl" "$C_RESET"
             idx=$((idx + 1))
@@ -326,8 +396,7 @@ stop_sessions_with_confirmation() {
                 s_file="${SESSIONS_DIR}/${target_svc}.env"
                 svc_desc="$target_svc"
                 if [ -f "$s_file" ]; then
-                    # shellcheck disable=SC1090
-                    . "$s_file"
+                    parse_session_file "$s_file"
                     svc_desc="${DESC:-$target_svc}"
                 fi
                 stop_single_session "$target_svc"
@@ -388,8 +457,7 @@ resolve_single_request() {
 
     [ -f "$target_req_file" ] || return 1
 
-    # shellcheck disable=SC1090
-    . "$target_req_file"
+    parse_request_file "$target_req_file"
 
     mkdir -p "$SESSIONS_DIR" "$REQUESTS_DIR" "$VIEW_ONCE_DIR"
     resp_f="${REQUESTS_DIR}/${REQ_ID}.resp"
@@ -462,8 +530,7 @@ allow_command_session() {
     if [ -d "$REQUESTS_DIR" ]; then
         for f in "${REQUESTS_DIR}"/*.req; do
             [ -f "$f" ] || continue
-            # shellcheck disable=SC1090
-            . "$f"
+            parse_request_file "$f"
             if [ "${BASE_CMD:-}" = "$b_cmd" ]; then
                 resolve_single_request "$f" "APPROVED_SESSION"
             fi
@@ -508,8 +575,7 @@ show_approval_modal() {
     idx=1
     for f in "${REQUESTS_DIR}"/*.req; do
         [ -f "$f" ] || continue
-        # shellcheck disable=SC1090
-        . "$f"
+        parse_request_file "$f"
         age=$((now - CREATED_AT))
         printf "  • %b[%d] Tool:%b     %b%-16s%b %b(Age: %ds)%b\n" "$C_BOLD" "$idx" "$C_RESET" "$C_YELLOW" "${BASE_CMD}" "$C_RESET" "$C_GRAY" "$age" "$C_RESET"
         printf "    %bCommand:%b  %b%s%b\n" "$C_BOLD" "$C_RESET" "$C_WHITE" "${RAW_COMMAND}" "$C_RESET"
@@ -553,8 +619,7 @@ show_approval_modal() {
         return
     fi
 
-    # shellcheck disable=SC1090
-    . "$chosen_f"
+    parse_request_file "$chosen_f"
 
     printf "  %b────────────────────────────────────────────────────────────────────────%b\n\n" "$C_CYAN" "$C_RESET"
     printf "  %bResolving Request:%b %b%s%b\n" "$C_BOLD" "$C_RESET" "$C_YELLOW" "${BASE_CMD}" "$C_RESET"
@@ -610,8 +675,7 @@ cli_requests() {
     idx=1
     for f in "${REQUESTS_DIR}"/*.req; do
         [ -f "$f" ] || continue
-        # shellcheck disable=SC1090
-        . "$f"
+        parse_request_file "$f"
         age=$((now - CREATED_AT))
         printf "  • %b[%d] ID:%b      %s %b(Age: %ds)%b\n" "$C_BOLD" "$idx" "$C_RESET" "${REQ_ID}" "$C_GRAY" "$age" "$C_RESET"
         printf "    %bTool:%b    %b%s%b\n" "$C_BOLD" "$C_RESET" "$C_YELLOW" "${BASE_CMD}" "$C_RESET"
@@ -652,8 +716,7 @@ cli_approve() {
                 [ -f "$f" ] && target_file="$f" && break
             done
             if [ -n "$target_file" ]; then
-                # shellcheck disable=SC1090
-                . "$target_file"
+                parse_request_file "$target_file"
                 resolve_single_request "$target_file" "$mode"
                 if [ "$mode" = "APPROVED_ONCE" ]; then
                     printf "%b[+] Approved single execution for request '%s'.%b\n" "$C_GREEN" "${REQ_ID:-unknown}" "$C_RESET"
@@ -673,8 +736,7 @@ cli_approve() {
     if [ -d "$REQUESTS_DIR" ]; then
         for f in "${REQUESTS_DIR}"/*.req; do
             [ -f "$f" ] || continue
-            # shellcheck disable=SC1090
-            . "$f"
+            parse_request_file "$f"
             match=0
             if [ "${REQ_ID:-}" = "$target" ] || [ "${BASE_CMD:-}" = "$target" ]; then
                 match=1
@@ -691,8 +753,7 @@ cli_approve() {
     fi
 
     if [ -n "$found_req" ]; then
-        # shellcheck disable=SC1090
-        . "$found_req"
+        parse_request_file "$found_req"
         resolve_single_request "$found_req" "$mode"
         if [ "$mode" = "APPROVED_ONCE" ]; then
             printf "%b[+] Approved single execution for '%s'.%b\n" "$C_GREEN" "$target" "$C_RESET"
@@ -724,8 +785,7 @@ cli_deny() {
                 [ -f "$f" ] && target_file="$f" && break
             done
             if [ -n "$target_file" ]; then
-                # shellcheck disable=SC1090
-                . "$target_file"
+                parse_request_file "$target_file"
                 resolve_single_request "$target_file" "DENIED"
                 printf "%b[-] Denied pending request '%s'.%b\n" "$C_RED" "${BASE_CMD:-unknown}" "$C_RESET"
                 return 0
@@ -741,8 +801,7 @@ cli_deny() {
     if [ -d "$REQUESTS_DIR" ]; then
         for f in "${REQUESTS_DIR}"/*.req; do
             [ -f "$f" ] || continue
-            # shellcheck disable=SC1090
-            . "$f"
+            parse_request_file "$f"
             match=0
             if [ "${REQ_ID:-}" = "$target" ] || [ "${BASE_CMD:-}" = "$target" ]; then
                 match=1
@@ -897,19 +956,22 @@ start_tunnel() {
     fi
 
     mkdir -p "$SESSIONS_DIR"
-    addr_file="/tmp/tailcat_addr_${service_type}.txt"
-    rm -f "$addr_file"
+    chmod 700 "$SESSIONS_DIR" 2>/dev/null || true
+    addr_file="${SESSIONS_DIR}/tailcat_addr_${service_type}.txt"
+    rm -f "$addr_file" "/tmp/tailcat_addr_${service_type}.txt"
 
     printf "\n%b[*] Starting %s...%b\n" "$C_CYAN" "$desc" "$C_RESET"
 
     # Start tailcat in background with address output file and guaranteed ephemeral key
     if [ "$service_type" = "RECV" ]; then
+        chmod 700 "$extra_info" 2>/dev/null || true
         TAILCAT_ADDR_FILE="$addr_file" "$TAILCAT_BIN" --key=new recv --accept-dirs "$extra_info" >/dev/null 2>&1 &
     elif [ "$service_type" = "VIEW" ]; then
         if [ ! -x "$VIEW_SHELL" ]; then
             ensure_dependencies
         fi
         mkdir -p "$REQUESTS_DIR" "$VIEW_ONCE_DIR"
+        chmod 700 "$SESSIONS_DIR" "$REQUESTS_DIR" "$VIEW_ONCE_DIR" 2>/dev/null || true
         rm -rf "${REQUESTS_DIR:?}"/* "${VIEW_ONCE_DIR:?}"/* 2>/dev/null || true
         rm -f "$VIEW_APPROVED_FILE" "$VIEW_DENIED_FILE" 2>/dev/null || true
         TAILCAT_ADDR_FILE="$addr_file" SHELL="$VIEW_SHELL" "$TAILCAT_BIN" --key=new serve no-auth-ssh >/dev/null 2>&1 &
@@ -934,7 +996,7 @@ start_tunnel() {
 
     if [ ! -s "$addr_file" ] || ! kill -0 "$tailcat_pid" 2>/dev/null; then
         kill -9 "$tailcat_pid" 2>/dev/null || true
-        rm -f "$addr_file"
+        rm -f "$addr_file" "/tmp/tailcat_addr_${service_type}.txt"
         if [ "$interactive_mode" = "0" ]; then
             printf "\n%b[-] Failed to start %s.%b\n" "$C_RED" "$desc" "$C_RESET"
         else
@@ -944,6 +1006,7 @@ start_tunnel() {
     fi
 
     token=$(tr -d '\r\n' < "$addr_file")
+    chmod 600 "$addr_file" 2>/dev/null || true
     now=$(date +%s)
     session_file="${SESSIONS_DIR}/${service_type}.env"
     watchdog_pid=""
@@ -957,7 +1020,7 @@ start_tunnel() {
             sleep "$timeout_sec"
             if kill -0 "$tailcat_pid" 2>/dev/null; then
                 kill -9 "$tailcat_pid" 2>/dev/null || true
-                rm -f "$session_file" "$addr_file"
+                rm -f "$session_file" "$addr_file" "/tmp/tailcat_addr_${service_type}.txt"
                 logger -t "$LOG_TAG" "Session ${service_type} auto-expired after ${TIMEOUT_MINUTES}m"
             fi
         ) &
@@ -980,6 +1043,7 @@ START_EPOCH=${now}
 EXPIRE_EPOCH=${expire_epoch}
 TIMEOUT_MINUTES=${TIMEOUT_MINUTES}
 EOF
+    chmod 600 "$session_file" 2>/dev/null || true
 
     if [ "$interactive_mode" = "1" ]; then
         interactive_session_card "$service_type"
@@ -1047,8 +1111,7 @@ render_multi_session_overview() {
     for s in SSH VIEW RECV FILES WEBGUI; do
         if is_service_active "$s"; then
             s_file="${SESSIONS_DIR}/${s}.env"
-            # shellcheck disable=SC1090
-            . "$s_file"
+            parse_session_file "$s_file"
             tl=$(get_service_time_left "$s")
             printf "  %b[%d]%b %b%-36s%b ⏱️ %-14s 🔒 P2P\n" "$C_BOLD" "$idx" "$C_RESET" "$C_MAGENTA" "${DESC}" "$C_RESET" "$tl"
             idx=$((idx + 1))
@@ -1060,8 +1123,7 @@ render_multi_session_overview() {
     for s in SSH VIEW RECV FILES WEBGUI; do
         if is_service_active "$s"; then
             s_file="${SESSIONS_DIR}/${s}.env"
-            # shellcheck disable=SC1090
-            . "$s_file"
+            parse_session_file "$s_file"
             cmd=$(get_client_connect_cmd "$s" "$TOKEN" "${EXTRA_INFO:-}")
             if [ "$s" = "WEBGUI" ]; then
                 read -r wp_proto wp_port <<EOF
@@ -1087,8 +1149,7 @@ render_single_session_card() {
         return 1
     fi
 
-    # shellcheck disable=SC1090
-    . "$s_file"
+    parse_session_file "$s_file"
     time_left=$(get_service_time_left "$s_id")
     cmd=$(get_client_connect_cmd "$s_id" "$TOKEN" "${EXTRA_INFO:-}")
 
@@ -1311,6 +1372,7 @@ save_timeout_config() {
             echo "$existing_derp"
         fi
     } > "$CONFIG_FILE"
+    chmod 600 "$CONFIG_FILE" 2>/dev/null || true
     TIMEOUT_MINUTES="$new_timeout"
 }
 
@@ -2151,8 +2213,7 @@ cli_status() {
     for s in SSH VIEW RECV FILES WEBGUI; do
         if is_service_active "$s"; then
             s_file="${SESSIONS_DIR}/${s}.env"
-            # shellcheck disable=SC1090
-            . "$s_file"
+            parse_session_file "$s_file"
             tl=$(get_service_time_left "$s")
             cmd=$(get_client_connect_cmd "$s" "$TOKEN" "${EXTRA_INFO:-}")
             printf "  • %b%-36s%b ⏱️ %-14s PID: %s\n" "$C_BOLD" "${DESC}" "$C_RESET" "$tl" "${PID:-unknown}"

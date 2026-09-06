@@ -175,19 +175,69 @@ is_gtfobin() {
     return 1
 }
 
+check_sensitive_target() {
+    _p="$1"
+    case "$_p" in
+        *"shadow"*|*"passwd"*|*"etc/sha"*|*"etc/pas"*|*".ssh"*|*"dropbear"*|*"/openvpn/"*|*".key"*|\
+        *"/jffs/ssl/"*|*"/jffs/.sys"*|*"tailcat_sessions"*|*"tailcat_addr"*|*"authorized_keys"*|\
+        *"id_rsa"*|*"id_ed25519"*|*"id_ecdsa"*|*".crt"*|*".pem"*|*"/nvram"*|*"nvram.nvm"*|\
+        *"tailcatzero.cfg"*|*"tailcat.cfg"*|*"/dev/mtd"*|*"/dev/mem"*|*"/dev/kmem"*|*"/dev/port"*|\
+        *"/dev/sd"*|*"/dev/nvme"*|*"/dev/mmcblk"*|*"/dev/ubi"*|*"/proc/kcore"*)
+            return 0
+            ;;
+    esac
+    return 1
+}
+
+is_sensitive_file_access() {
+    _stage="$1"
+    # 1. Direct check on stage string
+    if check_sensitive_target "$_stage"; then
+        return 0
+    fi
+    # 2. Check each token and any filesystem glob expansion
+    for _tok in $_stage; do
+        if check_sensitive_target "$_tok"; then
+            return 0
+        fi
+        case "$_tok" in
+            *"*"*|*"?"*|*"["*)
+                for _exp in $_tok; do
+                    if [ -e "$_exp" ] || [ -L "$_exp" ]; then
+                        if check_sensitive_target "$_exp"; then
+                            return 0
+                        fi
+                        if [ -L "$_exp" ]; then
+                            _link_target=$(readlink "$_exp" 2>/dev/null || true)
+                            if [ -n "$_link_target" ] && check_sensitive_target "$_link_target"; then
+                                return 0
+                            fi
+                        fi
+                    fi
+                done
+                ;;
+        esac
+    done
+    return 1
+}
+
 request_command_approval() {
     req_input="$1"
     req_base="$2"
 
+    # Canonicalize request before inspecting red lines to defeat quote/backslash evasion
+    req_input_canon=$(printf "%s" "$req_input" | sed -e 's/\\//g' -e 's/"//g' -e "s/'//g" | tr '\t' ' ' | sed -e 's/[[:space:]][[:space:]]*/ /g' -e 's/^ //' -e 's/ $//')
+
     # Red lines check: permanent block on partition / flash destruction
-    case "$req_input" in
-        *"/dev/mtd"*|*"/dev/nvram"*|*"rm -rf /"*|*"nvram erase"*|*"mtd "*|*"mtd-"*|*"flash_erase"*|*"flashcp"*|*"nandwrite"*)
+    case "$req_input_canon" in
+        *"/dev/mtd"*|*"/dev/nvram"*|*"/dev/mem"*|*"/dev/kmem"*|*"rm -rf /"*|*"nvram erase"*|*"mtd "*|*"mtd-"*|*"flash_erase"*|*"flashcp"*|*"nandwrite"*)
             printf "%b[!] Security Error: Destructive hardware / partition operations cannot be requested.%b\n" "$C_RED" "$C_RESET"
             return 1
             ;;
     esac
 
-    mkdir -p "$REQUESTS_DIR"
+    mkdir -p "$REQUESTS_DIR" "$VIEW_ONCE_DIR"
+    chmod 700 "$SESSIONS_DIR" "$REQUESTS_DIR" "$VIEW_ONCE_DIR" 2>/dev/null || true
     req_id="req_$(date +%s)_$$"
     req_file="${REQUESTS_DIR}/${req_id}.req"
     resp_file="${REQUESTS_DIR}/${req_id}.resp"
@@ -213,6 +263,8 @@ request_command_approval() {
     logger -t tailcatzero "GUEST PERMISSION REQUEST: '${req_base_clean}' ('${req_input}') [ID: ${req_id}] GTFO=${is_gtfo}"
 
     # Notify ONLY active tailcatzero TUI dashboard screen(s)
+    # Sanitize input before writing to admin TTY to prevent ANSI terminal escape injection
+    tty_safe_input=$(printf "%s" "$req_input" | tr -cd 'a-zA-Z0-9 _./:=+-' | cut -c 1-80)
     cur_tty=""
     if [ -t 0 ]; then
         cur_tty=$(tty 2>/dev/null || true)
@@ -225,9 +277,9 @@ request_command_approval() {
                 target_tty=$(cat "$f" 2>/dev/null || true)
                 if [ -n "$target_tty" ] && [ "$target_tty" != "$cur_tty" ] && [ -w "$target_tty" ]; then
                     if [ "$is_gtfo" = "YES" ]; then
-                        printf "\n\033[1;31m[tailcatzero] ⚠️  Guest requested elevated execution tool: '%s' (ID: %s)\033[0m\n\033[1;36mPress [P] to review or run 'tailcatzero approve'\033[0m\n" "$req_input" "$req_id" > "$target_tty" 2>/dev/null || true
+                        printf "\n\033[1;31m[tailcatzero] ⚠️  Guest requested elevated execution tool: '%s' (ID: %s)\033[0m\n\033[1;36mPress [P] to review or run 'tailcatzero approve'\033[0m\n" "$tty_safe_input" "$req_id" > "$target_tty" 2>/dev/null || true
                     else
-                        printf "\n\033[1;33m[tailcatzero] 🔔 Guest requested permission to run: '%s' (ID: %s)\033[0m\n\033[1;36mPress [P] to review or run 'tailcatzero approve'\033[0m\n" "$req_input" "$req_id" > "$target_tty" 2>/dev/null || true
+                        printf "\n\033[1;33m[tailcatzero] 🔔 Guest requested permission to run: '%s' (ID: %s)\033[0m\n\033[1;36mPress [P] to review or run 'tailcatzero approve'\033[0m\n" "$tty_safe_input" "$req_id" > "$target_tty" 2>/dev/null || true
                     fi
                 fi
             else
@@ -248,9 +300,7 @@ request_command_approval() {
     resp_status=""
     while [ "$waited" -lt 60 ]; do
         if [ -f "$resp_file" ]; then
-            # shellcheck disable=SC1090
-            . "$resp_file"
-            resp_status="${STATUS:-}"
+            resp_status=$(grep '^STATUS=' "$resp_file" 2>/dev/null | head -n 1 | cut -d'=' -f2- | tr -d '"\r\n' || true)
             break
         fi
         sleep 1
@@ -307,7 +357,7 @@ validate_and_run() {
     clean_input=$(echo "$raw_input" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
     [ -z "$clean_input" ] && return 0
 
-    # 1. Block dangerous control characters, redirection & subshell syntax
+    # 1. Block dangerous control characters, redirection, background execution & subshell syntax
     CR=$(printf '\r')
     NL='
 '
@@ -320,12 +370,12 @@ validate_and_run() {
             printf "%b[!] Security Error: File redirection (>, >>, <) is prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
             return 1
             ;;
-        *"\`"*|*"\$("*)
-            printf "%b[!] Security Error: Subshell execution (\` \`, \$( )) is prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
+        *"\`"*|*"\$"*)
+            printf "%b[!] Security Error: Subshell execution and variable expansion (\`, $) are prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
             return 1
             ;;
-        *";"*|*"&&"*|*"||"*)
-            printf "%b[!] Security Error: Command chaining (; && ||) is prohibited. Use pipelines (|) with allowed tools.%b\n" "$C_RED" "$C_RESET"
+        *";"*|*"&"*|*"||"*)
+            printf "%b[!] Security Error: Command chaining (; && ||) and background execution (&) are prohibited. Use pipelines (|) with allowed tools.%b\n" "$C_RED" "$C_RESET"
             return 1
             ;;
     esac
@@ -426,43 +476,169 @@ validate_and_run() {
             return 1
         fi
 
-        cmd_token=$(echo "$stage" | awk '{print $1}')
+        # Canonicalize stage for security inspection:
+        # Strip quotes and backslashes, normalize spaces and tabs
+        stage_canon=$(printf "%s" "$stage" | sed -e 's/\\//g' -e 's/"//g' -e "s/'//g" | tr '\t' ' ' | sed -e 's/[[:space:]][[:space:]]*/ /g' -e 's/^ //' -e 's/ $//')
+        if [ -z "$stage_canon" ]; then
+            printf "%b[!] Syntax Error: Empty pipeline stage after canonicalization.%b\n" "$C_RED" "$C_RESET"
+            return 1
+        fi
+
+        cmd_token=$(echo "$stage_canon" | awk '{print $1}')
         base_cmd=$(basename "$cmd_token")
-        sub_arg=$(echo "$stage" | awk '{print $2}')
+        sub_arg=$(echo "$stage_canon" | awk '{print $2}')
 
         case "$base_cmd" in
-            uptime|date|free|df|ps|top|uname|dmesg|sysinfo|cpuinfo|meminfo|temperature|lsmod|\
-            netstat|ping|ping6|traceroute|traceroute6|mtr|nslookup|dig|host|ethtool|\
-            mii-tool|ethctl|robocfg|leases|dhcp-leases|wifi|ports|logs|help|exit|quit|clear|\
-            cut|column|tr|stat|file|locate|which|whereis|echo|printf|who|w|id)
+            uptime|free|df|ps|uname|sysinfo|cpuinfo|meminfo|temperature|lsmod|\
+            netstat|traceroute|traceroute6|mtr|nslookup|dig|host|\
+            leases|dhcp-leases|wifi|ports|logs|help|exit|quit|clear|\
+            cut|column|tr|locate|which|whereis|echo|printf|who|w|id)
                 ;;
-            cat|head|tail|more|less|grep|egrep|fgrep|rg|tree|ls|dir|vdir|du|wc|diff|strings|hexdump)
-                case "$stage" in
-                    *"shadow"*|*".ssh"*|*"dropbear"*|*"/openvpn/"*|*".key"*|*"/jffs/ssl/"*|*"/jffs/.sys"*)
-                        if ! is_cmd_approved "$base_cmd"; then
-                            printf "%b[!] Security Error: Access to sensitive system security files is restricted in view-only mode.%b\n" "$C_RED" "$C_RESET"
+            top)
+                # Batch execution only to prevent interactive process signal killing
+                ;;
+            dmesg)
+                for d_tok in $stage_canon; do
+                    case "$d_tok" in
+                        dmesg) ;;
+                        -*[cC]*)
+                            printf "%b[!] Security Error: Clearing kernel ring buffer (dmesg -c/-C) is prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
+                            return 1
+                            ;;
+                    esac
+                done
+                ;;
+            ping|ping6)
+                for p_tok in $stage_canon; do
+                    case "$p_tok" in
+                        ping|ping6) ;;
+                        -*[fF]*)
+                            printf "%b[!] Security Error: Flood pinging (ping -f) is prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
+                            return 1
+                            ;;
+                    esac
+                done
+                ;;
+            date)
+                date_mut=0
+                for d_tok in $stage_canon; do
+                    case "$d_tok" in
+                        date) ;;
+                        -u|-R|-I*|+*) ;;
+                        -*[sS]*|--set*) date_mut=1; break ;;
+                        [0-9][0-9][0-9][0-9]*) date_mut=1; break ;;
+                    esac
+                done
+                if [ "$date_mut" -eq 1 ]; then
+                    printf "%b[!] Security Error: Modifying system date/time is prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
+                    return 1
+                fi
+                ;;
+            robocfg)
+                robocfg_mut=0
+                for r_tok in $stage_canon; do
+                    case "$r_tok" in
+                        robocfg) ;;
+                        show) ;;
+                        *) robocfg_mut=1; break ;;
+                    esac
+                done
+                if [ "$robocfg_mut" -eq 1 ] && ! is_cmd_approved "robocfg"; then
+                    printf "%b[!] Security Error: Hardware switch mutation with robocfg is prohibited in view-only mode. Only 'robocfg show' is permitted.%b\n" "$C_RED" "$C_RESET"
+                    return 1
+                fi
+                ;;
+            ethtool)
+                for e_tok in $stage_canon; do
+                    case "$e_tok" in
+                        ethtool) ;;
+                        -*[sKkACGpPrReEd]*|--change|--features|--pause|--coalesce|--ring|--identify|--reset)
+                            if ! is_cmd_approved "ethtool"; then
+                                printf "%b[!] Security Error: Hardware interface mutation with ethtool is prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
+                                return 1
+                            fi
+                            ;;
+                    esac
+                done
+                ;;
+            mii-tool)
+                for m_tok in $stage_canon; do
+                    case "$m_tok" in
+                        mii-tool) ;;
+                        -*[FfrR]*|--force|--restart)
+                            if ! is_cmd_approved "mii-tool"; then
+                                printf "%b[!] Security Error: Media interface mutation with mii-tool is prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
+                                return 1
+                            fi
+                            ;;
+                    esac
+                done
+                ;;
+            ethctl)
+                case "$stage_canon" in
+                    *"media-type"*|*"speed"*|*"duplex"*|*"vlan"*|*"enable"*|*"disable"*)
+                        if ! is_cmd_approved "ethctl"; then
+                            printf "%b[!] Security Error: Interface state mutation with ethctl is prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
                             return 1
                         fi
                         ;;
                 esac
+                ;;
+            cat|head|tail|more|less|grep|egrep|fgrep|rg|tree|ls|dir|vdir|du|wc|diff|strings|hexdump|stat|file)
+                if is_sensitive_file_access "$stage_canon"; then
+                    if ! is_cmd_approved "$base_cmd"; then
+                        printf "%b[!] Security Error: Access to sensitive system security files is restricted in view-only mode.%b\n" "$C_RED" "$C_RESET"
+                        return 1
+                    fi
+                fi
+
+                if [ "$base_cmd" = "tree" ]; then
+                    for t_tok in $stage_canon; do
+                        case "$t_tok" in
+                            tree) ;;
+                            -*[oO]*|--output*)
+                                printf "%b[!] Security Error: 'tree' output file redirection (-o) is prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
+                                return 1
+                                ;;
+                        esac
+                    done
+                elif [ "$base_cmd" = "diff" ]; then
+                    for d_tok in $stage_canon; do
+                        case "$d_tok" in
+                            diff) ;;
+                            --diff-program*|-*[D]*)
+                                printf "%b[!] Security Error: 'diff' external program execution is prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
+                                return 1
+                            ;;
+                        esac
+                    done
+                fi
                 ;;
             sort)
-                case "$stage" in
-                    *"-o "*|*"-o="*|*"-o/"*|*"-o."*|*"--output"*|*"--compress-program"*)
-                        printf "%b[!] Security Error: 'sort' file writing (-o) and external compressor options are prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
+                sort_has_out=0
+                for s_tok in $stage_canon; do
+                    case "$s_tok" in
+                        sort) ;;
+                        -*[oO]*|--output*|--compress-program*)
+                            sort_has_out=1
+                            break
+                            ;;
+                    esac
+                done
+                if [ "$sort_has_out" -eq 1 ]; then
+                    printf "%b[!] Security Error: 'sort' file writing (-o) and external compressor options are prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
+                    return 1
+                fi
+                if is_sensitive_file_access "$stage_canon"; then
+                    if ! is_cmd_approved "sort"; then
+                        printf "%b[!] Security Error: Access to sensitive system security files is restricted in view-only mode.%b\n" "$C_RED" "$C_RESET"
                         return 1
-                        ;;
-                    *"shadow"*|*".ssh"*|*"dropbear"*|*"/openvpn/"*|*".key"*|*"/jffs/ssl/"*|*"/jffs/.sys"*)
-                        if ! is_cmd_approved "sort"; then
-                            printf "%b[!] Security Error: Access to sensitive system security files is restricted in view-only mode.%b\n" "$C_RED" "$C_RESET"
-                            return 1
-                        fi
-                        ;;
-                esac
+                    fi
+                fi
                 ;;
             uniq)
                 u_non_flags=0
-                for u_tok in $stage; do
+                for u_tok in $stage_canon; do
                     case "$u_tok" in
                         uniq) ;;
                         -*) ;;
@@ -473,104 +649,154 @@ validate_and_run() {
                     printf "%b[!] Security Error: 'uniq' output file redirection is prohibited in view-only mode. Use pipelines instead.%b\n" "$C_RED" "$C_RESET"
                     return 1
                 fi
+                if is_sensitive_file_access "$stage_canon"; then
+                    if ! is_cmd_approved "uniq"; then
+                        printf "%b[!] Security Error: Access to sensitive system security files is restricted in view-only mode.%b\n" "$C_RED" "$C_RESET"
+                        return 1
+                    fi
+                fi
                 ;;
             route)
-                case "$stage" in
-                    *" add "*|*" add"*|*" delete "*|*" del "*|*" del"*)
-                        if ! is_cmd_approved "route"; then
-                            if is_cmd_denied "route"; then
-                                printf "%b[!] Security Error: 'route' modification operations have been denied by host for this session.%b\n" "$C_RED" "$C_RESET"
-                                return 1
-                            fi
-                            printf "%b[!] Security Error: 'route' modification operations (add/del) are prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
-                            if [ -t 0 ]; then
-                                printf "    Would you like to request host approval for '%s'? [y/N]: " "$clean_input"
-                                if read -r ask_resp; then
-                                    case "$ask_resp" in
-                                        [yY]*)
-                                            request_command_approval "$clean_input" "route"
-                                            return $?
-                                            ;;
-                                    esac
-                                fi
-                            else
-                                printf "    Type 'request %s' to ask host for approval.\n" "$clean_input"
-                            fi
+                route_mut=0
+                for r_tok in $stage_canon; do
+                    case "$r_tok" in
+                        route) ;;
+                        add|del|delete) route_mut=1; break ;;
+                    esac
+                done
+                if [ "$route_mut" -eq 1 ]; then
+                    if ! is_cmd_approved "route"; then
+                        if is_cmd_denied "route"; then
+                            printf "%b[!] Security Error: 'route' modification operations have been denied by host for this session.%b\n" "$C_RED" "$C_RESET"
                             return 1
                         fi
-                        ;;
-                esac
+                        printf "%b[!] Security Error: 'route' modification operations (add/del) are prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
+                        if [ -t 0 ]; then
+                            printf "    Would you like to request host approval for '%s'? [y/N]: " "$clean_input"
+                            if read -r ask_resp; then
+                                case "$ask_resp" in
+                                    [yY]*)
+                                        request_command_approval "$clean_input" "route"
+                                        return $?
+                                        ;;
+                                esac
+                            fi
+                        else
+                            printf "    Type 'request %s' to ask host for approval.\n" "$clean_input"
+                        fi
+                        return 1
+                    fi
+                fi
                 ;;
             arp)
-                case "$stage" in
-                    *"-s "*|*"-s"*|*"-d "*|*"-d"*|*"-f "*|*"-f"*)
-                        if ! is_cmd_approved "arp"; then
-                            if is_cmd_denied "arp"; then
-                                printf "%b[!] Security Error: 'arp' modification operations have been denied by host for this session.%b\n" "$C_RED" "$C_RESET"
-                                return 1
-                            fi
-                            printf "%b[!] Security Error: 'arp' modification operations (-s/-d/-f) are prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
-                            if [ -t 0 ]; then
-                                printf "    Would you like to request host approval for '%s'? [y/N]: " "$clean_input"
-                                if read -r ask_resp; then
-                                    case "$ask_resp" in
-                                        [yY]*)
-                                            request_command_approval "$clean_input" "arp"
-                                            return $?
-                                            ;;
-                                    esac
-                                fi
-                            else
-                                printf "    Type 'request %s' to ask host for approval.\n" "$clean_input"
-                            fi
+                arp_mut=0
+                for a_tok in $stage_canon; do
+                    case "$a_tok" in
+                        arp) ;;
+                        -*[sdDfF]*|--delete) arp_mut=1; break ;;
+                    esac
+                done
+                if [ "$arp_mut" -eq 1 ]; then
+                    if ! is_cmd_approved "arp"; then
+                        if is_cmd_denied "arp"; then
+                            printf "%b[!] Security Error: 'arp' modification operations have been denied by host for this session.%b\n" "$C_RED" "$C_RESET"
                             return 1
                         fi
-                        ;;
-                esac
+                        printf "%b[!] Security Error: 'arp' modification operations (-s/-d/-f) are prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
+                        if [ -t 0 ]; then
+                            printf "    Would you like to request host approval for '%s'? [y/N]: " "$clean_input"
+                            if read -r ask_resp; then
+                                case "$ask_resp" in
+                                    [yY]*)
+                                        request_command_approval "$clean_input" "arp"
+                                        return $?
+                                        ;;
+                                esac
+                            fi
+                        else
+                            printf "    Type 'request %s' to ask host for approval.\n" "$clean_input"
+                        fi
+                        return 1
+                    fi
+                fi
                 ;;
             wl)
-                case "$stage" in
-                    *" down"*|*" up"*|*" join "*|*" disassoc"*|*" deauth"*|*" restart"*|*" set "*|*" mute"*)
-                        if ! is_cmd_approved "wl"; then
-                            if is_cmd_denied "wl"; then
-                                printf "%b[!] Security Error: 'wl' state-changing operations have been denied by host for this session.%b\n" "$C_RED" "$C_RESET"
-                                return 1
-                            fi
-                            printf "%b[!] Security Error: 'wl' state-changing operations are prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
-                            if [ -t 0 ]; then
-                                printf "    Would you like to request host approval for '%s'? [y/N]: " "$clean_input"
-                                if read -r ask_resp; then
-                                    case "$ask_resp" in
-                                        [yY]*)
-                                            request_command_approval "$clean_input" "wl"
-                                            return $?
-                                            ;;
-                                    esac
-                                fi
-                            else
-                                printf "    Type 'request %s' to ask host for approval.\n" "$clean_input"
-                            fi
+                wl_mut=0
+                for w_tok in $stage_canon; do
+                    case "$w_tok" in
+                        wl) ;;
+                        down|up|join|disassoc|deauth|restart|set|mute|out) wl_mut=1; break ;;
+                    esac
+                done
+                if [ "$wl_mut" -eq 1 ]; then
+                    if ! is_cmd_approved "wl"; then
+                        if is_cmd_denied "wl"; then
+                            printf "%b[!] Security Error: 'wl' state-changing operations have been denied by host for this session.%b\n" "$C_RED" "$C_RESET"
                             return 1
                         fi
-                        ;;
-                esac
+                        printf "%b[!] Security Error: 'wl' state-changing operations are prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
+                        if [ -t 0 ]; then
+                            printf "    Would you like to request host approval for '%s'? [y/N]: " "$clean_input"
+                            if read -r ask_resp; then
+                                case "$ask_resp" in
+                                    [yY]*)
+                                        request_command_approval "$clean_input" "wl"
+                                        return $?
+                                        ;;
+                                esac
+                            fi
+                        else
+                            printf "    Type 'request %s' to ask host for approval.\n" "$clean_input"
+                        fi
+                        return 1
+                    fi
+                fi
                 ;;
             env)
                 printf "%b[!] Security Error: Executing commands via 'env' is prohibited in view-only mode. Type 'env' alone to view environment variables.%b\n" "$C_RED" "$C_RESET"
                 return 1
                 ;;
             nvram)
-                case "$sub_arg" in
+                nv_action=""
+                nv_key=""
+                for n_tok in $stage_canon; do
+                    case "$n_tok" in
+                        nvram) ;;
+                        -*) ;;
+                        *)
+                            if [ -z "$nv_action" ]; then
+                                nv_action="$n_tok"
+                            elif [ -z "$nv_key" ]; then
+                                nv_key="$n_tok"
+                            fi
+                            ;;
+                    esac
+                done
+
+                case "$nv_action" in
                     get)
-                        nv_key=$(echo "$stage" | awk '{print $3}')
-                        case "$nv_key" in
-                            *"passwd"*|*"password"*|*"psk"*|*"secret"*|*"private"*|*"key"*)
-                                if ! is_cmd_approved "nvram"; then
-                                    printf "%b[!] Security Error: Access to sensitive nvram credential variable '%s' is prohibited in view-only mode.%b\n" "$C_RED" "$nv_key" "$C_RESET"
-                                    return 1
-                                fi
-                                ;;
-                        esac
+                        is_nv_after_get=0
+                        for nv_tok in $stage_canon; do
+                            if [ "$nv_tok" = "get" ]; then
+                                is_nv_after_get=1
+                                continue
+                            fi
+                            if [ "$is_nv_after_get" -eq 1 ]; then
+                                case "$nv_tok" in
+                                    -*) ;;
+                                    *[pP][aA][sS][sS][wW][dD]*|*[pP][aA][sS][sS][wW][oO][rR][dD]*|\
+                                    *[pP][sS][kK]*|*[sS][eE][cC][rR][eE][tT]*|*[pP][rR][iI][vV][aA][tT][eE]*|\
+                                    *[kK][eE][yY]*|*[pP][iI][nN]*|*[tT][oO][kK][eE][nN]*|*[aA][uU][tT][hH]*|\
+                                    *[uU][sS][eE][rR][nN][aA][mM][eE]*|*[aA][cC][cC]_[lL][iI][sS][tT]*|\
+                                    *[aA][cC][cC]_[wW][eE][bB][dD][aA][vV]*|*[cC][rR][tT]*)
+                                        if ! is_cmd_approved "nvram"; then
+                                            printf "%b[!] Security Error: Access to sensitive nvram credential variable '%s' is prohibited in view-only mode.%b\n" "$C_RED" "$nv_tok" "$C_RESET"
+                                            return 1
+                                        fi
+                                        ;;
+                                esac
+                            fi
+                        done
                         ;;
                     show)
                         if ! is_cmd_approved "nvram"; then
@@ -598,10 +824,10 @@ validate_and_run() {
                     *)
                         if ! is_cmd_approved "nvram"; then
                             if is_cmd_denied "nvram"; then
-                                printf "%b[!] Security Error: 'nvram %s' has been denied by host for this session.%b\n" "$C_RED" "${sub_arg:-<empty>}" "$C_RESET"
+                                printf "%b[!] Security Error: 'nvram %s' has been denied by host for this session.%b\n" "$C_RED" "${nv_action:-<empty>}" "$C_RESET"
                                 return 1
                             fi
-                            printf "%b[!] Security Error: 'nvram %s' is blocked. Only 'nvram get' is permitted in view-only mode.%b\n" "$C_RED" "${sub_arg:-<empty>}" "$C_RESET"
+                            printf "%b[!] Security Error: 'nvram %s' is blocked. Only 'nvram get' is permitted in view-only mode.%b\n" "$C_RED" "${nv_action:-<empty>}" "$C_RESET"
                             if [ -t 0 ]; then
                                 printf "    Would you like to request host approval for '%s'? [y/N]: " "$clean_input"
                                 if read -r ask_resp; then
@@ -652,31 +878,35 @@ validate_and_run() {
             ip)
                 case "$sub_arg" in
                     addr|route|neigh|link|rule|a|r|l)
-                        case "$stage" in
-                            *" add "*|*" del "*|*" delete "*|*" change "*|*" replace "*|*" set "*)
-                                if ! is_cmd_approved "ip"; then
-                                    if is_cmd_denied "ip"; then
-                                        printf "%b[!] Security Error: 'ip' write operations have been denied by host for this session.%b\n" "$C_RED" "$C_RESET"
-                                        return 1
-                                    fi
-                                    printf "%b[!] Security Error: 'ip' write/modify operations are prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
-                                    if [ -t 0 ]; then
-                                        printf "    Would you like to request host approval for '%s'? [y/N]: " "$clean_input"
-                                        if read -r ask_resp; then
-                                            case "$ask_resp" in
-                                                [yY]*)
-                                                    request_command_approval "$clean_input" "ip"
-                                                    return $?
-                                                    ;;
-                                            esac
-                                        fi
-                                    else
-                                        printf "    Type 'request %s' to ask host for approval.\n" "$clean_input"
-                                    fi
+                        ip_mut=0
+                        for i_tok in $stage_canon; do
+                            case "$i_tok" in
+                                add|del|delete|change|replace|set) ip_mut=1; break ;;
+                            esac
+                        done
+                        if [ "$ip_mut" -eq 1 ]; then
+                            if ! is_cmd_approved "ip"; then
+                                if is_cmd_denied "ip"; then
+                                    printf "%b[!] Security Error: 'ip' write operations have been denied by host for this session.%b\n" "$C_RED" "$C_RESET"
                                     return 1
                                 fi
-                                ;;
-                        esac
+                                printf "%b[!] Security Error: 'ip' write/modify operations are prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
+                                if [ -t 0 ]; then
+                                    printf "    Would you like to request host approval for '%s'? [y/N]: " "$clean_input"
+                                    if read -r ask_resp; then
+                                        case "$ask_resp" in
+                                            [yY]*)
+                                                request_command_approval "$clean_input" "ip"
+                                                return $?
+                                                ;;
+                                        esac
+                                    fi
+                                else
+                                    printf "    Type 'request %s' to ask host for approval.\n" "$clean_input"
+                                fi
+                                return 1
+                            fi
+                        fi
                         ;;
                     *)
                         if ! is_cmd_approved "ip"; then
@@ -704,31 +934,37 @@ validate_and_run() {
                 esac
                 ;;
             ifconfig)
-                case "$stage" in
-                    *" up"*|*" down"*|*" netmask "*|*" broadcast "*)
-                        if ! is_cmd_approved "ifconfig"; then
-                            if is_cmd_denied "ifconfig"; then
-                                printf "%b[!] Security Error: 'ifconfig' modification operations have been denied by host for this session.%b\n" "$C_RED" "$C_RESET"
-                                return 1
-                            fi
-                            printf "%b[!] Security Error: 'ifconfig' modification operations are prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
-                            if [ -t 0 ]; then
-                                printf "    Would you like to request host approval for '%s'? [y/N]: " "$clean_input"
-                                if read -r ask_resp; then
-                                    case "$ask_resp" in
-                                        [yY]*)
-                                            request_command_approval "$clean_input" "ifconfig"
-                                            return $?
-                                            ;;
-                                    esac
-                                fi
-                            else
-                                printf "    Type 'request %s' to ask host for approval.\n" "$clean_input"
-                            fi
+                if_mut=0
+                for if_tok in $stage_canon; do
+                    case "$if_tok" in
+                        ifconfig) ;;
+                        up|down|netmask|broadcast|pointopoint|mtu|hw|metric) if_mut=1; break ;;
+                        [0-9]*.[0-9]*.[0-9]*.[0-9]*) if_mut=1; break ;;
+                    esac
+                done
+                if [ "$if_mut" -eq 1 ]; then
+                    if ! is_cmd_approved "ifconfig"; then
+                        if is_cmd_denied "ifconfig"; then
+                            printf "%b[!] Security Error: 'ifconfig' modification operations have been denied by host for this session.%b\n" "$C_RED" "$C_RESET"
                             return 1
                         fi
-                        ;;
-                esac
+                        printf "%b[!] Security Error: 'ifconfig' modification operations are prohibited in view-only mode.%b\n" "$C_RED" "$C_RESET"
+                        if [ -t 0 ]; then
+                            printf "    Would you like to request host approval for '%s'? [y/N]: " "$clean_input"
+                            if read -r ask_resp; then
+                                case "$ask_resp" in
+                                    [yY]*)
+                                        request_command_approval "$clean_input" "ifconfig"
+                                        return $?
+                                        ;;
+                                esac
+                            fi
+                        else
+                            printf "    Type 'request %s' to ask host for approval.\n" "$clean_input"
+                        fi
+                        return 1
+                    fi
+                fi
                 ;;
             logread)
                 ;;
@@ -759,8 +995,22 @@ validate_and_run() {
     done
     IFS="$saved_ifs"
 
-    # 4. Execute validated pipeline
-    eval "$clean_input"
+    # 4. Execute validated pipeline with safe environment
+    # Intercept 'top' to execute non-interactively in batch snapshot mode
+    exec_input="$clean_input"
+    case "$exec_input" in
+        top|top\ *)
+            if top -b -n 1 >/dev/null 2>&1; then
+                exec_input=$(echo "$exec_input" | sed -e 's/^top/top -b -n 1/')
+            elif top -n 1 >/dev/null 2>&1; then
+                exec_input=$(echo "$exec_input" | sed -e 's/^top/top -n 1/')
+            elif top -l 1 >/dev/null 2>&1; then
+                exec_input=$(echo "$exec_input" | sed -e 's/^top/top -l 1/')
+            fi
+            ;;
+    esac
+
+    eval "$exec_input"
     return $?
 }
 
