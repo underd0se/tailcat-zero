@@ -5,6 +5,25 @@ All notable changes to TAILCAT ZER0 are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.1] - 2026-09-08
+
+### Dynamic Countdown Auto-Refresh & Clean IPC Alert Routing
+
+* **Dynamic TUI Auto-Refresh & Live Countdown Badges:**
+  * Added non-blocking dynamic `read -t` timeout handling in `main_menu()` and `interactive_session_card()`.
+  * Real-time session time countdowns now tick down automatically without requiring operators to navigate back and forth between menus.
+  * Fine-grained time formatting in `get_service_time_left()`:
+    * `> 5m`: Displays full minutes (`42m remaining`).
+    * `< 5m`: Displays minutes and seconds (`4m 30s remaining`).
+    * `< 60s`: Displays second-by-second countdown (`45s remaining`).
+  * Idle CPU conservation: Blocks normally with 0% CPU consumption when no sessions are active.
+* **Unified IPC Alert Routing & Notification Screen Protection:**
+  * Fixed terminal screen corruption and stacked raw ANSI broadcast lines below the input prompt.
+  * Replaced direct raw terminal writes to host TTYs with dedicated per-process alert IPC files (`${ACTIVE_TUIS_DIR}/<pid>.alert`) and `SIGUSR1` wakeups.
+  * TUI immediately catches `SIGUSR1`, unblocks `read`, loads alerts into `FLASH_MSG`, and cleanly displays banners inside the bordered dashboard frame.
+  * Filtered host TUI PTYs out of remote guest broadcast loops (`/dev/pts/*`) so that remote clients still receive expiration notices while local admins enjoy an uncorrupted TUI.
+  * Automated pruning of stale PID registrations in `broadcast_session_warning()`.
+
 ## [1.11.0] - 2026-09-07
 
 ### Interactive Linenoise Line Editing, Tab Autocompletion & Symlink Security Hardening

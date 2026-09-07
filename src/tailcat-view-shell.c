@@ -768,30 +768,18 @@ static int request_command_approval(const char *raw_cmd, const char *base_cmd) {
             if (de->d_name[0] == '.') continue;
             pid_t t_pid = (pid_t)atoi(de->d_name);
             if (t_pid > 0 && kill(t_pid, 0) == 0) {
-                char fpath[PATH_MAX];
-                snprintf(fpath, sizeof(fpath), "%s/%s", ACTIVE_TUIS_DIR, de->d_name);
-                FILE *tf = fopen(fpath, "r");
-                if (tf) {
-                    char target_tty[128];
-                    if (fgets(target_tty, sizeof(target_tty), tf)) {
-                        target_tty[strcspn(target_tty, "\r\n")] = '\0';
-                        if (target_tty[0] && strcmp(target_tty, cur_tty) != 0) {
-                            int t_fd = open(target_tty, O_WRONLY | O_NOCTTY);
-                            if (t_fd >= 0) {
-                                char tty_msg[512];
-                                if (gtfo) {
-                                    snprintf(tty_msg, sizeof(tty_msg), "\n\033[1;31m[tailcatzero] ⚠️  Guest requested elevated execution tool: '%s' (ID: %s)\033[0m\n\033[1;36mPress [P] to review or run 'tailcatzero approve'\033[0m\n", tty_safe, req_id);
-                                } else {
-                                    snprintf(tty_msg, sizeof(tty_msg), "\n\033[1;33m[tailcatzero] 🔔 Guest requested permission to run: '%s' (ID: %s)\033[0m\n\033[1;36mPress [P] to review or run 'tailcatzero approve'\033[0m\n", tty_safe, req_id);
-                                }
-                                ssize_t written = write(t_fd, tty_msg, strlen(tty_msg));
-                                (void)written;
-                                close(t_fd);
-                            }
-                        }
+                char alert_path[PATH_MAX];
+                snprintf(alert_path, sizeof(alert_path), "%s/%s.alert", ACTIVE_TUIS_DIR, de->d_name);
+                FILE *af = fopen(alert_path, "w");
+                if (af) {
+                    if (gtfo) {
+                        fprintf(af, "\033[1;31m⚠️  Guest requested elevated execution tool: '%s' (ID: %s)\033[0m\n", tty_safe, req_id);
+                    } else {
+                        fprintf(af, "\033[1;33m🔔 Guest requested permission to run: '%s' (ID: %s)\033[0m\n", tty_safe, req_id);
                     }
-                    fclose(tf);
+                    fclose(af);
                 }
+                kill(t_pid, SIGUSR1);
             } else {
                 char stale_path[PATH_MAX];
                 snprintf(stale_path, sizeof(stale_path), "%s/%s", ACTIVE_TUIS_DIR, de->d_name);
