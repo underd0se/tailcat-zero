@@ -7,3 +7,7 @@ tests/
 forum_post*
 *.txt
 bin/*-native
+
+# Local build tooling
+Makefile
+build.sh

@@ -1823,8 +1823,7 @@ update_tailcat_all() {
     tmp_view="/tmp/tailcat-view-shell.update.$$"
     rm -f "$tmp_view"
     v_arch=$(get_pkg_arch)
-    if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/${target_ref}/bin/tailcat-view-shell-${v_arch}" -o "$tmp_view" 2>/dev/null || \
-       curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/${target_ref}/tailcat-view-shell" -o "$tmp_view" 2>/dev/null; then
+    if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/${target_ref}/bin/tailcat-view-shell-${v_arch}" -o "$tmp_view" 2>/dev/null; then
         local_view_hash=$(get_file_hash "$VIEW_SHELL")
         remote_view_hash=$(get_file_hash "$tmp_view")
         if [ -n "$remote_view_hash" ] && [ "$remote_view_hash" != "$local_view_hash" ]; then
@@ -1902,8 +1901,7 @@ reinstall_tailcat() {
 
     # Update View-Only Shell Binary
     v_arch=$(get_pkg_arch)
-    if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/bin/tailcat-view-shell-${v_arch}" -o "${VIEW_SHELL}.$$.tmp" 2>/dev/null || \
-       curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/tailcat-view-shell" -o "${VIEW_SHELL}.$$.tmp" 2>/dev/null; then
+    if curl -fsSL "https://raw.githubusercontent.com/underd0se/tailcat-zero/main/bin/tailcat-view-shell-${v_arch}" -o "${VIEW_SHELL}.$$.tmp" 2>/dev/null; then
         mkdir -p "$BIN_DIR"
         chmod 755 "${VIEW_SHELL}.$$.tmp"
         mv -f "${VIEW_SHELL}.$$.tmp" "$VIEW_SHELL"

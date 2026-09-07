@@ -115,11 +115,8 @@ chmod 755 "$INSTALL_SCRIPT"
 
 if [ -f "./bin/tailcat-view-shell-${pkg_arch}" ]; then
     cp -f "./bin/tailcat-view-shell-${pkg_arch}" "$VIEW_SHELL_BIN"
-elif [ -f "./tailcat-view-shell" ]; then
-    cp -f "./tailcat-view-shell" "$VIEW_SHELL_BIN"
 else
-    curl -fsSL "${REPO_RAW_URL}/bin/tailcat-view-shell-${pkg_arch}" -o "$VIEW_SHELL_BIN" 2>/dev/null || \
-    curl -fsSL "${REPO_RAW_URL}/tailcat-view-shell" -o "$VIEW_SHELL_BIN"
+    curl -fsSL "${REPO_RAW_URL}/bin/tailcat-view-shell-${pkg_arch}" -o "$VIEW_SHELL_BIN"
 fi
 chmod 755 "$VIEW_SHELL_BIN"
 
