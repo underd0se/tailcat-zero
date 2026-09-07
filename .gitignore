@@ -4,8 +4,6 @@ run_tests.sh
 tests/
 *.log
 .DS_Store
-forum_post*
-*.txt
 bin/*-native
 
 # Local build tooling
