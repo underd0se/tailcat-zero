@@ -1496,7 +1496,7 @@ interactive_session_card() {
                 fi
             else
                 if [ "$req_cnt" -gt 0 ]; then
-                    printf "  🛑 %bS%btop  |  🔔 %bP%bending (%d)  |  ${qr_btn}  |  🔄 %bR%befresh  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$req_cnt" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
+                    printf "  🛑 %bS%btop  |  🔔 %bP%bending (%d)  |  ${qr_btn}  |  🔄 %bR%befresh  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$req_cnt" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
                 else
                     printf "  🛑 %bS%btop  |  ${qr_btn}  |  🔄 %bR%befresh  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
                 fi
