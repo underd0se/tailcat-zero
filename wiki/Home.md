@@ -5,7 +5,7 @@ Welcome to the official **TAILCAT ZER0** Wiki.
 > **Ephemeral WireGuard Tunnels, Remote Support Shells & Encrypted File Inboxes for Asuswrt-Merlin Routers**
 
 ```text
-  TAILCAT ZER0 v1.10.3             ╱|、
+  TAILCAT ZER0 v1.10.4             ╱|、
                                  (˚ˎ 。7  
                                   |、˜〵          
   Instant Tunnel Manager         じしˍ,)ノ
@@ -65,7 +65,7 @@ tailcatzero
 ```
 
 ```text
-  TAILCAT ZER0 v1.10.3             ╱|、
+  TAILCAT ZER0 v1.10.4             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ

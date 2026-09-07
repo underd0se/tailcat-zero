@@ -112,6 +112,27 @@ static const char *get_base_name(const char *path) {
     return slash ? slash + 1 : path;
 }
 
+static void get_prompt_dir(char *dst, size_t sz) {
+    if (!dst || sz == 0) return;
+    char cwd[PATH_MAX];
+    if (!getcwd(cwd, sizeof(cwd))) {
+        snprintf(dst, sz, "?");
+        return;
+    }
+    const char *home = getenv("HOME");
+    if (home && *home && strcmp(home, "/") != 0) {
+        size_t hlen = strlen(home);
+        if (strcmp(cwd, home) == 0) {
+            snprintf(dst, sz, "~");
+            return;
+        } else if (strncmp(cwd, home, hlen) == 0 && cwd[hlen] == '/') {
+            snprintf(dst, sz, "~%s", cwd + hlen);
+            return;
+        }
+    }
+    snprintf(dst, sz, "%s", cwd);
+}
+
 /* -------------------------------------------------------------------------------------------------------------------------
  * IPC & Approval State
  * ------------------------------------------------------------------------------------------------------------------------- */
@@ -1001,9 +1022,19 @@ static int run_builtin(const char *base, int argc, char *argv[]) {
     }
     if (strcmp(base, "cd") == 0) {
         const char *target_dir = (argc > 1) ? argv[1] : NULL;
+        char expanded_dir[PATH_MAX];
+        const char *home = getenv("HOME");
+        if (!home || !*home) home = "/tmp";
+
         if (!target_dir || !*target_dir) {
-            target_dir = getenv("HOME");
-            if (!target_dir || !*target_dir) target_dir = "/tmp";
+            target_dir = home;
+        } else if (target_dir[0] == '~') {
+            if (target_dir[1] == '\0') {
+                target_dir = home;
+            } else if (target_dir[1] == '/') {
+                snprintf(expanded_dir, sizeof(expanded_dir), "%s%s", home, target_dir + 1);
+                target_dir = expanded_dir;
+            }
         }
         if (check_file_path_security(target_dir)) {
             fprintf(stderr, "%s[!] Security Error: Access to sensitive system security directories is prohibited in view-only mode.%s\n", C_RED, C_RESET);
@@ -1823,8 +1854,10 @@ int main(int argc, char *argv[]) {
     print_banner();
 
     char line_buf[MAX_LINE_LEN];
+    char prompt_dir[PATH_MAX];
     while (1) {
-        printf("%stailcatzero-view:~$ %s", C_GREEN, C_RESET);
+        get_prompt_dir(prompt_dir, sizeof(prompt_dir));
+        printf("%stailcatzero-view%s:%s%s%s$ %s", C_GREEN, C_RESET, C_CYAN, prompt_dir, C_GREEN, C_RESET);
         fflush(stdout);
 
         if (!fgets(line_buf, sizeof(line_buf), stdin)) {

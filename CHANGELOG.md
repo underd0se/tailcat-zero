@@ -5,6 +5,16 @@ All notable changes to TAILCAT ZER0 are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.4] - 2026-09-07
+
+### Dynamic Path Prompt & Navigation UX
+
+* **Dynamic Working Directory Prompt (`src/tailcat-view-shell.c`):**
+  * Integrated dynamic `getcwd()` resolution into the main shell loop via `get_prompt_dir()`. The prompt now continuously reflects directory changes instead of displaying a static `~$`.
+  * Path collapsing replaces `$HOME` with `~` (or `~/subdir`), matching standard Bash/Zsh UX with high-contrast color formatting (`tailcatzero-view:/jffs/scripts$ `).
+* **Tilde (`~`) Expansion in `cd` Built-in:**
+  * Implemented in-process tilde expansion for the `cd` built-in, allowing operators to run `cd ~` or `cd ~/path` directly without requiring shell expansion.
+
 ## [1.10.3] - 2026-09-06
 
 ### Obscure Networking DoS Remediation
