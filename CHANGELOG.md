@@ -5,6 +5,15 @@ All notable changes to TAILCAT ZER0 are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.3] - 2026-09-06
+
+### Obscure Networking DoS Remediation
+
+* **Advanced `ip` Route Mutation Blocking:**
+  * Blocked `append`, `prepend`, and `insert` verbs in the `ip` command to prevent obscure route manipulation attacks that evaded the standard `add`/`del` filters.
+* **Advanced `ifconfig` Interface Mutation Blocking:**
+  * Blocked `txqueuelen`, `name`, `multicast` (`-multicast`), and `allmulti` (`-allmulti`) flags in `ifconfig` to prevent advanced interface state manipulation and queue flooding attacks.
+
 ## [1.10.2] - 2026-09-06
 
 ### Deep Security Review & Remediation
@@ -16,7 +25,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **GNU `date -f` File Leakage Protection:**
   * Added the `date` command to the `is_sensitive_file_access` validation logic within `tailcat-view-shell.c`. GNU `date` via Entware includes a `--file` (`-f`) flag which could have been abused to leak file contents (like `/etc/shadow`) via "invalid date" stderr parsing. Such queries are now strictly blocked.
 
----
 
 
 ## [1.10.1] - 2026-09-06

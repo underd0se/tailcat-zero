@@ -1420,7 +1420,8 @@ static int validate_stage(const char *stage_raw, const char *orig_input,
                     strcmp(a, "delete") == 0 || strcmp(a, "change") == 0 ||
                     strcmp(a, "replace") == 0 || strcmp(a, "set") == 0 ||
                     strcmp(a, "flush") == 0 || strcmp(a, "save") == 0 ||
-                    strcmp(a, "restore") == 0) {
+                    strcmp(a, "restore") == 0 || strcmp(a, "append") == 0 ||
+                    strcmp(a, "prepend") == 0 || strcmp(a, "insert") == 0) {
                     mut = 1;
                     break;
                 }
@@ -1454,7 +1455,10 @@ static int validate_stage(const char *stage_raw, const char *orig_input,
                 strcmp(a, "mtu") == 0 || strcmp(a, "hw") == 0 || strcmp(a, "metric") == 0 ||
                 strcmp(a, "add") == 0 || strcmp(a, "del") == 0 ||
                 strcmp(a, "promisc") == 0 || strcmp(a, "-promisc") == 0 ||
-                strcmp(a, "arp") == 0 || strcmp(a, "-arp") == 0) {
+                strcmp(a, "arp") == 0 || strcmp(a, "-arp") == 0 ||
+                strcmp(a, "txqueuelen") == 0 || strcmp(a, "name") == 0 ||
+                strcmp(a, "multicast") == 0 || strcmp(a, "-multicast") == 0 ||
+                strcmp(a, "allmulti") == 0 || strcmp(a, "-allmulti") == 0) {
                 mut = 1;
                 break;
             }

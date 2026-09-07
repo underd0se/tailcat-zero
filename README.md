@@ -9,7 +9,7 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
 ---
 
 ```text
-  TAILCAT ZER0 v1.10.2             ╱|、
+  TAILCAT ZER0 v1.10.3             ╱|、
                                  (˚ˎ 。7  
                                   |、˜〵          
   Instant Tunnel Manager         じしˍ,)ノ
@@ -184,7 +184,7 @@ rm -rf /jffs/addons/tailcatzero /jffs/addons/tailcat /jffs/scripts/tailcat /jffs
 
 ## 📝 Changelog
 
-### [v1.10.2] - 2026-09-06
+### [v1.10.3] - 2026-09-06
 * **🐛 `is_tailcat_process()` False Positive:** Basename-extracted `cmdline` tokens before matching `*tailcat*`, preventing a script running from a `tailcat`-named directory path from being misidentified as a tailcat process and killed.
 * **🐛 `get_webgui_connect_info()` Port Extraction:** Fixed naked-IP URL parsing where `http://192.168.1.1` extracted `192` as the port. Protocol prefix is now stripped before numeric matching; bare IP URLs default to `80` (HTTP) or `8443` (HTTPS).
 * **🐛 `save_timeout_config()` Non-Destructive Update:** Replaced full config overwrite with `sed -i` in-place key update, preserving custom entries like `DERP_URL`.

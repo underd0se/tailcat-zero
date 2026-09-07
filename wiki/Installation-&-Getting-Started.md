@@ -65,7 +65,7 @@ tailcatzero --version
 ```
 *Expected output:*
 ```text
-TAILCAT ZER0 v1.10.2 [547f02c9] (engine v0.6.0)
+TAILCAT ZER0 v1.10.3 [547f02c9] (engine v0.6.0)
 ```
 
 Check the initial service status:
@@ -83,7 +83,7 @@ tailcatzero
 ```
 
 ```text
-  TAILCAT ZER0 v1.10.2             ╱|、
+  TAILCAT ZER0 v1.10.3             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -129,7 +129,7 @@ tailcatzero update
 ========================================================================
 
   [1/2] Checking TAILCAT ZER0 Script:
-        Current: v1.10.2 | Remote: v1.10.2
+        Current: v1.10.3 | Remote: v1.10.3
         [✓] Script is up to date (hash: 547f02c9).
 
   [2/2] Checking TailCat Engine Binary:
@@ -147,7 +147,7 @@ If you ever wish to completely remove TAILCAT ZER0 from your router:
 Launch `tailcatzero` ➔ select **Option 6 (Manage TAILCAT ZER0)** ➔ select **Option 3 (Complete Uninstall)**:
 
 ```text
-  TAILCAT ZER0 v1.10.2             ╱|、
+  TAILCAT ZER0 v1.10.3             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
