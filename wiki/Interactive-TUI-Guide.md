@@ -9,15 +9,16 @@
 Run `tailcatzero` in your router shell to open the dashboard:
 
 ```text
-  TAILCAT ZER0 v1.10.4             ╱|、
+  TAILCAT ZER0 v1.11.2             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
 
 ========================================================================
 
+
   1. 🆘 Remote Support Shell         View-only (safe) or full root      [⚪ Inactive]
-  2. 📥 Receive Files                Direct P2P file transfer           [⚪ Inactive]
+  2. 📥 Receive Files & Folders      Direct P2P file/folder drop box    [⚪ Inactive]
   3. 📁 Share Directory (SFTP)       Share a folder from your drive     [⚪ Inactive]
   4. 🌐 Expose Router WebGUI         Access to router's web interface   [⚪ Inactive]
 
@@ -31,10 +32,10 @@ Run `tailcatzero` in your router shell to open the dashboard:
   👁️ View Sessions  |  🛑 Stop  |  ↩️ Exit: 
 ```
 
-When sessions are active and a guest submits an on-demand permission request, the dashboard dynamically alerts you with a notification badge:
+When sessions are active and a guest submits an on-demand permission request, or when session alerts fire, the dashboard renders notifications inside a fixed 2-row notification slot without shifting the menu layout:
 
 ```text
-  TAILCAT ZER0 v1.10.4             ╱|、
+  TAILCAT ZER0 v1.11.2             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -43,9 +44,9 @@ When sessions are active and a guest submits an on-demand permission request, th
 
   🔔 [1 Permission Request(s) Pending — Press P to Review]
 
-  1. 🆘 Remote Support Shell         View-only (safe) or full root      [🔒 View: 24m]
-  2. 📥 Receive Files                Direct P2P file transfer           [⚪ Inactive]
-  3. 📁 Share Directory (SFTP)       Share a folder from your drive     [🟢 Active: 24m]
+  1. 🆘 Remote Support Shell         View-only (safe) or full root      [🔒 View-Only: 24m remaining]
+  2. 📥 Receive Files & Folders      Direct P2P file/folder drop box    [⚪ Inactive]
+  3. 📁 Share Directory (SFTP)       Share a folder from your drive     [🟢 Active: 24m remaining]
   4. 🌐 Expose Router WebGUI         Access to router's web interface   [⚪ Inactive]
 
   ------------------------------------------------------------------------
@@ -296,3 +297,24 @@ Select **Option 6 (Manage TAILCAT ZER0)** from the main menu:
 * Enter `u` or `1` to run the smart updater.
 * Enter `r` or `2` to force-reinstall fresh copies from GitHub.
 * Enter `c` or `3` to perform a complete clean uninstallation.
+
+---
+
+## ⚡ Flicker-Free In-Place Refresh & Session Card Stillness (v1.11.2+)
+
+As of **v1.11.2**, TAILCAT ZER0 implements a zero-flicker TUI architecture designed specifically for SSH terminal sessions:
+
+### 1. Static Session Token Cards
+* The single-session and multi-session overview cards (`interactive_session_card`) **do not auto-refresh on a timer**.
+* When viewing session tokens (e.g. `tailcat ssh tcpGF...`) or QR codes, the screen remains completely still. You can select, highlight, and copy tokens with your mouse without screen wipes canceling your text selection.
+* Manual refresh (`r`) and background wakeups (`SIGUSR1` for guest permission requests or expiration warnings) update the screen on-demand.
+
+### 2. In-Place Frame Rendering
+* The main dashboard uses ANSI cursor repositioning (`\033[?25l\033[H`) to rewrite lines directly in place rather than wiping the screen buffer with `\033[2J`.
+* Countdown badges (`149m remaining` -> `5m remaining` -> `4m 59s remaining`) update smoothly every 30s / 10s / 5s without terminal screen tearing or blank flashes.
+
+### 3. Fixed-Height Notification Slot
+* A dedicated 2-row notification slot sits between the header divider and Option 1.
+* When session notices arrive (e.g. 5-minute auto-expire warnings) or guest permission requests appear, they populate the reserved slot in-place without shifting the lower menu options or action prompt by even a single row.
+* Every line is cleared to the end of the row (`\033[K`), guaranteeing zero ghost characters or text interleaving.
+

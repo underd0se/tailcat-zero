@@ -6,7 +6,7 @@
 
 set -u
 
-VERSION="1.11.1"
+VERSION="1.11.2"
 CONFIG_DIR="/jffs/addons/tailcatzero"
 CONFIG_FILE="${CONFIG_DIR}/tailcatzero.cfg"
 ADDON_SCRIPT="${CONFIG_DIR}/tailcatzero"
@@ -32,6 +32,7 @@ C_RED="\033[1;31m"
 C_GRAY="\033[0;37m" # Readable muted white/gray
 C_WHITE="\033[1;37m" # Crisp high-contrast white
 C_MAGENTA="\033[1;35m"
+C_CLR="\033[K" # Clear to end of line (prevents ghost characters on in-place redraw)
 
 handle_tui_wakeup() {
     :
@@ -44,7 +45,7 @@ unregister_active_tui() {
 
 cleanup_on_exit() {
     unregister_active_tui
-    printf "%b" "$C_RESET" 2>/dev/null || true
+    printf "\033[?25h%b" "$C_RESET" 2>/dev/null || true
 }
 trap cleanup_on_exit EXIT INT TERM
 
@@ -184,6 +185,18 @@ FLASH_MSG=""
 clear_screen() {
     if [ -t 1 ]; then
         printf "\033[2J\033[H"
+    fi
+}
+
+in_place_refresh() {
+    if [ -t 1 ]; then
+        printf "\033[?25l\033[H"
+    fi
+}
+
+erase_to_bottom() {
+    if [ -t 1 ]; then
+        printf "\033[J\033[?25h"
     fi
 }
 
@@ -1063,11 +1076,12 @@ get_binary_version() {
 }
 
 draw_header() {
-    printf "  %b%bTAILCAT ZER0 v%s%b              %b╱|、%b\n" "$C_CYAN" "$C_BOLD" "${VERSION}" "$C_RESET" "$C_CYAN" "$C_RESET"
-    printf "                                 %b(˚ˎ 。7%b\n" "$C_CYAN" "$C_RESET"
-    printf "                                  %b|、˜〵%b\n" "$C_CYAN" "$C_RESET"
-    printf "  %bInstant Tunnel Manager%b         %bじしˍ,)ノ%b\n\n" "$C_GRAY" "$C_RESET" "$C_CYAN" "$C_RESET"
-    printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
+    _title="TAILCAT ZER0 v${VERSION}"
+    printf "  %b%b%-33s%b%b╱|、%b%b\n" "$C_CYAN" "$C_BOLD" "$_title" "$C_RESET" "$C_CYAN" "$C_RESET" "$C_CLR"
+    printf "                                 %b(˚ˎ 。7%b%b\n" "$C_CYAN" "$C_RESET" "$C_CLR"
+    printf "                                  %b|、˜〵%b%b\n" "$C_CYAN" "$C_RESET" "$C_CLR"
+    printf "  %bInstant Tunnel Manager%b         %bじしˍ,)ノ%b%b\n%b\n" "$C_GRAY" "$C_RESET" "$C_CYAN" "$C_RESET" "$C_CLR" "$C_CLR"
+    printf "%b%b========================================================================%b%b\n%b\n" "$C_CYAN" "$C_BOLD" "$C_RESET" "$C_CLR" "$C_CLR"
 }
 
 start_tunnel() {
@@ -1398,8 +1412,10 @@ render_single_session_card() {
 
     draw_header
     if [ -n "${FLASH_MSG:-}" ]; then
-        printf "  %b\n\n" "$FLASH_MSG"
+        printf "  %b%b\n%b\n" "$FLASH_MSG" "$C_CLR" "$C_CLR"
         FLASH_MSG=""
+    else
+        printf "%b\n%b\n" "$C_CLR" "$C_CLR"
     fi
 
     printf "  %b%b🐱 TAILCAT ZER0 — Active Session%b\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
@@ -1478,10 +1494,18 @@ interactive_session_card() {
     register_active_tui
     cur_svc="${1:-ALL}"
     show_qr=0
+    _card_first=1
 
     while has_any_active_session; do
         check_tui_alerts
-        clear_screen
+        req_cnt=$(get_pending_request_count)
+
+        if [ "$_card_first" = "1" ]; then
+            clear_screen
+            _card_first=0
+        else
+            in_place_refresh
+        fi
 
         active_cnt=$(get_active_service_count)
         if [ "$cur_svc" != "ALL" ] && ! is_service_active "$cur_svc"; then
@@ -1497,26 +1521,6 @@ interactive_session_card() {
             done
         fi
 
-        req_cnt=$(get_pending_request_count)
-
-        read_timeout=3
-        for _s in SSH VIEW RECV FILES WEBGUI; do
-            if is_service_active "$_s"; then
-                _s_file="${SESSIONS_DIR}/${_s}.env"
-                parse_session_file "$_s_file"
-                if [ "${EXPIRE_EPOCH:-0}" -gt 0 ]; then
-                    _now=$(date +%s)
-                    _diff=$(( EXPIRE_EPOCH - _now ))
-                    if [ "$_diff" -le 60 ] && [ "$_diff" -gt 0 ]; then
-                        read_timeout=1
-                        break
-                    elif [ "$_diff" -le 300 ] && [ "$_diff" -gt 0 ]; then
-                        read_timeout=2
-                    fi
-                fi
-            fi
-        done
-
         if [ "$cur_svc" = "ALL" ]; then
             render_multi_session_overview
             if [ "$req_cnt" -gt 0 ]; then
@@ -1524,19 +1528,12 @@ interactive_session_card() {
             else
                 printf "  👁️ %bV%biew (1-%d)  |  🛑 %bS%btop All  |  🔄 %bR%befresh  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$active_cnt" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
             fi
+            erase_to_bottom
             act=""
-            read_rc=0
-            if read -t "$read_timeout" -r act; then
-                read_rc=0
-            else
-                read_rc=$?
-                act=""
+            if ! read -r act; then
                 if [ ! -t 0 ]; then
                     break
                 fi
-            fi
-
-            if [ "$read_rc" -ne 0 ]; then
                 continue
             fi
             case "$act" in
@@ -1602,19 +1599,12 @@ interactive_session_card() {
                 fi
             fi
 
+            erase_to_bottom
             act=""
-            read_rc=0
-            if read -t "$read_timeout" -r act; then
-                read_rc=0
-            else
-                read_rc=$?
-                act=""
+            if ! read -r act; then
                 if [ ! -t 0 ]; then
                     break
                 fi
-            fi
-
-            if [ "$read_rc" -ne 0 ]; then
                 continue
             fi
             case "$act" in
@@ -2157,9 +2147,18 @@ start_ssh_menu() {
 
 main_menu() {
     register_active_tui
+    _menu_first=1
+
     while true; do
         check_tui_alerts
-        clear_screen
+        req_cnt=$(get_pending_request_count)
+
+        if [ "$_menu_first" = "1" ]; then
+            clear_screen
+            _menu_first=0
+        else
+            in_place_refresh
+        fi
 
         b_ssh=$(get_shell_service_badge)
         b_recv=$(get_service_badge "RECV")
@@ -2168,42 +2167,47 @@ main_menu() {
 
         draw_header
 
-        req_cnt=$(get_pending_request_count)
-        if [ "$req_cnt" -gt 0 ]; then
-            printf "  %b🔔 [%d Permission Request(s) Pending — Press %bP%b to Review]%b\n\n" "$C_YELLOW" "$req_cnt" "$C_KEY" "$C_YELLOW" "$C_RESET"
-        fi
-
-        if [ -n "${FLASH_MSG:-}" ]; then
-            printf "  %b\n\n" "$FLASH_MSG"
+        # Fixed 2-row notification slot (options 1-6 never shift vertically)
+        if [ -n "${FLASH_MSG:-}" ] && [ "$req_cnt" -gt 0 ]; then
+            printf "  %b%b\n" "$FLASH_MSG" "$C_CLR"
+            printf "  %b🔔 [%d Request(s) Pending — Press %bP%b to Review]%b%b\n" "$C_YELLOW" "$req_cnt" "$C_KEY" "$C_YELLOW" "$C_RESET" "$C_CLR"
             FLASH_MSG=""
+        elif [ -n "${FLASH_MSG:-}" ]; then
+            printf "  %b%b\n%b\n" "$FLASH_MSG" "$C_CLR" "$C_CLR"
+            FLASH_MSG=""
+        elif [ "$req_cnt" -gt 0 ]; then
+            printf "  %b🔔 [%d Permission Request(s) Pending — Press %bP%b to Review]%b%b\n%b\n" "$C_YELLOW" "$req_cnt" "$C_KEY" "$C_YELLOW" "$C_RESET" "$C_CLR" "$C_CLR"
+        else
+            printf "%b\n%b\n" "$C_CLR" "$C_CLR"
         fi
 
-        printf "  %b1.%b 🆘 Remote Support Shell         %b%-34s%b %b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "View-only (safe) or full root" "$C_RESET" "$b_ssh"
-        printf "  %b2.%b 📥 Receive Files & Folders      %b%-34s%b %b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "Direct P2P file/folder drop box" "$C_RESET" "$b_recv"
-        printf "  %b3.%b 📁 Share Directory (SFTP)       %b%-34s%b %b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "Share a folder from your drive" "$C_RESET" "$b_files"
-        printf "  %b4.%b 🌐 Expose Router WebGUI         %b%-34s%b %b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "Access to router's web interface" "$C_RESET" "$b_web"
+        printf "  %b1.%b 🆘 Remote Support Shell         %b%-34s%b %b%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "View-only (safe) or full root" "$C_RESET" "$b_ssh" "$C_CLR"
+        printf "  %b2.%b 📥 Receive Files & Folders      %b%-34s%b %b%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "Direct P2P file/folder drop box" "$C_RESET" "$b_recv" "$C_CLR"
+        printf "  %b3.%b 📁 Share Directory (SFTP)       %b%-34s%b %b%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "Share a folder from your drive" "$C_RESET" "$b_files" "$C_CLR"
+        printf "  %b4.%b 🌐 Expose Router WebGUI         %b%-34s%b %b%b\n%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "Access to router's web interface" "$C_RESET" "$b_web" "$C_CLR" "$C_CLR"
 
-        printf "  %b------------------------------------------------------------------------%b\n\n" "$C_CYAN" "$C_RESET"
+        printf "  %b------------------------------------------------------------------------%b%b\n%b\n" "$C_CYAN" "$C_RESET" "$C_CLR" "$C_CLR"
 
         if [ "${TIMEOUT_MINUTES}" -eq 0 ]; then
             t_display="Disabled (Persistent)"
         else
             t_display="${TIMEOUT_MINUTES} min"
         fi
-        printf "  %b5.%b ⏱️ Configure Default Timeout    %bCurrent: %s%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "${t_display}" "$C_RESET"
-        printf "  %b6.%b ⚙️ Manage TAILCAT ZER0          %bUpdate, reinstall, or remove%b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b5.%b ⏱️ Configure Default Timeout    %bCurrent: %s%b%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "${t_display}" "$C_RESET" "$C_CLR"
+        printf "  %b6.%b ⚙️ Manage TAILCAT ZER0          %bUpdate, reinstall, or remove%b%b\n%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET" "$C_CLR" "$C_CLR"
 
-        printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
+        printf "%b%b========================================================================%b%b\n%b\n" "$C_CYAN" "$C_BOLD" "$C_RESET" "$C_CLR" "$C_CLR"
         if [ "$req_cnt" -gt 0 ]; then
             printf "  🔔 %bP%bending (%d)  |  👁️ %bV%biew Sessions  |  🛑 %bS%btop  |  ↩️ %bE%bxit: " "$C_KEY" "$C_RESET" "$req_cnt" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
         else
             printf "  👁️ %bV%biew Sessions  |  🛑 %bS%btop  |  ↩️ %bE%bxit: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
         fi
 
+        erase_to_bottom
         choice=""
         read_rc=0
         if has_any_active_session; then
-            read_timeout=3
+            read_timeout=30
             for _s in SSH VIEW RECV FILES WEBGUI; do
                 if is_service_active "$_s"; then
                     _s_file="${SESSIONS_DIR}/${_s}.env"
@@ -2212,10 +2216,10 @@ main_menu() {
                         _now=$(date +%s)
                         _diff=$(( EXPIRE_EPOCH - _now ))
                         if [ "$_diff" -le 60 ] && [ "$_diff" -gt 0 ]; then
-                            read_timeout=1
+                            read_timeout=5
                             break
                         elif [ "$_diff" -le 300 ] && [ "$_diff" -gt 0 ]; then
-                            read_timeout=2
+                            read_timeout=10
                         fi
                     fi
                 fi
@@ -2249,6 +2253,10 @@ main_menu() {
             '')
                 continue
                 ;;
+        esac
+        _menu_first=1
+
+        case "$choice" in
             1)
                 start_ssh_menu
                 ;;

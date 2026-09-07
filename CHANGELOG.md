@@ -5,6 +5,32 @@ All notable changes to TAILCAT ZER0 are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.2] - 2026-09-08
+
+### Flicker-Free In-Place Refresh, Static Session Cards & Fixed-Slot Layout
+
+* **🛑 Static Session Card & Token Selection Stability:**
+  * Completely removed timer-based polling (`read -t`) from `interactive_session_card()`.
+  * Active session token cards now remain completely static, eliminating mouse selection cancellations mid-drag and allowing uninterrupted token copying (`tailcat ssh tcpGF...`) and QR code scanning.
+  * Manual refresh (`r`) and background event signals (`SIGUSR1`) remain active for on-demand or push updates.
+* **⚡ Flicker-Free In-Place Frame Rendering:**
+  * Implemented `in_place_refresh()` (`\033[?25l\033[H`) and `erase_to_bottom()` (`\033[J\033[?25h`) across dashboard refresh loops.
+  * Completely eliminated `\033[2J` full-screen buffer wipes during active countdown ticks, ensuring the cat header, menu titles, and frame borders remain perfectly still without black/blank flashing.
+  * Guaranteed cursor visibility restoration on exit (`\033[?25h`) via `cleanup_on_exit()`.
+* **📐 Fixed-Height Notification Slot & Shift Elimination:**
+  * Fixed vertical line shifting, duplicated rows, and trailing ghost characters during alert deliveries.
+  * Allocated a permanent 2-row notification slot between the header divider and Option 1:
+    * Idle state preserves 2 blank spacer rows.
+    * Incoming notices (`FLASH_MSG`) or permission escalation alerts populate row 1 in-place without shifting lower menu items by even a single row.
+    * Expiring notices clear back to blank space in-place without requiring full-screen redraws.
+  * Confined `clear_screen` strictly to initial dashboard launch and full submenu transitions.
+* **🧹 Line-Level Erasure Sanitization (`\033[K`):**
+  * Added `C_CLR` (`\033[K` / clear to end-of-line) to every rendered line and spacer row.
+  * Guarantees that shorter strings and countdown badge transitions immediately erase trailing background characters from previous longer frames.
+* **🐱 Precision ASCII Header Art Alignment:**
+  * Fixed cat ear indentation to column 35 (2 spaces inward relative to the head boundary `(˚ˎ 。7`) with dynamic version padding (`%-33s`), invariant across version string lengths.
+  * Corrected format specifier count in `draw_header()` to prevent BusyBox ash's `printf` from recycling format strings.
+
 ## [1.11.1] - 2026-09-08
 
 ### Dynamic Countdown Auto-Refresh & Clean IPC Alert Routing

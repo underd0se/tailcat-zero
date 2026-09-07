@@ -65,7 +65,7 @@ tailcatzero --version
 ```
 *Expected output:*
 ```text
-TAILCAT ZER0 v1.10.4 [547f02c9] (engine v0.6.0)
+TAILCAT ZER0 v1.11.2 [hash] (engine v0.6.0)
 ```
 
 Check the initial service status:
