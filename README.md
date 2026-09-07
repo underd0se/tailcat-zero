@@ -2,9 +2,12 @@
 
 > **Ephemeral WireGuard Tunnels, Remote Support Shells & Encrypted File Inboxes for Asuswrt-Merlin Routers**
 
-Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`magicsock` + WireGuard + DERP NAT traversal) without requiring a Tailscale account or central coordination server.
+[![Release](https://img.shields.io/badge/version-v1.10.3-blue.svg)](CHANGELOG.md)
+[![Firmware](https://img.shields.io/badge/Asuswrt--Merlin-384.13%2B-orange.svg)](https://www.asuswrt-merlin.net/)
+[![License](https://img.shields.io/badge/license-GPL--3.0-green.svg)](LICENSE)
+[![Engine](https://img.shields.io/badge/powered%20by-Tailscale%20TailCat-blueviolet.svg)](https://github.com/tailscale/tailcat)
 
-📚 **[Read the Official Wiki & Documentation](wiki/Home.md)** | **[GitHub Wiki](https://github.com/underd0se/tailcat-zero/wiki)**
+Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`magicsock` + WireGuard + DERP NAT traversal) without requiring a Tailscale account, central coordination server, or public open ports.
 
 ---
 
@@ -35,276 +38,90 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
 
 ## ⚡ Quick Install
 
-Run this command directly in your router SSH terminal:
+Run this command in your router SSH terminal:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/underd0se/tailcat-zero/main/install.sh | sh
 ```
 
-### 🖥️ Usage
-
-Launch the interactive TUI dashboard:
+Launch the interactive TUI:
 ```sh
 tailcatzero
 ```
 
-### ⚙️ Non-Interactive CLI Commands
+---
 
-TAILCAT ZER0 can also be run directly from scripts or the command line:
+## 🎯 What is TAILCAT ZER0?
 
-```sh
-tailcatzero status                    # Display running sessions and connect tokens
-tailcatzero ssh [root|view]           # Start remote shell tunnel (default: root)
-tailcatzero view                      # Start restricted view-only diagnostic shell
-tailcatzero recv [/path/to/inbox]     # Start encrypted file & directory receiver (default /tmp/tailcat-inbox)
-tailcatzero files [/path] [ro|rw]     # Start SFTP directory share (default /jffs ro)
-tailcatzero webgui                    # Start router WebGUI tunnel
-tailcatzero requests                  # List pending guest permission requests
-tailcatzero approve [id|cmd] [--once] # Approve guest request (session-wide or single-use)
-tailcatzero deny [id|cmd]             # Deny guest request and suppress repeat prompts
-tailcatzero allow <cmd>               # Proactively permit command in view-only mode
-tailcatzero revoke <cmd>              # Revoke command permission from view-only mode
-tailcatzero timeout [min|persistent]  # Query or configure default auto-kill session timeout
-tailcatzero stop all                  # Stop all active sessions
-tailcatzero stop [SSH|VIEW|RECV|FILES|WEBGUI] # Stop specific service
-tailcatzero update                    # Update TAILCAT ZER0 script & engine (hash-verified)
-tailcatzero check-update              # Check upstream version & hash for updates
-tailcatzero --version                 # Display version & active script hash
-```
+* **Zero Accounts & Servers:** Generates standalone, capability-based 256-bit WireGuard tokens. No Tailscale account, API keys, or central coordination server needed.
+* **Zero Open Ports:** Traverses CGNAT, double-NAT, and strict firewalls using WireGuard + DERP relay fallback without opening any WAN firewall ports.
+* **Zero-Trust Security:** Drop-in connections default to an isolated, read-only C99 diagnostic sandbox (`tailcat-view-shell`). Full root shell requires deliberate confirmation.
+* **Auto-Kill & Ephemeral:** Background watchdog automatically shuts down sessions after a configurable timeout (default: 30 mins) with broadcast countdown warnings at 5m and 1m.
 
 ---
 
-## 🌟 Key Features
+## 🛠️ Core Capabilities
 
-* **🔒 Restricted View-Only Diagnostic Shell (Default Mode):**
-  * **Zero-Trust by Default:** When launching a Remote Support Shell (Option 1), TAILCAT ZER0 defaults directly to the safe **View-Only Diagnostic Shell** (`Option 1 -> 1` or pressing `Enter`). Full Root Shell (`Option 1 -> 2`) is protected by an explicit confirmation gate requiring the host admin to type `YES` to a security warning modal before access is granted.
-  * **Extensive Inspection Commands:** System health (`uptime`, `free`, `df`, `ps`, `top`, `dmesg`, `sysinfo`), networking & WiFi (`ip`, `netstat`, `route`, `ping`, `mtr`, `wl`, `leases`, `wifi`, `ports`), NVRAM queries (`nvram get`, `nvram show`, `logread`), text processing (`cat`, `head`, `tail`, `grep`, `rg`, `tree`, `sort`, `uniq`, `diff`), and Entware queries (`opkg list/info/find/status/search/depends`).
-  * **🔔 On-Demand Permission Escalation:** Remote technicians or friends can run `request <command>` (or respond `y` when prompted on unapproved commands) to request live host authorization. The host router admin receives real-time notification alerts across admin terminals, syslog, and the TUI dashboard (`🔔 [P]ending Requests`), and can approve session-wide, approve once, or deny.
-  * **🛡️ Hardened Multi-Layer Security Sandbox:** Prohibits file redirections (`>`, `>>`, `<`), subshells (`` ` `` / `$()`), command chaining (`;`, `&&`, `||`), mutating binaries (`rm`, `mv`, `cp`, `touch`, `chmod`, `dd`), state mutations (`nvram set/commit`, `reboot`, `kill`), and package changes (`opkg install/remove`).
-  * **⚡ Unix Pipeline Support:** Supports Unix pipelines (`|`) between allowed tools (e.g. `ps | grep dnsmasq`, `nvram show | grep dhcp`).
-* **📱 Live Active Session Card:**
-  * Dedicated interactive dashboard displaying a real-time auto-kill countdown, active service details, shareable capability token, and 1-key quick actions (`[s] Stop`, `[r] Refresh`, `[q] QR Code`, `[b] Back`).
-* **📷 Integrated ASCII QR Codes:**
-  * Displays inline ASCII QR codes generated by the router's built-in `qrencode` engine for instant token capture with phones and laptops.
-* **💬 Ready-to-Paste Chat Snippets:**
-  * Automatically creates pre-formatted 2-line invite text ready to copy-paste directly into Discord, Slack, or WhatsApp for remote technicians or friends.
-* **🆘 Instant Remote Shell (Passwordless Support Access):**
-  * Spawns an encrypted P2P WireGuard shell powered by TailCat's built-in SSH runtime.
-  * **Zero Friction:** Share the token with any assistant or administrator — they connect immediately (`tailcat ssh <token>`) with **zero passwords to disclose and zero SSH keys to manage**.
-* **📥 Encrypted File Receiver:**
-  * Turn your router into a secure file receiver inbox (`/tmp/tailcat-inbox` or mounted USB storage).
-  * Send firmware images or JFFS backups from any PC: `tailcat cp backup.tar.gz <token>:`
-* **📁 SFTP Directory Share:**
-  * Serve any router directory (e.g. `/jffs` or USB mount) read-only or read-write to remote clients using native SFTP.
-* **🌐 WebGUI Remote Access:**
-  * Expose local WebUI (port 8443 / 80) over a secure token without opening WAN firewall ports. Includes built-in browser guidance for `localhost` HSTS/SSL certificate domain handling.
-* **⏱️ Flexible Auto-Kill & Phased Countdown Warnings:**
-  * All tunnels support custom auto-kill countdown timers (default: **30 minutes**) or **`0` for Persistent mode** (runs until manually stopped).
-  * Watchdog subshells broadcast staged notices at **5 minutes** and **1 minute** remaining directly to active host TUIs and remote guest terminals (`/dev/pts/*`).
-
----
-
-## 🔒 Security Architecture
-
-| Security Measure | Implementation |
-|---|---|
-| **Capability-Based Tokens** | 256-bit cryptographically secure ephemeral tokens. Possession is permission. |
-| **Zero-Trust Menu Inversion** | View-Only Diagnostic Shell is the default #1 choice; Full Root Shell requires deliberate `YES` confirmation. |
-| **Restricted View Shell** | Dedicated read-only C99 Musl static binary blocking write binaries, redirections, subshells, chaining, and state mutation. |
-| **PID Rollover Safeguard** | Kernel cmdline and process comm validation before killing, preventing "friendly fire" against recycled PIDs. |
-| **Flash (JFFS) Wear Reduction** | `stat` permission checking guards `chmod 600`, eliminating redundant NAND/SPI flash inode updates. |
-| **No WAN Ports Open** | Uses DERP relays and UDP NAT hole-punching. Zero incoming firewall holes opened. |
-| **Configurable Auto-Kill** | Background watchdog automatically kills tunnels on expiry with 5m/1m warnings, or persists when set to `0`. |
-| **Clean Reboot Teardown** | Session locks and state are stored in volatile memory (`/tmp`) and cleaned up on reboot. |
+| Feature | Description | Default Mode |
+|---|---|---|
+| **🔒 View-Only Shell** | Safe diagnostic shell in C99. System writes, deletions, and state changes are blocked. Real-time `request <cmd>` approval for elevated tools. | **Default** |
+| **⚡ Full Root Shell** | Unrestricted administrative SSH terminal. Requires explicit `YES` confirmation. | Opt-in |
+| **📥 File Receiver Inbox** | Secure P2P file receiver into volatile RAM (`/tmp/tailcat-inbox`) or mounted USB drives. | Ready |
+| **📁 SFTP Directory Share** | Serve router paths (e.g. `/jffs` or USB drives) securely to remote SFTP clients. | Read-Only or R/W |
+| **🌐 WebGUI Tunneling** | Forward router web interface (port 8443/80) securely over encrypted WireGuard tunnel. | Ready |
 
 ---
 
 ## 💻 Connecting from Client Machines
 
-Install `tailcat` on your laptop or client device:
-
+Install the official `tailcat` client on your computer:
 * **macOS:** `brew install tailcat`
 * **Linux / Go:** `go install github.com/tailscale/tailcat/cmd/tailcat@latest`
-* **Prebuilt Binaries:** [TailCat Releases](https://github.com/tailscale/tailcat/releases)
+* **Binaries:** [TailCat Releases](https://github.com/tailscale/tailcat/releases)
 
-### Client Examples:
-
+### Quick Commands:
 ```sh
-# Connect to router SSH (root or view-only)
-tailcat ssh tcXXXXXXXXX
+# Connect to Remote Support Shell (view-only or root)
+tailcat ssh <token>
 
-# Send file to router
-tailcat cp firmware.trx tcXXXXXXXXX:
+# Send a file to the router inbox
+tailcat cp backup.tar.gz <token>:
 
-# Browse router files
-tailcat ls tcXXXXXXXXX
+# Browse SFTP shared files
+tailcat ls <token>
 
-# Forward router WebGUI to your local browser
-tailcat forward tcXXXXXXXXX 8443
-# Then open: https://localhost:8443
+# Forward WebGUI to your local browser (open https://localhost:8443)
+tailcat forward <token> 8443
 ```
 
 ---
 
-## 🤝 For Script Developers & Forum Helpers
+## 📚 Documentation & Guides
 
-If you maintain an Asuswrt-Merlin script or help users troubleshoot on forums like SNBForums, diagnosing issues usually involves endless back-and-forth posts asking users to copy-paste logs, check configs, or run diagnostic commands.
+Detailed architectural guides, advanced options, and configuration references are available in the **[Official Wiki](wiki/Home.md)**:
 
-With TAILCAT ZER0, you can directly inspect the router yourself in minutes:
-
-1. **Ask the user to run one command:**
-   ```sh
-   tailcatzero view
-   ```
-2. **They PM you the token shown on their screen.**
-3. **Connect directly from your terminal:**
-   ```sh
-   tailcat ssh <token>
-   ```
-
-**Why this is safe and easy for both sides:**
-* **Read-only by default:** You can run diagnostic tools (`sysinfo`, `logread`, `ip route`, `netstat`, `nvram get`, `df`, etc.) to see what is happening. System writes, deletions, and state modifications are blocked.
-* **On-demand permission:** If you need to run a specific command outside the default list, type `request <command>`. The user gets an instant notification on their terminal and approves it with a single keystroke (`P`).
-* **No passwords shared:** The user never shares their admin password, SSH password, or private SSH keys.
-* **No firewall changes:** Zero ports are opened on the router; connections travel peer-to-peer over WireGuard.
-* **Auto-kills itself:** The session shuts down automatically after 30 minutes.
-
-If you need to inspect their WebGUI settings directly, have them run `tailcatzero webgui`. Then run `tailcat forward <token> 8443` on your computer and open `https://localhost:8443` in your browser.
+* 🚀 **[Installation & Getting Started](wiki/Installation-&-Getting-Started.md)** — Requirements, installation, updating, and initial configuration.
+* 🖥️ **[Interactive TUI Guide](wiki/Interactive-TUI-Guide.md)** — Complete dashboard walkthrough, session cards, QR codes, and hotkeys.
+* 🔒 **[View-Only Sandbox & Escalation](wiki/View-Only-Sandbox-&-Permission-Escalation.md)** — C99 sandbox security, allowed commands, and in-band permission approval.
+* 🆘 **[Remote Support Shells](wiki/Remote-Support-Shells.md)** — View-only vs root shells, helper instructions, and zero-trust safeguards.
+* 📥 **[File Transfers & Inbox](wiki/File-Transfers-&-Inbox.md)** — P2P file drop receiver, USB storage, and SFTP sharing.
+* 🌐 **[WebGUI Remote Access](wiki/WebGUI-Remote-Access.md)** — Web management forwarding, SSL/HSTS browser setup, and local port binding.
+* ⚡ **[CLI Reference & Headless Automation](wiki/CLI-Reference-&-Headless-Automation.md)** — Scriptable commands (`status`, `ssh`, `webgui`, `stop`, `timeout`).
+* 🛡️ **[Security Architecture](wiki/Security-Architecture.md)** — Threat model, PID rollover safeguards, flash wear elimination, and encryption.
+* ❓ **[Troubleshooting & FAQ](wiki/Troubleshooting-&-FAQ.md)** — Common questions, connection diagnostics, and solutions.
 
 ---
 
 ## 🗑️ Uninstallation
 
-Launch `tailcatzero` and select **Option 6 (Manage TAILCAT ZER0) ➔ Option 3 (Complete Uninstall)**, or run:
+From the TUI, select **Option 6 ➔ Option 3**, or run:
 ```sh
-rm -rf /jffs/addons/tailcatzero /jffs/addons/tailcat /jffs/scripts/tailcat /jffs/scripts/tailcatzero /opt/bin/tailcatzero
+rm -rf /jffs/addons/tailcatzero /jffs/addons/tailcat /jffs/scripts/tailcatzero /jffs/scripts/tailcat /opt/bin/tailcatzero
 ```
 
 ---
 
-## 📝 Changelog
+## 📝 Changelog & License
 
-### [v1.10.3] - 2026-09-06
-* **🐛 `is_tailcat_process()` False Positive:** Basename-extracted `cmdline` tokens before matching `*tailcat*`, preventing a script running from a `tailcat`-named directory path from being misidentified as a tailcat process and killed.
-* **🐛 `get_webgui_connect_info()` Port Extraction:** Fixed naked-IP URL parsing where `http://192.168.1.1` extracted `192` as the port. Protocol prefix is now stripped before numeric matching; bare IP URLs default to `80` (HTTP) or `8443` (HTTPS).
-* **🐛 `save_timeout_config()` Non-Destructive Update:** Replaced full config overwrite with `sed -i` in-place key update, preserving custom entries like `DERP_URL`.
-* **🐛 Watchdog Orphaned `sleep` Processes:** Watchdog subshells now trap `SIGTERM`/`SIGHUP` and kill their tracked `sleep` child PID, eliminating zombie sleep processes after `tailcatzero stop`. `stop_single_session()` sends `SIGTERM` before `SIGKILL` to allow graceful cleanup.
-* **🔒 `/proc/meminfo` False Positive in View Shell:** `check_proc_component()` now matches only exact path components (`/proc/X/mem`), allowing `/proc/meminfo` while still blocking `/proc/<pid>/mem`.
-* **🔒 `cut`/`column` Sensitive File Disclosure:** Both commands now pass through `is_sensitive_file_access()` checks, closing a bypass that allowed `cut -d: -f1 /etc/shadow`.
-* **✨ `pwd`/`cd` Built-ins in View Shell:** Implemented as native in-process built-ins using `getcwd()`/`chdir()`. `cd` enforces `check_file_path_security()` to block navigation into sensitive directories.
-
-### [v1.10.0] - 2026-09-06
-* **🔒 Zero-Trust Inversion & Root Escalation Guard:** Inverted `start_ssh_menu` defaults so Option 1 (Default) starts the safe View-Only Diagnostic Shell. Full Root Shell (Option 2) requires explicit deliberate opt-in via a security warning modal requiring typing `YES` to confirm.
-* **🛡️ PID Rollover "Friendly Fire" Safeguards:** Added `is_tailcat_process()` validation inspecting `/proc/$pid/comm` and `/proc/$pid/cmdline` before executing any process kills, preventing watchdogs and teardown routines from accidentally killing recycled PIDs of unrelated system daemons (`dnsmasq`, `httpd`, `dropbear`).
-* **⚡ JFFS Flash Storage Inode Wear Elimination:** Added `ensure_file_perm_600()` using `stat` checks to eliminate redundant `chmod 600` inode `ctime` updates and NAND/SPI flash writes when config files already have 0600 permissions.
-* **⏱️ Phased Auto-Kill Timeout Countdown Warnings:** Watchdog subshells now proactively broadcast staged warnings at 5 minutes and 1 minute remaining directly to active host TUIs (`/tmp/tailcat_sessions/active_tuis`) and remote guest PTYs (`/dev/pts/*`).
-* **🌐 WebGUI Localhost / HSTS Guidance:** Added troubleshooting tips in connection cards and CLI status for modern browsers enforcing HSTS or SSL certificate domain mismatches on `localhost` port forwards.
-* **🛠️ TUI Stability (`set -u`):** Replaced `set -eu` with `set -u` in `tailcatzero`, preventing BusyBox `ash` from abruptly terminating interactive TUI sessions on minor non-zero subshell exits while preserving variable safety.
-
-### [v1.9.1] - 2026-09-06
-* **🛡️ View-Only Sandbox Penetration Hardening:** Sanitized dynamic linker and execution controls (`LD_PRELOAD`, `LD_LIBRARY_PATH`, `LD_AUDIT`, `DYLD_*`, `BASH_ENV`) in `main()`, blocked network table flush DoS (`ip route flush`, `ip addr flush`), resolved leading option parsing in `ip` and `opkg` subcommands (enabling `ip -4 route` while closing mutation evasion), blocked Broadcom wireless radio shutdown (`wl radio off`), prevented option-embedded symlink traversal (`--file=/path`, `-f/path`, `sort --files0-from`), contained process memory and credential extraction (`/proc/*/environ`, `/proc/*/mem`), enforced atomic 0600 IPC permission request file creation with quote escaping, and rejected unclosed quotes and input line overflows with explicit syntax errors.
-* **🧪 31 Automated Security Tests:** Expanded unit security test suite to 31 tests covering all identified penetration attack vectors with 100% test pass rate.
-
-### [v1.9.0] - 2026-09-06
-* **⚡ C99 Musl Static View-Only Shell (`tailcat-view-shell`):** Completely rewrote the restricted view-only support shell in pure C99 (`src/tailcat-view-shell.c`) statically linked against Musl libc using `zig cc`. Eliminates `/bin/sh` and `eval` entirely—all commands and pipelines execute via direct kernel syscalls (`pipe()`, `fork()`, `dup2()`, `execvp()`), physically immunizing the sandbox against shell injection, variable expansion, and quote-escaping bugs.
-* **🪶 Ultra-Lean Static Binaries:** Cross-compiled self-contained static ELF binaries for `armv7` (132 KB), `arm64` (136 KB), and `amd64` (132 KB), requiring zero runtime dependencies on router JFFS flash.
-* **🛠️ Build & Architecture Automation:** Added `build.sh` and `Makefile` for automated Musl cross-compilation (`make musl`) and native host testing (`make test`). Updated `install.sh` and `tailcatzero` to automatically detect router architecture and install the appropriate static binary.
-
-### [v1.8.2] - 2026-09-06
-* **🛡️ View-Only Sandbox Penetration Hardening:** Added sensitive file request denial in `request_command_approval()` to block request-based credential leaks (`request cat /etc/shadow`), prohibited session tool approvals (`APPROVED_FILE`) from bypassing sensitive file access controls, implemented canonical symlink resolution (`readlink -f`) preventing direct and multi-hop symlink evasions, enforced non-interactive batch mode on `top` across all pipeline stages, neutralized interactive pager escapes (`less`/`more`) via `safe_stream` pipeline rewriting, mitigated character device DoS/tunnel flooding (`/dev/zero`, `/dev/urandom`), expanded `nvram get` credential filters (`pass`, `cert`, `priv`, `ovpn`, `wg`), defended against GNU option prefix evasions (`--diff*`, `--compress*`), and resolved a `VIEW_ONCE_DIR` unbound variable termination under `set -u`.
-* **🔄 Service Watchdog & Safeguard Parity:** Synchronized background timeout watchdog to clean up view escalation state and tokens upon session expiry. Added `/dev/mem` and `/dev/kmem` to headless safeguard red lines.
-* **🔒 Input Sanitization:** Sanitized upstream release tags and commit SHAs with `tr -cd 'a-zA-Z0-9_.-'` before URL interpolation in `install.sh` and `tailcatzero`.
-
-### [v1.8.1] - 2026-09-06
-* **🛡️ View-Only Sandbox Hardening:** Added input canonicalization (quotes/backslashes stripped before checks) to prevent blacklist evasion, wildcard glob expansion checks blocking sensitive file dumps (`/etc/pas*`, `/tmp/etc/sha*`), access blocks on raw device nodes (`/dev/mtd*`, `/dev/mem`, `/proc/kcore`), multi-argument validation in `nvram get` queries, internal flag inspection for `tree -o`, `sort -o`, `diff --diff-program`, `dmesg -c`, `ping -f`, `date -s`, and complete prohibition of background process execution (`&`).
-* **🔒 Host IPC & Parser Security:** Replaced shell sourcing (`. "$f"`) of guest request files and session state files with deterministic key-value parsers, completely eliminating command injection risks during host approval and status inspections.
-* **🔐 Permission Hardening:** Enforced `chmod 700` across runtime/session directories and `chmod 600` on configurations and address files.
-* **📦 Repository & Installer Standardization:** Removed legacy `tailcat` script from the repository root, standardizing exclusively on `tailcatzero`. Fixed unbound `$C_YELLOW` variable in `install.sh` under `set -u`.
-
-### [v1.8.0] - 2026-09-05
-* **📥 Recursive Folder Support by Default (`--accept-dirs`):** Senders can now upload entire directory trees (`tailcat cp -r`) as well as single files to the encrypted file drop box, preserving original filenames and subfolders.
-* **⚡ Hash & MD5-Based Update Checking:** The `update` process now verifies upstream files against cryptographic hashes (`md5sum`), detecting changes even when SemVer tags are not bumped and preventing unnecessary flash memory writes when files are identical. Added `tailcatzero check-update` for non-destructive update detection.
-* **🛡️ View-Only Sandbox Dynamic Approvals & Proactive Permissions:** Added `tailcatzero allow <cmd>` and `tailcatzero revoke <cmd>` for host permission management, and single-use execution approvals (`approve --once`).
-* **📦 Namespace Protection:** Standardized exclusively on `tailcatzero` without symlink hijacking of the official `tailcat` Go package name.
-
-### [v1.7.1] - 2026-09-05
-* **🛡️ View-Only Sandbox Hardening:** Neutralized shell breakouts via `env <cmd>` and interactive pagers (`less`/`more`), blocked in-tool file writing (`sort -o`, `uniq [in out]`, `xxd`), restricted network and WiFi mutation (`route`, `arp`, `wl`), protected sensitive security files (`/etc/shadow`, `.ssh/id_*`, `dropbear`, `.key`), and blocked credential leaks in `nvram show`/`nvram get`.
-* **⚠️ GTFOBin Detection & Threat Warnings:** Host TUI and headless CLI now display explicit high-visibility security warnings when a guest requests permission for binaries with subshell or file-writing capabilities.
-* **🌐 Zero-Config WebGUI Forwarding:** Replaced SOCKS proxy guidance with native `tailcat forward <TOKEN> <port>`, providing instant browser access via `https://localhost:<port>`.
-* **📦 Core Script Harmonization:** Renamed repository script from `tailcat` to `tailcatzero` to align with the router command name.
-
-### [v1.7.0] - 2026-09-05
-* **🔔 On-Demand Permission Escalation for View-Only Sessions:** Remote support guests and friends connected to restricted view-only sessions can request execution permissions for additional commands in real-time (`request <cmd>`, `req <cmd>`, or interactive `[y/N]` prompt on blocked commands).
-* **⚡ Dual-Channel Host Approvals (TUI & Headless CLI):** The host router administrator is notified instantly via syslog and admin terminals (`/dev/pts/*`). Host can approve or deny via:
-  * **Interactive TUI Dashboard:** Dynamic badge (`🔔 [P]ending Requests`) on main menu and active session cards with hotkey `[P]` opening an interactive modal.
-  * **Headless CLI:** `tailcatzero requests`, `tailcatzero approve [id|cmd] [--once]`, `tailcatzero deny [id|cmd]`, `tailcatzero allow <cmd>`, and `tailcatzero revoke <cmd>`.
-* **🎯 Granular Approval Scopes:** Host can choose between **"Approve for this session"** (session-wide allowlist cached in memory) or **"Approve once"** (single execution token).
-* **🛡️ Irreversible Hardware Safeguards (Hard Red Lines):** Destructive partition and flash corruption commands (`dd of=/dev/mtd*`, `flash_erase*`, `rm -rf /`, `nvram erase`) are hard-blocked from ever being requested or authorized.
-
-### [v1.6.0] - 2026-09-04
-* **🔒 Restricted View-Only Diagnostic Shell (`tailcat-view-shell`):** Introduced a zero-trust, read-only remote support shell option (`Option 1 -> 2` or `tailcatzero view` / `tailcatzero ssh view`) for safe technical assistance without disclosing root write access.
-* **🛡️ Hardened Multi-Layer Security Sandbox:** Prohibits file redirections (`>`, `>>`, `<`), subshells (`` ` `` / `$()`), command chaining (`;`, `&&`, `||`), state-modifying binaries (`rm`, `mv`, `cp`, `touch`, `chmod`, `dd`), router state mutation (`nvram set/commit/unset`, `reboot`, `kill`), and package changes (`opkg install/remove/upgrade`).
-* **📦 Deep Entware & Asuswrt Diagnostics:** Permits extensive read-only tools across system health (`uptime`, `free`, `df`, `ps`, `top`, `dmesg`, `sysinfo`), network & WiFi (`ip addr/route`, `netstat`, `route`, `ping`, `mtr`, `wl`, `leases`, `wifi`, `ports`), NVRAM queries (`nvram get`, `nvram show`), text processing (`cat`, `head`, `tail`, `grep`, `rg`, `tree`, `sort`, `uniq`, `diff`), and Entware queries (`opkg list/info/find/status/search/depends`).
-* **⚡ Safe Unix Pipeline Execution:** Supports Unix pipelines (`|`) between allowed inspection tools (e.g. `ps | grep dnsmasq`, `nvram show | grep dhcp`, `opkg list-installed | grep python`).
-* **🆘 Remote Support Submenu (Option 1):** Main menu Option 1 now provides a clean choice between `1. Full Root Shell (Read-Write)` and `2. View-Only Diagnostic Shell (Read-Only)`, with dynamic badging (`[🟢 Root + 🔒 View]`).
-* **🖐️ 5-Slot Multi-Service Concurrency:** Extended active session slots and termination confirmation to support up to 5 concurrent tunnels (SSH Root, SSH View, File Receiver, SFTP, and WebGUI) running simultaneously on independent WireGuard nodes.
-
-### [v1.5.0] - 2026-09-04
-* **⏱️ CLI Timeout Management:** Added `tailcatzero timeout [min|persistent]` for non-interactive timeout inspection and configuration without opening the TUI.
-* **🛡️ DERP Map URL Preservation:** Preserves existing `DERP_URL` settings in `/jffs/addons/tailcat/tailcat.cfg` when adjusting timeout parameters.
-* **💻 64-Bit x86 Support (`amd64`):** Extended installer and updater to detect `x86_64` / `amd64`, enabling deployment on x86 Asuswrt-Merlin machines and virtualized testbeds.
-* **🩹 Self-Healing CLI Dependency Installation:** Invoking tunnel subcommands (`ssh`, `recv`, `files`, `webgui`) without pre-existing binaries automatically downloads and configures dependencies on-the-fly.
-* **🧹 Self-Healing Session & Watchdog Reaping:** Automatically clears dead process state files, dumps, and orphaned watchdog subshells.
-* **🌐 WebGUI Protocol & Port Accuracy:** Unified `get_webgui_connect_info` across overview, session cards, and CLI status for exact HTTP vs HTTPS port resolution.
-* **🗑️ Comprehensive Uninstaller:** Removes legacy `/opt/bin/tailcat` binaries and applies POSIX case-insensitive cleanup to `init-start`.
-
-### [v1.4.0] - 2026-09-03
-* **🐱 Project Rebranding to TAILCAT ZER0:** Officially rebranded to **TAILCAT ZER0** with the dedicated CLI command `tailcatzero`.
-* **🖥️ Non-Interactive CLI Dispatcher:** Added `tailcatzero` command-line subcommands (`status`, `stop [all|SVC]`, `ssh`, `webgui`, `update`, `-v`, `-h`) for seamless headless automation and scripting.
-* **⏱️ Persistent Mode & Custom Timeout:** Enter `0` (or `persistent`) for non-expiring tunnels without background watchdog overhead, or specify any custom minute duration with interactive in-place input validation.
-* **🔑 Guaranteed Ephemeral Tokens (`--key=new`):** Enforces `--key=new` on every session spawn to guarantee fresh, unique cryptographic keys and prevent token reuse.
-* **🔄 Dual Script & Engine Updater:** Option 6 (`manage_tailcat_menu`) and `tailcatzero update` cleanly update both the shell script from GitHub and the official Go engine binary.
-* **📋 Streamlined 6-Item Menu:** Consolidated configuration and maintenance under a dedicated management submenu with active badges and hotkey bar.
-
-### [v1.3.0] - 2026-09-02
-* **⚡ Multi-Service Concurrency:** Full concurrent execution across SSH, File Receiver, SFTP, and WebGUI with independent WireGuard userspace nodes.
-* **🐱 Side-by-Side ASCII Cat Header:** Clean Japanese minimalist ASCII cat (`╱|、`) paired with project title and subtitle.
-* **⚙️ Dedicated Management Submenu:** Interactive menu for updating binaries, reinstalling from GitHub, or cleanly uninstalling.
-* **🛑 Selective & Batch Process Killer:** Interactive process list to terminate specific individual sessions or all active tunnels.
-* **✨ Flicker-Free Clean Canvas:** VT100 screen clearing with non-intrusive toast notifications.
-
-### [v1.1.3] - 2026-09-02
-* **↩️ Submenu Navigation & Cancellation Support:** Added full support for canceling and returning to the main menu using `e` / `b` / `cancel` from Inbox destination selection, SFTP directory/mode prompts, and Auto-Kill timeout configuration.
-
-### [v1.1.2] - 2026-09-02
-* **🧹 Active Session Header:** Renamed card header to concise `Active Session`.
-* **✂️ Cleaner Status Details:** Removed redundant explanations from Auto-Kill and Security metadata rows.
-* **🛡️ Anti-Bleed Snippet Dividers:** Replaced fixed-width closed boxes with horizontal rule dividers (`───`) so long tokens and commands naturally flow without line-wrap border corruption.
-* **⌨️ Integrated Bold Underline Hotkeys:** Replaced bracketed keys with in-word highlighted hotkeys (**S**top Session, **R**efresh, **Q**R, **M**ain Menu) and merged the prompt into a single inline action bar.
-
-### [v1.1.1] - 2026-09-02
-* **🎨 High-Contrast Terminal Color Refinements:** Upgraded Chat Invite Snippets to high-contrast crisp white (`C_WHITE`) and cyan borders (`C_CYAN`) with highlighted yellow commands (`C_YELLOW`), ensuring pristine visibility across dark-background terminals.
-
-### [v1.1.0] - 2026-09-02
-* **📱 Live Active Session Card:** Dedicated interactive dashboard with live auto-kill countdown, active service details, and 1-key quick actions (`s` to stop, `r` to refresh, `q` for QR code, `b` to exit).
-* **📷 Integrated ASCII QR Codes:** Direct rendering of ASCII QR codes in terminal via router's built-in `qrencode` for rapid mobile/tablet token capture.
-* **💬 Ready-to-Paste Chat Snippets:** Generates pre-formatted 2-line invite text ready to copy-paste into Discord, Slack, or WhatsApp.
-* **⚡ Global Contextual Hotkeys:** Single-key controls across the menu (`s` to stop immediately, `t` for timeout, `v` for session card).
-* **🎯 KISS Feature Alignment:** Streamlined menu to the 4 core sharing pillars (Shell, File Receiver, SFTP, WebGUI), eliminating unnecessary feature creep.
-* **💾 Dynamic USB Storage Detection:** Automatically offers mounted USB partitions (`/tmp/mnt/*`) for Inbox storage to avoid RAM exhaustion.
-
-### [v1.0.0] - 2026-09-02
-* **🆘 Instant Remote Shell (Passwordless):** Ephemeral WireGuard shell powered by TailCat's native SSH server with capability-based token access (no passwords or SSH keys to configure).
-* **📥 Encrypted File Receiver:** Write-only peer-to-peer file drop receiver into `/tmp/tailcat-inbox`.
-* **📤 SFTP File Share:** Read-only directory serving with native SFTP path confinement.
-* **🌐 WebGUI Remote Port Forwarder:** Securely forward local router management WebUI (port 8443).
-* **⏱️ Automated 30-Minute Session Auto-Kill:** Background supervisor process automatically tears down active sessions when timer expires.
-* **📦 Universal ARMv7 & ARM64 Architecture Support:** Automatically fetches official `tailscale/tailcat` `v0.4.0` static binaries for all Asuswrt-Merlin routers.
-
-See [CHANGELOG.md](./CHANGELOG.md) for full history.
-
----
-
-## 📜 License
-
-GPL-3.0 License.
+* Complete version history and release notes: **[CHANGELOG.md](./CHANGELOG.md)**
+* Licensed under the **[GPL-3.0 License](./LICENSE)**.
