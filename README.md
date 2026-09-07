@@ -2,7 +2,7 @@
 
 > **Ephemeral WireGuard Tunnels, Remote Support Shells & Encrypted File Inboxes for Asuswrt-Merlin Routers**
 
-[![Release](https://img.shields.io/badge/version-v1.10.4-blue.svg)](CHANGELOG.md)
+[![Release](https://img.shields.io/badge/version-v1.11.0-blue.svg)](CHANGELOG.md)
 [![Firmware](https://img.shields.io/badge/Asuswrt--Merlin-384.13%2B-orange.svg)](https://www.asuswrt-merlin.net/)
 [![License](https://img.shields.io/badge/license-GPL--3.0-green.svg)](LICENSE)
 [![Engine](https://img.shields.io/badge/powered%20by-Tailscale%20TailCat-blueviolet.svg)](https://github.com/tailscale/tailcat)
@@ -12,7 +12,7 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
 ---
 
 ```text
-  TAILCAT ZER0 v1.10.4             ╱|、
+  TAILCAT ZER0 v1.11.0             ╱|、
                                  (˚ˎ 。7  
                                   |、˜〵          
   Instant Tunnel Manager         じしˍ,)ノ
@@ -64,7 +64,7 @@ tailcatzero
 
 | Feature | Description | Default Mode |
 |---|---|---|
-| **🔒 View-Only Shell** | Safe diagnostic shell in C99. System writes, deletions, and state changes are blocked. Real-time `request <cmd>` approval for elevated tools. | **Default** |
+| **🔒 View-Only Shell** | Safe diagnostic shell in C99 with Tab autocompletion & command history. System writes, deletions, and state changes are blocked. Real-time `request <cmd>` approval for elevated tools. | **Default** |
 | **⚡ Full Root Shell** | Unrestricted administrative SSH terminal. Requires explicit `YES` confirmation. | Opt-in |
 | **📥 File Receiver Inbox** | Secure P2P file receiver into volatile RAM (`/tmp/tailcat-inbox`) or mounted USB drives. | Ready |
 | **📁 SFTP Directory Share** | Serve router paths (e.g. `/jffs` or USB drives) securely to remote SFTP clients. | Read-Only or R/W |

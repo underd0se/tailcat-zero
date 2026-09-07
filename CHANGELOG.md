@@ -5,6 +5,27 @@ All notable changes to TAILCAT ZER0 are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] - 2026-09-07
+
+### Interactive Linenoise Line Editing, Tab Autocompletion & Symlink Security Hardening
+
+* **Embedded Zero-Dependency Line Editing & History Engine (`src/linenoise.c`, `src/linenoise.h`):**
+  * Embedded Salvatore Sanfilippo's `linenoise` library directly into the C99 Musl static build pipeline, eliminating external runtime library requirements and maintaining tiny binary footprints (~160 KB).
+  * In-memory command history with Up/Down arrow key recall (100 commands max).
+  * Seamless non-interactive fallback mode for headless pipelines and automated scripts.
+* **Context-Aware Tab-Completion (`src/tailcat-view-shell.c`):**
+  * **Command Completion**: Autocompletes base commands from the allowlist (`allowed_commands`) at prompt start or following pipeline stages (`|`).
+  * **Path & File Completion**: Autocompletes filesystem entries, adding trailing slashes (`/`) for directories to enable rapid continued navigation and trailing spaces for regular files.
+  * **Context-Aware `cd`**: Limits completions strictly to directory targets when completing arguments to `cd`.
+  * **Tilde (`~`) Path Expansion**: Supports `~` and `~/...` directory autocompletion.
+* **🛡️ Recursive Multi-Hop Symlink Security Resolution:**
+  * Implemented `check_symlink_chain_security()` to recursively resolve up to 16 hops of relative and absolute symlinks, verifying every intermediate link and the final target against sensitive credential patterns.
+  * Ensures that symlink evasion attempts (e.g. `hop2 -> hop1 -> /etc/shadow`) never leak or suggest sensitive files, even if intermediate names do not contain sensitive keywords or if targets are broken.
+* **Directory Enumeration & Metacharacter Sanitization:**
+  * Added validation in `shell_completion()` to discard filenames containing control characters (`< 32`, `127`, `\r`, `\n`) or shell metacharacters (`;`, `$`, `` ` ``) before display or buffer insertion, preventing ANSI injection or command smuggling.
+* **Comprehensive Automated Security Audit Suite (`tests/unit/test_security_audit.py`):**
+  * Implemented 34-point PTY-based automated security audit covering command allowlist isolation, sensitive file masking, symlink traversal evasion, and context-aware directory completions.
+
 ## [1.10.4] - 2026-09-07
 
 ### Dynamic Path Prompt & Navigation UX

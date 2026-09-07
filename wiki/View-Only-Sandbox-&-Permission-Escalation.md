@@ -65,6 +65,25 @@ The sandbox provides access to all standard diagnostic tools:
 
 ---
 
+## ⌨️ Interactive Line Editing, History & Tab Autocompletion
+
+As of **v1.11.0**, `tailcat-view-shell` integrates an embedded, zero-dependency `linenoise` line editing engine, providing full interactive shell ergonomics while compiling statically with Musl libc:
+
+* **Tab Autocompletion (<kbd>Tab</kbd>):**
+  * **Allowlisted Commands**: Autocompletes valid diagnostic commands from the base allowlist (e.g. `upt`<kbd>Tab</kbd> &rarr; `uptime `) at prompt start or following pipeline stages (`|`).
+  * **Filesystem Paths**: Completes directories with trailing slashes (`/`) for fast recursive navigation and files with trailing spaces.
+  * **Context-Aware `cd`**: Limits completions strictly to directory targets when completing arguments to `cd`, skipping regular files.
+  * **Tilde Expansion**: Autocompletes `~` and `~/...` directory paths.
+* **Security-Enforced Completion Filtering:**
+  * **Credential Masking**: Any path matching sensitive patterns (`/etc/shadow`, `/etc/passwd`, dropbear, SSH keys, `.key`, `.pem`, `tailcatzero.cfg`) is suppressed and will never be suggested.
+  * **Recursive Symlink Chain Resolution**: Symlinks are resolved recursively up to 16 hops (`check_symlink_chain_security()`). If any link in a chain points to a protected target (e.g. `link2 -> link1 -> /etc/shadow`), the candidate is immediately suppressed.
+  * **Metacharacter & Control Sanitization**: Filenames containing control characters (`\r`, `\n`, `< 32`) or shell metacharacters (`;`, `$`, `` ` ``) are stripped to prevent ANSI injection or command smuggling.
+* **Inline Line Editing & History:**
+  * Inline editing with <kbd>&larr;</kbd> / <kbd>&rarr;</kbd> arrow keys, <kbd>Home</kbd>, <kbd>End</kbd>, <kbd>Backspace</kbd>, and <kbd>Delete</kbd>.
+  * Up/Down arrow navigation through in-memory command history (100 commands max).
+
+---
+
 ## 🚫 Blocked Syntax & Threat Mitigations
 
 To prevent shell escapes and system tampering, the following security controls are strictly enforced:
@@ -190,7 +209,7 @@ Sep  5 22:15:30 RT-AX86U tailcat-view-shell[30142]: Guest submitted permission r
 Press `P` on the main dashboard or active session card to open the **Pending Requests Modal**:
 
 ```text
-  TAILCAT ZER0 v1.10.4             ╱|、
+  TAILCAT ZER0 v1.11.0             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -217,7 +236,7 @@ Press `P` on the main dashboard or active session card to open the **Pending Req
 If multiple requests are pending, TAILCAT ZER0 presents an interactive selection picker first:
 
 ```text
-  TAILCAT ZER0 v1.10.4             ╱|、
+  TAILCAT ZER0 v1.11.0             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ

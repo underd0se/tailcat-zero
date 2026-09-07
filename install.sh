@@ -6,7 +6,7 @@
 
 set -eu
 
-VERSION="v1.10.0"
+VERSION="v1.11.0"
 REPO_RAW_URL="https://raw.githubusercontent.com/underd0se/tailcat-zero/${VERSION}"
 
 # ANSI Colors

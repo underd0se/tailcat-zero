@@ -23,10 +23,26 @@
 #include <errno.h>
 #include <time.h>
 #include <dirent.h>
+#include "linenoise.h"
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
+
+/* Global Base Command Allowlist (Single Source of Truth for Validator & Autocompletion) */
+static const char *const allowed_commands[] = {
+    "uptime", "free", "df", "ps", "top", "uname", "dmesg", "sysinfo",
+    "cpuinfo", "meminfo", "temperature", "lsmod", "netstat", "traceroute",
+    "traceroute6", "mtr", "nslookup", "dig", "host", "leases", "dhcp-leases",
+    "wifi", "ports", "logs", "help", "exit", "quit", "clear", "cut",
+    "column", "tr", "locate", "which", "whereis", "echo", "printf",
+    "who", "w", "id", "ping", "ping6", "date", "robocfg", "ethtool",
+    "mii-tool", "ethctl", "cat", "head", "tail", "more", "less",
+    "grep", "egrep", "fgrep", "rg", "tree", "ls", "dir", "vdir",
+    "du", "wc", "sort", "uniq", "diff", "strings", "hexdump", "stat",
+    "file", "route", "arp", "wl", "nvram", "opkg", "ip", "ifconfig",
+    "logread", "env", "printenv", "pwd", "cd", "request", NULL
+};
 
 /* IPC Paths */
 #define SESSIONS_DIR    "/tmp/tailcat_sessions"
@@ -285,9 +301,57 @@ static int check_sensitive_target(const char *p) {
     return 0;
 }
 
-static int check_file_path_security(const char *path) {
+static int check_symlink_chain_security(const char *path) {
     if (!path || !*path) return 0;
     if (check_sensitive_target(path)) return 1;
+
+    char cur_path[PATH_MAX];
+    snprintf(cur_path, sizeof(cur_path), "%s", path);
+
+    for (int hop = 0; hop < 16; hop++) {
+        struct stat lst;
+        if (lstat(cur_path, &lst) != 0 || !S_ISLNK(lst.st_mode)) {
+            break;
+        }
+        char link_target[PATH_MAX];
+        ssize_t len = readlink(cur_path, link_target, sizeof(link_target) - 1);
+        if (len <= 0) break;
+        link_target[len] = '\0';
+
+        if (check_sensitive_target(link_target)) {
+            return 1;
+        }
+
+        /* If link_target is relative, resolve it relative to cur_path's directory */
+        if (link_target[0] != '/') {
+            char dir_buf[PATH_MAX];
+            snprintf(dir_buf, sizeof(dir_buf), "%s", cur_path);
+            char *slash = strrchr(dir_buf, '/');
+            if (slash) {
+                *slash = '\0';
+                snprintf(cur_path, sizeof(cur_path), "%s/%s", dir_buf, link_target);
+            } else {
+                snprintf(cur_path, sizeof(cur_path), "%s", link_target);
+            }
+        } else {
+            snprintf(cur_path, sizeof(cur_path), "%s", link_target);
+        }
+
+        if (check_sensitive_target(cur_path)) {
+            return 1;
+        }
+    }
+
+    char resolved[PATH_MAX];
+    if (realpath(path, resolved) != NULL) {
+        if (check_sensitive_target(resolved)) return 1;
+    }
+    return 0;
+}
+
+static int check_file_path_security(const char *path) {
+    if (!path || !*path) return 0;
+    if (check_symlink_chain_security(path)) return 1;
 
     /* Wildcard glob check (*, ?, [) */
     if (strpbrk(path, "*?[") != NULL) {
@@ -295,38 +359,15 @@ static int check_file_path_security(const char *path) {
         if (glob(path, 0, NULL, &gb) == 0) {
             for (size_t g = 0; g < gb.gl_pathc; g++) {
                 const char *match = gb.gl_pathv[g];
-                if (check_sensitive_target(match)) {
+                if (check_symlink_chain_security(match)) {
                     globfree(&gb);
                     return 1;
-                }
-                char resolved[PATH_MAX];
-                if (realpath(match, resolved) != NULL) {
-                    if (check_sensitive_target(resolved)) {
-                        globfree(&gb);
-                        return 1;
-                    }
                 }
             }
             globfree(&gb);
         }
     }
 
-    /* Direct symlink & canonical target check */
-    struct stat st;
-    if (lstat(path, &st) == 0) {
-        if (S_ISLNK(st.st_mode)) {
-            char link_target[PATH_MAX];
-            ssize_t len = readlink(path, link_target, sizeof(link_target) - 1);
-            if (len > 0) {
-                link_target[len] = '\0';
-                if (check_sensitive_target(link_target)) return 1;
-            }
-        }
-        char resolved[PATH_MAX];
-        if (realpath(path, resolved) != NULL) {
-            if (check_sensitive_target(resolved)) return 1;
-        }
-    }
     return 0;
 }
 
@@ -1105,23 +1146,9 @@ static int validate_stage(const char *stage_raw, const char *orig_input,
     const char *sub_arg = (argc > 1) ? argv[1] : NULL;
 
     /* Base command allowlist check */
-    static const char *const allowed[] = {
-        "uptime", "free", "df", "ps", "top", "uname", "dmesg", "sysinfo",
-        "cpuinfo", "meminfo", "temperature", "lsmod", "netstat", "traceroute",
-        "traceroute6", "mtr", "nslookup", "dig", "host", "leases", "dhcp-leases",
-        "wifi", "ports", "logs", "help", "exit", "quit", "clear", "cut",
-        "column", "tr", "locate", "which", "whereis", "echo", "printf",
-        "who", "w", "id", "ping", "ping6", "date", "robocfg", "ethtool",
-        "mii-tool", "ethctl", "cat", "head", "tail", "more", "less",
-        "grep", "egrep", "fgrep", "rg", "tree", "ls", "dir", "vdir",
-        "du", "wc", "sort", "uniq", "diff", "strings", "hexdump", "stat",
-        "file", "route", "arp", "wl", "nvram", "opkg", "ip", "ifconfig",
-        "logread", "env", "printenv", "pwd", "cd", NULL
-    };
-
     int in_allowed = 0;
-    for (int i = 0; allowed[i]; i++) {
-        if (strcmp(base_cmd, allowed[i]) == 0) {
+    for (int i = 0; allowed_commands[i]; i++) {
+        if (strcmp(base_cmd, allowed_commands[i]) == 0) {
             in_allowed = 1;
             break;
         }
@@ -1805,23 +1832,176 @@ static int validate_and_run(const char *raw_input) {
 }
 
 /* -------------------------------------------------------------------------------------------------------------------------
+ * Linenoise Shell Autocompletion Callback
+ * ------------------------------------------------------------------------------------------------------------------------- */
+
+static void shell_completion(const char *buf, linenoiseCompletions *lc) {
+    if (!buf || !lc) return;
+
+    /* Find the start of the current token to complete.
+     * We scan backwards from the end of buf to the last whitespace or pipe. */
+    size_t len = strlen(buf);
+    size_t token_start = len;
+    while (token_start > 0 && !isspace((unsigned char)buf[token_start - 1]) && buf[token_start - 1] != '|') {
+        token_start--;
+    }
+
+    /* Check if this is the first word of a stage (i.e. a command) */
+    size_t stage_start = token_start;
+    while (stage_start > 0 && isspace((unsigned char)buf[stage_start - 1])) {
+        stage_start--;
+    }
+    int is_command = (stage_start == 0 || buf[stage_start - 1] == '|');
+
+    const char *token = buf + token_start;
+    size_t token_len = strlen(token);
+
+    if (is_command) {
+        /* Command autocompletion */
+        char prefix[MAX_LINE_LEN];
+        size_t plen = (token_start < sizeof(prefix) - 1) ? token_start : sizeof(prefix) - 1;
+        memcpy(prefix, buf, plen);
+        prefix[plen] = '\0';
+
+        for (int i = 0; allowed_commands[i]; i++) {
+            if (strncmp(allowed_commands[i], token, token_len) == 0) {
+                char comp[MAX_LINE_LEN];
+                snprintf(comp, sizeof(comp), "%s%s ", prefix, allowed_commands[i]);
+                linenoiseAddCompletion(lc, comp);
+            }
+        }
+        return;
+    }
+
+    /* Path / File / Directory autocompletion */
+    int is_cd = 0;
+    const char *stage_ptr = buf + stage_start;
+    while (stage_ptr > buf && *(stage_ptr - 1) != '|') {
+        stage_ptr--;
+    }
+    while (*stage_ptr && isspace((unsigned char)*stage_ptr)) stage_ptr++;
+    if (strncmp(stage_ptr, "cd ", 3) == 0 || strncmp(stage_ptr, "cd\t", 3) == 0) {
+        is_cd = 1;
+    }
+
+    char prefix[MAX_LINE_LEN];
+    size_t plen = (token_start < sizeof(prefix) - 1) ? token_start : sizeof(prefix) - 1;
+    memcpy(prefix, buf, plen);
+    prefix[plen] = '\0';
+
+    if (strcmp(token, "~") == 0) {
+        char comp[MAX_LINE_LEN];
+        snprintf(comp, sizeof(comp), "%s~/", prefix);
+        linenoiseAddCompletion(lc, comp);
+        return;
+    }
+
+    if (token_start >= sizeof(prefix) - 1) return;
+
+    char lookup_dir[PATH_MAX];
+    char display_dir[PATH_MAX];
+    char base_prefix[PATH_MAX];
+
+    const char *last_slash = strrchr(token, '/');
+    if (!last_slash) {
+        snprintf(lookup_dir, sizeof(lookup_dir), ".");
+        display_dir[0] = '\0';
+        snprintf(base_prefix, sizeof(base_prefix), "%s", token);
+    } else {
+        size_t dlen = (size_t)(last_slash - token) + 1;
+        if (dlen >= sizeof(display_dir)) dlen = sizeof(display_dir) - 1;
+        memcpy(display_dir, token, dlen);
+        display_dir[dlen] = '\0';
+        snprintf(base_prefix, sizeof(base_prefix), "%s", last_slash + 1);
+
+        if (display_dir[0] == '~') {
+            const char *home = getenv("HOME");
+            if (!home || !*home) home = "/tmp";
+            snprintf(lookup_dir, sizeof(lookup_dir), "%s%s", home, display_dir + 1);
+        } else {
+            snprintf(lookup_dir, sizeof(lookup_dir), "%s", display_dir);
+        }
+    }
+
+    size_t base_len = strlen(base_prefix);
+
+    DIR *d = opendir(lookup_dir);
+    if (!d) return;
+
+    struct dirent *de;
+    while ((de = readdir(d)) != NULL) {
+        if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0) continue;
+        if (de->d_name[0] == '.' && base_prefix[0] != '.') continue;
+        if (strncmp(de->d_name, base_prefix, base_len) != 0) continue;
+
+        /* Security: reject directory entries containing control characters (<32, 127) or dangerous shell meta */
+        int bad_char = 0;
+        for (const char *cp = de->d_name; *cp; cp++) {
+            unsigned char uc = (unsigned char)*cp;
+            if (uc < 32 || uc == 127 || *cp == '\r' || *cp == '\n' || *cp == ';' || *cp == '`' || *cp == '$') {
+                bad_char = 1;
+                break;
+            }
+        }
+        if (bad_char) continue;
+
+        size_t de_len = strlen(de->d_name);
+        if (strlen(display_dir) + de_len >= PATH_MAX - 1) continue;
+
+        size_t ld_len = strlen(lookup_dir);
+        if (ld_len + de_len + 2 >= PATH_MAX) continue;
+
+        char full_target[PATH_MAX];
+        if (ld_len > 0 && lookup_dir[ld_len - 1] == '/') {
+            snprintf(full_target, sizeof(full_target), "%s%s", lookup_dir, de->d_name);
+        } else {
+            snprintf(full_target, sizeof(full_target), "%s/%s", lookup_dir, de->d_name);
+        }
+
+        struct stat st;
+        int is_dir = 0;
+        if (stat(full_target, &st) == 0 && S_ISDIR(st.st_mode)) {
+            is_dir = 1;
+        }
+
+        if (is_cd && !is_dir) continue;
+
+        char check_path[PATH_MAX];
+        snprintf(check_path, sizeof(check_path), "%s%s", display_dir, de->d_name);
+        if (check_sensitive_target(check_path) || check_file_path_security(full_target)) {
+            continue;
+        }
+
+        char comp[MAX_LINE_LEN];
+        if (is_dir) {
+            snprintf(comp, sizeof(comp), "%s%s%s/", prefix, display_dir, de->d_name);
+        } else {
+            snprintf(comp, sizeof(comp), "%s%s%s ", prefix, display_dir, de->d_name);
+        }
+        linenoiseAddCompletion(lc, comp);
+    }
+    closedir(d);
+}
+
+/* -------------------------------------------------------------------------------------------------------------------------
  * Main Entry Point & Shell Loop
  * ------------------------------------------------------------------------------------------------------------------------- */
 
 int main(int argc, char *argv[]) {
-    /* Sanitize dynamic linker controls, shell variables, and execution environment */
-    unsetenv("LD_PRELOAD");
-    unsetenv("LD_LIBRARY_PATH");
-    unsetenv("LD_AUDIT");
-    unsetenv("LD_DEBUG");
-    unsetenv("DYLD_INSERT_LIBRARIES");
-    unsetenv("DYLD_LIBRARY_PATH");
-    unsetenv("DYLD_FRAMEWORK_PATH");
-    unsetenv("BASH_ENV");
-    unsetenv("ENV");
-    unsetenv("IFS");
-    unsetenv("CDPATH");
-    unsetenv("GLOBIGNORE");
+    /* Set line buffered output */
+    setvbuf(stdout, NULL, _IOLBF, 0);
+    setvbuf(stderr, NULL, _IONBF, 0);
+
+    /* Security: Aggressive Environment Sanitization */
+    static const char *const dangerous_env[] = {
+        "LD_PRELOAD", "LD_LIBRARY_PATH", "LD_AUDIT", "LD_DEBUG",
+        "DYLD_INSERT_LIBRARIES", "DYLD_LIBRARY_PATH", "DYLD_FRAMEWORK_PATH",
+        "BASH_ENV", "ENV", "SHELLOPTS", "PS4", "PROMPT_COMMAND",
+        "IFS", "CDPATH", "GLOBIGNORE", NULL
+    };
+    for (int i = 0; dangerous_env[i]; i++) {
+        unsetenv(dangerous_env[i]);
+    }
 
     /* Safe default environment */
     setenv("PATH", "/opt/bin:/opt/sbin:/bin:/usr/bin:/sbin:/usr/sbin", 1);
@@ -1851,22 +2031,39 @@ int main(int argc, char *argv[]) {
     }
 
     /* Interactive Login Session */
-    print_banner();
+    if (isatty(STDIN_FILENO)) {
+        print_banner();
+    }
 
-    char line_buf[MAX_LINE_LEN];
+    linenoiseSetCompletionCallback(shell_completion);
+    linenoiseHistorySetMaxLen(100);
+
+    char prompt_buf[PATH_MAX + 64];
     char prompt_dir[PATH_MAX];
+
     while (1) {
         get_prompt_dir(prompt_dir, sizeof(prompt_dir));
-        printf("%stailcatzero-view%s:%s%s%s$ %s", C_GREEN, C_RESET, C_CYAN, prompt_dir, C_GREEN, C_RESET);
-        fflush(stdout);
+        snprintf(prompt_buf, sizeof(prompt_buf), "%stailcatzero-view%s:%s%s%s$ ",
+                 C_GREEN, C_RESET, C_CYAN, prompt_dir, C_RESET);
 
-        if (!fgets(line_buf, sizeof(line_buf), stdin)) {
-            printf("\n%sSession closed.%s\n", C_CYAN, C_RESET);
+        char *line = linenoise(prompt_buf);
+        if (!line) {
+            if (errno == EAGAIN) {
+                continue;
+            }
+            if (isatty(STDIN_FILENO)) {
+                printf("\n%sSession closed.%s\n", C_CYAN, C_RESET);
+            }
             break;
         }
 
-        line_buf[strcspn(line_buf, "\r\n")] = '\0';
-        validate_and_run(line_buf);
+        char *p = line;
+        while (*p && isspace((unsigned char)*p)) p++;
+        if (*p) {
+            linenoiseHistoryAdd(line);
+            validate_and_run(line);
+        }
+        linenoiseFree(line);
     }
 
     return 0;
