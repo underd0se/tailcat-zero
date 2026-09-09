@@ -290,6 +290,8 @@ static int check_sensitive_target(const char *p) {
         "tailcat_sessions", "tailcat_addr", "authorized_keys", "id_",
         ".crt", ".pem", ".pfx", ".p12", ".der", "/nvram", "nvram.nvm",
         "tailcatzero.cfg", "tailcat.cfg", "/addons/tailcat",
+        "persistent", "persistent_sessions", "email.conf", "emailpw.enc",
+        "/jffs/addons/amtm/mail", "/amtm/mail",
         "wireguard", "/wg", ".ovpn", ".pcap", ".masterkey", NULL
     };
 
@@ -674,6 +676,12 @@ static int request_command_approval(const char *raw_cmd, const char *base_cmd) {
         return 1;
     }
 
+    /* Block TailCat management tools */
+    if (strstr(canon, "tailcatzero") != NULL || strstr(canon, "tailcat") != NULL) {
+        fprintf(stderr, "%s[!] Security Error: TailCat management and session operations cannot be requested in view-only mode.%s\n", C_RED, C_RESET);
+        return 1;
+    }
+
     /* Sensitive files check */
     if (is_sensitive_file_access_str(canon)) {
         fprintf(stderr, "%s[!] Security Error: Requests targeting sensitive system security files are prohibited in view-only mode.%s\n", C_RED, C_RESET);
@@ -861,9 +869,6 @@ static int request_command_approval(const char *raw_cmd, const char *base_cmd) {
         return validate_and_run(raw_cmd);
     } else if (strcmp(resp_status, "APPROVED_ONCE") == 0) {
         printf("%s[+] Host APPROVED single execution! Running command...%s\n\n", C_GREEN, C_RESET);
-        char tok_p[PATH_MAX];
-        snprintf(tok_p, sizeof(tok_p), "%s/%s.token", VIEW_ONCE_DIR, base_clean);
-        unlink(tok_p);
         return validate_and_run(raw_cmd);
     } else if (strcmp(resp_status, "DENIED") == 0) {
         printf("%s[-] Host DENIED permission for '%s'.%s\n", C_RED, base_clean, C_RESET);

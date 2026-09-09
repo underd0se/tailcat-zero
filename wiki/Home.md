@@ -5,7 +5,7 @@ Welcome to the official **TAILCAT ZER0** Wiki.
 > **Ephemeral WireGuard Tunnels, Remote Support Shells & Encrypted File Inboxes for Asuswrt-Merlin Routers**
 
 ```text
-  TAILCAT ZER0 v1.11.2             ╱|、
+  TAILCAT ZER0 v1.12.0             ╱|、
                                  (˚ˎ 。7  
                                   |、˜〵          
   Instant Tunnel Manager         じしˍ,)ノ
@@ -28,6 +28,7 @@ Whether you need to let a trusted forum helper diagnose a routing issue, securel
 * 🔔 **Live On-Demand Permission Escalation:** Need a guest to run a specific command outside the default sandbox? They run `request <cmd>`, and you can review and approve it directly from your terminal or TUI with a single keystroke.
 * 🌐 **Zero WAN Ports Opened:** Penetrates carrier-grade NATs (CGNAT), cellular modems, and corporate firewalls seamlessly using Tailscale's global DERP relay fabric and STUN UDP hole-punching.
 * ⏱️ **Automatic Ephemeral Teardown & Phased Warnings:** Every session has an automatic watchdog countdown (default: 30 minutes) or can run persistently until manually stopped. Staged broadcast warnings at 5m and 1m remaining alert active TUIs and connected remote PTYs before teardown. Volatile memory locks ensure zero remnants survive a router reboot.
+* ♾️ **Reboot Persistence & amtm Email Notifications:** Sessions set to Persistent mode (`timeout: 0`) automatically restore on boot via the WAN event hook. If ephemeral WireGuard keys regenerate across a reboot or power outage, new connection tokens are delivered via amtm email integration. *(View-Only diagnostic sessions remain strictly ephemeral and capped at 120 minutes max).*
 * 🖐️ **5-Slot Multi-Service Concurrency:** Run root shells, view-only triage sessions, File Receivers, SFTP shares, and WebGUI proxies concurrently on independent WireGuard nodes.
 
 ---
@@ -65,7 +66,7 @@ tailcatzero
 ```
 
 ```text
-  TAILCAT ZER0 v1.10.4             ╱|、
+  TAILCAT ZER0 v1.12.0             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ

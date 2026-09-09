@@ -6,13 +6,18 @@
 
 set -u
 
-VERSION="1.11.2"
+VERSION="1.12.0"
 CONFIG_DIR="/jffs/addons/tailcatzero"
 CONFIG_FILE="${CONFIG_DIR}/tailcatzero.cfg"
 ADDON_SCRIPT="${CONFIG_DIR}/tailcatzero"
 BIN_DIR="${CONFIG_DIR}/bin"
 TAILCAT_BIN="${BIN_DIR}/tailcat"
 VIEW_SHELL="${BIN_DIR}/tailcat-view-shell"
+PERSISTENT_DIR="${CONFIG_DIR}/persistent"
+AMTM_MAIL_DIR="/jffs/addons/amtm/mail"
+AMTM_CONF="${AMTM_MAIL_DIR}/email.conf"
+AMTM_PW_ENC="${AMTM_MAIL_DIR}/emailpw.enc"
+WAN_EVENT_SCRIPT="/jffs/scripts/wan-event"
 SESSIONS_DIR="/tmp/tailcat_sessions"
 REQUESTS_DIR="${SESSIONS_DIR}/requests"
 VIEW_APPROVED_FILE="${SESSIONS_DIR}/VIEW_APPROVED.txt"
@@ -175,8 +180,8 @@ TIMEOUT_MINUTES="${TIMEOUT_MINUTES:-$DEFAULT_TIMEOUT}"
 if [ -L "$SESSIONS_DIR" ]; then
     rm -rf "$SESSIONS_DIR" 2>/dev/null || true
 fi
-mkdir -p "$SESSIONS_DIR" "$REQUESTS_DIR" "$VIEW_ONCE_DIR" "$ACTIVE_TUIS_DIR"
-chmod 700 "$SESSIONS_DIR" "$REQUESTS_DIR" "$VIEW_ONCE_DIR" "$ACTIVE_TUIS_DIR" 2>/dev/null || true
+mkdir -p "$SESSIONS_DIR" "$REQUESTS_DIR" "$VIEW_ONCE_DIR" "$ACTIVE_TUIS_DIR" "$PERSISTENT_DIR" 2>/dev/null || true
+chmod 700 "$SESSIONS_DIR" "$REQUESTS_DIR" "$VIEW_ONCE_DIR" "$ACTIVE_TUIS_DIR" "$PERSISTENT_DIR" 2>/dev/null || true
 FLASH_MSG=""
 
 # -------------------------------------------------------------------------------------------------------------------------
@@ -457,8 +462,275 @@ get_shell_service_badge() {
     fi
 }
 
+# -------------------------------------------------------------------------------------------------------------------------
+# amtm Email & Persistent Session Integration
+
+is_amtm_email_configured() {
+    [ -f "$AMTM_CONF" ] && [ -f "$AMTM_PW_ENC" ]
+}
+
+send_amtm_email() {
+    mail_subject="$1"
+    mail_body="$2"
+
+    if ! is_amtm_email_configured; then
+        logger -t "$LOG_TAG" "amtm email not configured; cannot send notification"
+        return 1
+    fi
+
+    unset FROM_ADDRESS TO_NAME TO_ADDRESS USERNAME SMTP PORT PROTOCOL emailPwEnc SSL_FLAG
+    # shellcheck disable=SC1090
+    . "$AMTM_CONF" 2>/dev/null || return 1
+
+    if [ -z "${FROM_ADDRESS:-}" ] || [ -z "${TO_ADDRESS:-}" ] || [ -z "${USERNAME:-}" ] || [ -z "${SMTP:-}" ] || [ -z "${PORT:-}" ] || [ -z "${PROTOCOL:-}" ]; then
+        logger -t "$LOG_TAG" "amtm email configuration is missing required parameters"
+        return 1
+    fi
+
+    mail_pw=""
+    if [ -x /usr/sbin/openssl ]; then
+        # shellcheck disable=SC2086
+        mail_pw=$(/usr/sbin/openssl aes-256-cbc ${emailPwEnc:-} -d -in "$AMTM_PW_ENC" -pass pass:ditbabot,isoi 2>/dev/null || true)
+    elif command -v openssl >/dev/null 2>&1; then
+        # shellcheck disable=SC2086
+        mail_pw=$(openssl aes-256-cbc ${emailPwEnc:-} -d -in "$AMTM_PW_ENC" -pass pass:ditbabot,isoi 2>/dev/null || true)
+    fi
+
+    if [ -z "$mail_pw" ]; then
+        logger -t "$LOG_TAG" "Failed to decrypt amtm email password"
+        return 1
+    fi
+
+    mail_tmp="/tmp/tailcat-mail-body.$$"
+    rm -f "$mail_tmp"
+
+    cat <<EOF > "$mail_tmp"
+Subject: ${mail_subject}
+From: "TAILCAT ZER0" <${FROM_ADDRESS}>
+Date: $(date -R 2>/dev/null || date)
+To: "${TO_NAME:-Administrator}" <${TO_ADDRESS}>
+
+${mail_body}
+EOF
+
+    # shellcheck disable=SC2086
+    /usr/sbin/curl -s --url "${PROTOCOL}://${SMTP}:${PORT}/${SMTP}" \
+        --mail-from "$FROM_ADDRESS" \
+        --mail-rcpt "$TO_ADDRESS" \
+        --upload-file "$mail_tmp" \
+        --ssl-reqd \
+        --crlf \
+        --user "${USERNAME}:${mail_pw}" ${SSL_FLAG:-} >/dev/null 2>&1
+    curl_status=$?
+
+    rm -f "$mail_tmp"
+    return $curl_status
+}
+
+ensure_wan_event_hook() {
+    wan_dir=$(dirname "$WAN_EVENT_SCRIPT")
+    mkdir -p "$wan_dir" 2>/dev/null || true
+    if [ ! -f "$WAN_EVENT_SCRIPT" ]; then
+        printf "#!/bin/sh\n\n" > "$WAN_EVENT_SCRIPT" 2>/dev/null || true
+        chmod 755 "$WAN_EVENT_SCRIPT" 2>/dev/null || true
+    fi
+
+    if ! grep -q -- "--restore-persistent" "$WAN_EVENT_SCRIPT" 2>/dev/null; then
+        cat <<'EOF' >> "$WAN_EVENT_SCRIPT" 2>/dev/null || true
+
+# Added by TAILCAT ZER0 — Restore persistent sessions on WAN connection
+if [ "$2" = "connected" ]; then
+    [ -x /jffs/scripts/tailcatzero ] && /jffs/scripts/tailcatzero --restore-persistent &
+fi
+EOF
+        chmod 755 "$WAN_EVENT_SCRIPT" 2>/dev/null || true
+        log_msg "Installed persistent session restore hook in ${WAN_EVENT_SCRIPT}"
+    fi
+}
+
+save_persistent_session() {
+    s_type="$1"
+    s_cmd="$2"
+    s_desc="$3"
+    s_extra="${4:-}"
+    s_token="${5:-}"
+
+    # Security: View-only diagnostic sessions must NEVER be persistent
+    if [ "$s_type" = "VIEW" ]; then
+        return 0
+    fi
+
+    mkdir -p "$PERSISTENT_DIR" 2>/dev/null || true
+    chmod 700 "$PERSISTENT_DIR" 2>/dev/null || true
+
+    p_file="${PERSISTENT_DIR}/${s_type}.conf"
+    cat <<EOF > "$p_file"
+SERVICE_TYPE="${s_type}"
+SUBCMD="${s_cmd}"
+DESC="${s_desc}"
+EXTRA_INFO="${s_extra}"
+SAVED_TOKEN="${s_token}"
+UPDATED_AT="$(date 2>/dev/null || true)"
+EOF
+    chmod 600 "$p_file" 2>/dev/null || true
+
+    ensure_wan_event_hook
+}
+
+remove_persistent_session() {
+    s_type="$1"
+    if [ -d "$PERSISTENT_DIR" ]; then
+        rm -f "${PERSISTENT_DIR}/${s_type}.conf" 2>/dev/null || true
+    fi
+}
+
+has_persistent_sessions() {
+    if [ -d "$PERSISTENT_DIR" ]; then
+        for _f in "${PERSISTENT_DIR}"/*.conf; do
+            if [ -f "$_f" ]; then
+                return 0
+            fi
+        done
+    fi
+    return 1
+}
+
+restore_persistent_sessions() {
+    if ! has_persistent_sessions; then
+        return 0
+    fi
+
+    restore_lock="/tmp/tailcat_restore.lock"
+    if [ -f "$restore_lock" ]; then
+        lock_age=0
+        lock_time=$(head -n1 "$restore_lock" 2>/dev/null || echo 0)
+        cur_time=$(date +%s)
+        lock_age=$(( cur_time - lock_time ))
+        if [ "$lock_age" -lt 120 ]; then
+            logger -t "$LOG_TAG" "Persistent session restore already in progress. Skipping."
+            return 0
+        fi
+    fi
+    date +%s > "$restore_lock"
+    chmod 600 "$restore_lock" 2>/dev/null || true
+
+    logger -t "$LOG_TAG" "Starting persistent session restoration sequence..."
+
+    # Wait up to 30 seconds for WAN connectivity
+    conn_ready=0
+    c_try=0
+    while [ "$c_try" -lt 15 ]; do
+        if /usr/sbin/curl -s --connect-timeout 2 "https://tailcat.dev" >/dev/null 2>&1 || ping -c 1 -W 2 1.1.1.1 >/dev/null 2>&1; then
+            conn_ready=1
+            break
+        fi
+        sleep 2
+        c_try=$((c_try + 1))
+    done
+
+    if [ "$conn_ready" -eq 0 ]; then
+        logger -t "$LOG_TAG" "WAN connectivity check timed out; proceeding with persistent restore attempt."
+    fi
+
+    # Wait up to 15 seconds for NTP time sync
+    n_try=0
+    while [ "$n_try" -lt 15 ]; do
+        if [ "$(nvram get ntp_ready 2>/dev/null || echo 0)" = "1" ]; then
+            break
+        fi
+        sleep 1
+        n_try=$((n_try + 1))
+    done
+
+    changed_cnt=0
+    changed_names=""
+    combined_body=""
+
+    for cf in "${PERSISTENT_DIR}"/*.conf; do
+        [ -f "$cf" ] || continue
+        unset SERVICE_TYPE SUBCMD DESC EXTRA_INFO SAVED_TOKEN
+        # shellcheck disable=SC1090
+        . "$cf"
+
+        if [ "${SERVICE_TYPE:-}" = "VIEW" ]; then
+            rm -f "$cf"
+            continue
+        fi
+
+        [ -z "${SERVICE_TYPE:-}" ] && continue
+
+        # If not active, start it in persistent mode (TIMEOUT_MINUTES=0)
+        if ! is_service_active "$SERVICE_TYPE"; then
+            saved_global_to="$TIMEOUT_MINUTES"
+            TIMEOUT_MINUTES=0
+            start_tunnel "$SERVICE_TYPE" "$SUBCMD" "$DESC" "${EXTRA_INFO:-}" 0 >/dev/null 2>&1 || true
+            TIMEOUT_MINUTES="$saved_global_to"
+        fi
+
+        # Extract active token from session file
+        active_tok=""
+        if [ -f "${SESSIONS_DIR}/${SERVICE_TYPE}.env" ]; then
+            active_tok=$(grep '^TOKEN=' "${SESSIONS_DIR}/${SERVICE_TYPE}.env" 2>/dev/null | cut -d'=' -f2- | tr -d '"\r\n' || true)
+        fi
+
+        if [ -n "$active_tok" ] && [ "$active_tok" != "${SAVED_TOKEN:-}" ]; then
+            changed_cnt=$((changed_cnt + 1))
+            changed_names="${changed_names:+${changed_names}, }${SERVICE_TYPE}"
+
+            save_persistent_session "$SERVICE_TYPE" "$SUBCMD" "$DESC" "${EXTRA_INFO:-}" "$active_tok"
+
+            client_cmd=$(get_client_connect_cmd "$SERVICE_TYPE" "$active_tok" "${EXTRA_INFO:-}")
+            combined_body="${combined_body}
+------------------------------------------------------------------------
+Service: ${DESC} (${SERVICE_TYPE})
+New Token:
+${active_tok}
+
+Connect Command:
+  ${client_cmd}
+"
+        fi
+    done
+
+    if [ "$changed_cnt" -gt 0 ]; then
+        logger -t "$LOG_TAG" "Persistent session(s) refreshed with new keys: ${changed_names}"
+        if is_amtm_email_configured; then
+            r_mod=$(nvram get odmpid 2>/dev/null || true)
+            [ -z "$r_mod" ] && r_mod=$(nvram get productid 2>/dev/null || uname -m)
+            r_host=$(nvram get computer_name 2>/dev/null || uname -n)
+
+            subj="[TAILCAT ZER0] Persistent Session Keys Updated — ${r_host}"
+            msg="TAILCAT ZER0 Persistent Session Manager
+Router: ${r_host} (${r_mod})
+Event: System reboot or WAN reconnection detected
+Timestamp: $(date 2>/dev/null || true)
+
+The following persistent session(s) were restored with new keys:
+${combined_body}
+------------------------------------------------------------------------
+Security Note:
+These tunnels were automatically restored according to your persistent
+session configuration. Run the connect command(s) on your remote client
+to re-establish your connection.
+"
+            if send_amtm_email "$subj" "$msg"; then
+                logger -t "$LOG_TAG" "Dispatched combined persistent session keys email via amtm"
+            else
+                logger -t "$LOG_TAG" "Failed to send persistent session keys email via amtm"
+            fi
+        else
+            logger -t "$LOG_TAG" "Notice: Persistent session keys updated for ${changed_names}, but amtm email is not configured."
+        fi
+    else
+        logger -t "$LOG_TAG" "Persistent sessions verified; no key changes detected."
+    fi
+
+    rm -f "$restore_lock" 2>/dev/null || true
+}
+
 stop_single_session() {
     s_id="$1"
+    remove_persistent_session "$s_id"
     s_file="${SESSIONS_DIR}/${s_id}.env"
     addr_file="${SESSIONS_DIR}/tailcat_addr_${s_id}.txt"
     if [ -f "$s_file" ]; then
@@ -1211,8 +1483,15 @@ start_tunnel() {
     session_file="${SESSIONS_DIR}/${service_type}.env"
     watchdog_pid=""
 
-    if [ "$TIMEOUT_MINUTES" -gt 0 ]; then
-        timeout_sec=$(( TIMEOUT_MINUTES * 60 ))
+    effective_timeout="$TIMEOUT_MINUTES"
+    if [ "$service_type" = "VIEW" ]; then
+        if [ "$effective_timeout" -eq 0 ] || [ "$effective_timeout" -gt 120 ]; then
+            effective_timeout=120
+        fi
+    fi
+
+    if [ "$effective_timeout" -gt 0 ]; then
+        timeout_sec=$(( effective_timeout * 60 ))
         expire_epoch=$(( now + timeout_sec ))
 
         # Launch Auto-Kill Watcher Subshell for this specific service with warnings at 5m and 1m
@@ -1264,12 +1543,12 @@ start_tunnel() {
                 rm -f "$VIEW_APPROVED_FILE" "$VIEW_DENIED_FILE" 2>/dev/null || true
             fi
             broadcast_session_warning "$service_type" \
-                "Session ${service_type} auto-expired after ${TIMEOUT_MINUTES}m" \
-                "\n\033[1;31m[tailcatzero] 🛑 Session ${service_type} has auto-expired after ${TIMEOUT_MINUTES}m.\033[0m\n" \
-                "${C_RED}🛑 Session ${service_type} has auto-expired after ${TIMEOUT_MINUTES}m.${C_RESET}"
+                "Session ${service_type} auto-expired after ${effective_timeout}m" \
+                "\n\033[1;31m[tailcatzero] 🛑 Session ${service_type} has auto-expired after ${effective_timeout}m.\033[0m\n" \
+                "${C_RED}🛑 Session ${service_type} has auto-expired after ${effective_timeout}m.${C_RESET}"
         ) &
         watchdog_pid=$!
-        log_msg "TailCat session started: ${service_type} (Auto-kill: ${TIMEOUT_MINUTES}m)"
+        log_msg "TailCat session started: ${service_type} (Auto-kill: ${effective_timeout}m)"
     else
         expire_epoch=0
         log_msg "TailCat session started: ${service_type} (Persistent / No Auto-Kill)"
@@ -1285,9 +1564,30 @@ TOKEN="${token}"
 EXTRA_INFO="${extra_info}"
 START_EPOCH=${now}
 EXPIRE_EPOCH=${expire_epoch}
-TIMEOUT_MINUTES=${TIMEOUT_MINUTES}
+TIMEOUT_MINUTES=${effective_timeout}
 EOF
     chmod 600 "$session_file" 2>/dev/null || true
+
+    if [ "$effective_timeout" -eq 0 ] && [ "$service_type" != "VIEW" ]; then
+        save_persistent_session "$service_type" "$subcmd" "$desc" "$extra_info" "$token"
+        if ! is_amtm_email_configured; then
+            if [ "$interactive_mode" = "1" ]; then
+                FLASH_MSG="${C_YELLOW}⚠️ Note: amtm email is not configured ('em' in amtm). You will not receive email notifications if keys change on reboot.${C_RESET}"
+            else
+                printf "%b[!] Note: amtm email is not configured. Setup mail in 'amtm' -> 'em' to receive new keys on reboot.%b\n" "$C_YELLOW" "$C_RESET"
+            fi
+        fi
+    else
+        remove_persistent_session "$service_type"
+    fi
+
+    if [ "$service_type" = "VIEW" ] && [ "$TIMEOUT_MINUTES" -eq 0 ]; then
+        if [ "$interactive_mode" = "1" ]; then
+            FLASH_MSG="${C_YELLOW}🔒 Note: View-only diagnostic sessions cannot be persistent and are capped at 120 minutes maximum.${C_RESET}"
+        else
+            printf "%b[!] Note: View-only sessions cannot be persistent and are capped at 120 minutes maximum.%b\n" "$C_YELLOW" "$C_RESET"
+        fi
+    fi
 
     if [ "$interactive_mode" = "1" ]; then
         interactive_session_card "$service_type"
@@ -2041,6 +2341,9 @@ uninstall_tailcat() {
             if [ -f "/jffs/scripts/init-start" ]; then
                 sed -i '/[tT][aA][iI][lL][cC][aA][tT]/d' /jffs/scripts/init-start 2>/dev/null || true
             fi
+            if [ -f "$WAN_EVENT_SCRIPT" ]; then
+                sed -i '/[tT][aA][iI][lL][cC][aA][tT]/d' "$WAN_EVENT_SCRIPT" 2>/dev/null || true
+            fi
             rm -rf "$CONFIG_DIR" "/jffs/addons/tailcat" "$SESSIONS_DIR" /jffs/scripts/tailcat /jffs/scripts/tailcatzero /jffs/scripts/tailcat-merlin /opt/bin/tailcat /opt/bin/tailcatzero /opt/bin/tailcat-merlin /tmp/tailcat_addr*.txt 2>/dev/null || true
             clear_screen
             printf "\n%b[+] TAILCAT ZER0 has been completely uninstalled.%b\n\n" "$C_GREEN" "$C_RESET"
@@ -2062,10 +2365,30 @@ manage_tailcat_menu() {
         fi
         b_ver=$(get_binary_version)
 
+        if is_amtm_email_configured; then
+            mail_badge="${C_GREEN}Configured${C_RESET}"
+        else
+            mail_badge="${C_YELLOW}Not Configured ('em' in amtm)${C_RESET}"
+        fi
+        persist_cnt=0
+        if [ -d "$PERSISTENT_DIR" ]; then
+            for _cf in "${PERSISTENT_DIR}"/*.conf; do
+                [ -f "$_cf" ] && persist_cnt=$((persist_cnt + 1))
+            done
+        fi
+
         printf "  %b%b⚙️  Manage TAILCAT ZER0:%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
+        printf "  %bamtm Email Status:%b       %b\n" "$C_BOLD" "$C_RESET" "$mail_badge"
+        printf "  %bPersistent Sessions:%b     %d active configuration(s)\n\n" "$C_BOLD" "$C_RESET" "$persist_cnt"
+
         printf "  %b1.%b 🔄 Check & Update TAILCAT ZER0  %bUpdate script & engine (v%s / %s)%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "${VERSION}" "${b_ver}" "$C_RESET"
         printf "  %b2.%b ⚡ Force Reinstall TAILCAT ZER0 %bFresh download of script & binary%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
-        printf "  %b3.%b 🗑️ Complete Uninstall           %bRemove addon, configs & init hooks%b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        printf "  %b3.%b 🗑️ Complete Uninstall           %bRemove addon, configs & init hooks%b\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET"
+        if [ "$persist_cnt" -gt 0 ]; then
+            printf "  %b4.%b ♾️  Clear Persistent Sessions    %bRemove %d saved boot configuration(s)%b\n\n" "$C_BOLD" "$C_RESET" "$C_GRAY" "$persist_cnt" "$C_RESET"
+        else
+            printf "\n"
+        fi
 
         printf "%b%b========================================================================%b\n\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
         printf "  🔄 %bU%bpdate  |  ⚡ %bR%beinstall  |  🗑️ %bC%bomplete Uninstall  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
@@ -2086,6 +2409,13 @@ manage_tailcat_menu() {
             3|[cC]|[cC][oO][mM][pP][lL][eE][tT][eE]|[uU][nN][iI][nN][sS][tT][aA][lL][lL])
                 uninstall_tailcat
                 break
+                ;;
+            4|[pP]|[cC][lL][eE][aA][rR])
+                if [ -d "$PERSISTENT_DIR" ]; then
+                    rm -rf "${PERSISTENT_DIR:?}"/* 2>/dev/null || true
+                fi
+                FLASH_MSG="${C_GREEN}[+] Cleared all persistent session configurations.${C_RESET}"
+                continue
                 ;;
             [eE]|[bB]|cancel|exit|'')
                 FLASH_MSG="${C_YELLOW}[*] Returned to main menu.${C_RESET}"
@@ -2558,6 +2888,8 @@ cli_help() {
     printf "  %btailcatzero allow <cmd>%b               Proactively permit command in view-only mode\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero revoke <cmd>%b              Revoke command permission from view-only mode\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero timeout [min|persistent]%b  Get or configure default auto-kill session timeout\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero persistent [list|clear]%b   Manage reboot-persistent session configurations\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero --restore-persistent%b      Restore persistent sessions & send amtm email\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero update%b                    Update TAILCAT ZER0 script & engine (hash-verified)\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero check-update%b              Check upstream version & hash for updates\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero -v, --version%b             Show version & script hash\n" "$C_CYAN" "$C_RESET"
@@ -2604,11 +2936,57 @@ EOF
     done
 }
 
+cli_persistent() {
+    p_action="${1:-list}"
+    case "$p_action" in
+        list|ls|status)
+            if ! has_persistent_sessions; then
+                printf "%b[⚪] No persistent sessions configured.%b\n" "$C_GRAY" "$C_RESET"
+                return 0
+            fi
+            printf "%b[♾️] Configured Persistent Sessions:%b\n\n" "$C_CYAN" "$C_RESET"
+            for cf in "${PERSISTENT_DIR}"/*.conf; do
+                [ -f "$cf" ] || continue
+                unset SERVICE_TYPE DESC SAVED_TOKEN UPDATED_AT
+                # shellcheck disable=SC1090
+                . "$cf"
+                printf "  • %b%-35s%b (%s)\n" "$C_BOLD" "${DESC:-$SERVICE_TYPE}" "$C_RESET" "$SERVICE_TYPE"
+                printf "    Last Token: %b%s%b\n" "$C_YELLOW" "${SAVED_TOKEN:-none}" "$C_RESET"
+                printf "    Updated:    %s\n\n" "${UPDATED_AT:-unknown}"
+            done
+            if is_amtm_email_configured; then
+                printf "%b[✓] amtm Email Integration: Configured%b\n" "$C_GREEN" "$C_RESET"
+            else
+                printf "%b[!] amtm Email Integration: Not Configured (run 'amtm' -> 'em' to setup)%b\n" "$C_YELLOW" "$C_RESET"
+            fi
+            ;;
+        clear|clean|reset)
+            if [ -d "$PERSISTENT_DIR" ]; then
+                rm -rf "${PERSISTENT_DIR:?}"/* 2>/dev/null || true
+            fi
+            printf "%b[+] Cleared all persistent session configurations.%b\n" "$C_GREEN" "$C_RESET"
+            ;;
+        *)
+            printf "%bUsage: tailcatzero persistent [list|clear]%b\n" "$C_CYAN" "$C_RESET"
+            return 1
+            ;;
+    esac
+}
+
 if [ $# -gt 0 ]; then
     case "${1:-}" in
         status|list)
             cli_status
             exit 0
+            ;;
+        --restore-persistent|restore-persistent)
+            restore_persistent_sessions
+            exit $?
+            ;;
+        persistent|persist)
+            shift
+            cli_persistent "$@"
+            exit $?
             ;;
         requests|req|reqs)
             cli_requests

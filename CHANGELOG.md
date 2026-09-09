@@ -5,6 +5,34 @@ All notable changes to TAILCAT ZER0 are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.0] - 2026-09-09
+
+### Reboot-Persistent Sessions, amtm Email Integration & View-Only 120m Safety Cap
+
+* **♾️ Reboot-Persistent Sessions (`timeout: 0`):**
+  * Added non-volatile persistence support for active sessions started with `timeout: 0` (Persistent mode).
+  * Automatically stores service parameters, arguments, and capability tokens in `/jffs/addons/tailcatzero/persistent/${service_type}.conf` with strict POSIX permissions (`0700` directory, `0600` config files).
+  * Implemented Asuswrt-Merlin WAN event hook (`/jffs/scripts/wan-event` on `$2 = "connected"`), automatically invoking `tailcatzero --restore-persistent &` upon internet reconnection.
+  * Restore flow waits for default route connectivity and valid NTP clock synchronization (`date +%s > 1700000000`) before launching persistent services.
+  * Dedicated CLI commands: `tailcatzero persistent [list|clear]` to inspect or wipe persistent configurations.
+  * TUI Management: Option 6 (`manage_tailcat_menu`) displays active persistent session counts, amtm email integration status, and an interactive Option 4 to clear persistent sessions.
+  * Clean teardown: Stopping a service or running `stop all` cleanly purges its corresponding persistent configuration.
+* **📧 amtm Email Integration & Automated Key Renewal Notifications:**
+  * Seamless native integration with Asuswrt-Merlin's amtm mail framework (`/jffs/addons/amtm/mail/email.conf` and `emailpw.enc`).
+  * Decrypts stored SMTP credentials via OpenSSL AES-256-CBC and sends notifications via `/usr/sbin/curl` with SSL/TLS transport.
+  * When persistent sessions restart following a router reboot or power outage and ephemeral WireGuard keys regenerate, detects token changes and delivers a single combined email containing all refreshed connection tokens and client commands.
+  * Automatically updates saved configuration tokens in `/jffs/addons/tailcatzero/persistent/` to reflect renewed keys.
+  * Non-blocking notifications: If amtm email is not configured, warns in TUI flash banners, CLI output, and syslog without blocking persistent session creation.
+* **🔒 View-Only Diagnostic Shell Hardening & 120m Cap:**
+  * **Strict 120-Minute Safety Cap:** View-only diagnostic sessions (`VIEW`) can never be configured with infinite persistence (`timeout: 0`). Even if the global default timeout is set to Persistent (0m), view-only sessions are automatically clamped to a maximum of 120 minutes.
+  * **Non-Persistence Enforcement:** `save_persistent_session()` strictly rejects saving `VIEW` sessions to flash, ensuring guest diagnostic access never survives a router reboot.
+  * **C99 View Shell Sensitive Pattern Expansion (`src/tailcat-view-shell.c`):** Added `persistent`, `persistent_sessions`, `email.conf`, `emailpw.enc`, `/jffs/addons/amtm/mail`, and `/amtm/mail` to blocked sensitive patterns (`sens_patterns`). Guests cannot inspect or dump persistent session configs or encrypted SMTP credentials.
+  * **Management Tool Request Blocking:** Blocked execution and escalation requests targeting `tailcatzero` or `tailcat` within `request_command_approval()`.
+  * **Bug Fix:** Resolved race condition in single-use execution approvals (`APPROVED_ONCE`) by removing duplicate token unlinking prior to execution.
+* **🧪 Comprehensive Automated Test Suites:**
+  * Added unit test coverage for helper functions, amtm mail detection, persistent saving, and security patterns (`test_unit_security.sh`, `test_unit_helpers.sh`).
+  * Added automated integration test suite (`tests/integration/test_persistent.sh`) verifying session creation, WAN hooks, token renewal, view-only rejection, and amtm email triggering.
+
 ## [1.11.2] - 2026-09-08
 
 ### Flicker-Free In-Place Refresh, Static Session Cards & Fixed-Slot Layout

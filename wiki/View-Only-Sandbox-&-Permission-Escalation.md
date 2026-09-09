@@ -113,7 +113,10 @@ Access to router credential repositories, process memory, and private keys is st
 * **Request Escalation Defense:** Requests targeting sensitive system files or credentials (e.g. `request cat /etc/shadow` or pipeline-smuggled `request echo ok | cat /etc/shadow`) are immediately rejected before request creation.
 * **Strict Sensitive Isolation:** Approving a tool session-wide (e.g. `cat` or `grep`) never whitelists sensitive files; inspection utilities remain barred from reading credential repositories under all conditions.
 * `/jffs/ssl/`, `/etc/dropbear/`, `/jffs/.ssh/id_*`, `/jffs/.sys*`, WireGuard configs (`/etc/wireguard/`, `*.ovpn`).
-* Session runtime tokens (`tailcat_sessions`, `tailcat_addr_*.txt`, `tailcatzero.cfg`).
+* Session runtime tokens, persistent configs, and amtm mail credentials (`tailcat_sessions`, `tailcat_addr_*.txt`, `tailcatzero.cfg`, `persistent`, `persistent_sessions`, `email.conf`, `emailpw.enc`, `/jffs/addons/amtm/mail`).
+* **Management Tool Request Blocking:** Requests attempting to invoke `tailcatzero` or `tailcat` are blocked at the entry point of `request_command_approval()`, preventing guests from attempting to query, alter, or restart active or persistent tunnels.
+* **Strict 120-Minute Safety Cap & Non-Persistence:** View-only diagnostic sessions (`VIEW`) can never be made persistent (`timeout: 0`). Even if the host default timeout is configured for persistent mode, view-only sessions are automatically clamped to a maximum of 120 minutes (`effective_timeout=120`). Furthermore, `save_persistent_session()` ignores `VIEW` services, guaranteeing that diagnostic sessions never survive a router reboot.
+
 
 ### 6. Hardware Flash, Device Node & Kernel Protection
 Direct access to raw block/character device nodes and sensitive kernel diagnostic endpoints is blocked:

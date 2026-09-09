@@ -72,4 +72,5 @@
 ---
 
 **GitHub:** [underd0se/tailcat-zero](https://github.com/underd0se/tailcat-zero)  
-**Version:** `v1.11.2`
+**Version:** `v1.12.0`
+

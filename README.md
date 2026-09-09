@@ -2,7 +2,7 @@
 
 > **Ephemeral WireGuard Tunnels, Remote Support Shells & Encrypted File Inboxes for Asuswrt-Merlin Routers**
 
-[![Release](https://img.shields.io/badge/version-v1.11.2-blue.svg)](CHANGELOG.md)
+[![Release](https://img.shields.io/badge/version-v1.12.0-blue.svg)](CHANGELOG.md)
 [![Firmware](https://img.shields.io/badge/Asuswrt--Merlin-384.13%2B-orange.svg)](https://www.asuswrt-merlin.net/)
 [![License](https://img.shields.io/badge/license-GPL--3.0-green.svg)](LICENSE)
 [![Engine](https://img.shields.io/badge/powered%20by-Tailscale%20TailCat-blueviolet.svg)](https://github.com/tailscale/tailcat)
@@ -12,7 +12,7 @@ Powered by [Tailscale's TailCat](https://github.com/tailscale/tailcat) engine (`
 ---
 
 ```text
-  TAILCAT ZER0 v1.11.2             ╱|、
+  TAILCAT ZER0 v1.12.0             ╱|、
                                  (˚ˎ 。7  
                                   |、˜〵          
   Instant Tunnel Manager         じしˍ,)ノ
@@ -57,6 +57,7 @@ tailcatzero
 * **Zero Open Ports:** Traverses CGNAT, double-NAT, and strict firewalls using WireGuard + DERP relay fallback without opening any WAN firewall ports.
 * **Zero-Trust Security:** Drop-in connections default to an isolated, read-only C99 diagnostic sandbox (`tailcat-view-shell`). Full root shell requires deliberate confirmation.
 * **Auto-Kill & Ephemeral:** Background watchdog automatically shuts down sessions after a configurable timeout (default: 30 mins) with broadcast countdown warnings at 5m and 1m.
+* **Reboot Persistence & amtm Notifications:** Sessions set to Persistent mode (`timeout: 0`) automatically restore on boot via `/jffs/scripts/wan-event`. When ephemeral keys regenerate, new tokens are dispatched in a single combined email via Asuswrt-Merlin's amtm mail integration.
 
 ---
 
@@ -64,8 +65,9 @@ tailcatzero
 
 | Feature | Description | Default Mode |
 |---|---|---|
-| **🔒 View-Only Shell** | Safe diagnostic shell in C99 with Tab autocompletion & command history. System writes, deletions, and state changes are blocked. Real-time `request <cmd>` approval for elevated tools. | **Default** |
+| **🔒 View-Only Shell** | Safe diagnostic shell in C99 with Tab autocompletion & command history. System writes, deletions, and state changes are blocked. Real-time `request <cmd>` approval for elevated tools. Capped at 120m max (never persistent). | **Default** |
 | **⚡ Full Root Shell** | Unrestricted administrative SSH terminal. Requires explicit `YES` confirmation. | Opt-in |
+| **♾️ Persistent Sessions** | Auto-restart root/file/web tunnels across reboots & power outages via WAN event hook, automatically emailing renewed keys via amtm. | Opt-in (`timeout: 0`) |
 | **📥 File Receiver Inbox** | Secure P2P file receiver into volatile RAM (`/tmp/tailcat-inbox`) or mounted USB drives. | Ready |
 | **📁 SFTP Directory Share** | Serve router paths (e.g. `/jffs` or USB drives) securely to remote SFTP clients. | Read-Only or R/W |
 | **🌐 WebGUI Tunneling** | Forward router web interface (port 8443/80) securely over encrypted WireGuard tunnel. | Ready |

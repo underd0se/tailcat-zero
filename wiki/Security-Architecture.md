@@ -57,12 +57,18 @@ In TAILCAT ZER0, access is **capability-based**:
 
 Router security tools must not leave accidental backdoors open if power is lost or a process crashes. TAILCAT ZER0 strictly enforces volatile memory storage and restrictive POSIX permissions:
 
-* **Session Locks & PIDs:** Stored exclusively in volatile memory (`/tmp/tailcat_sessions/`), which is backed by router RAM (`tmpfs`).
+* **Session Locks & PIDs:** Stored by default in volatile memory (`/tmp/tailcat_sessions/`), which is backed by router RAM (`tmpfs`).
 * **Strict Filesystem Permissions:**
   * Runtime directories (`/tmp/tailcat_sessions/`, `requests/`, `VIEW_ONCE/`, `active_tuis/`) are strictly locked down to `0700` (`rwx------`), preventing local unprivileged users or compromised daemons from snooping IPC state.
   * Capability address files and `.env` session profiles are restricted to `0600` (`rw-------`).
   * Configuration files (`tailcatzero.cfg`) in `/jffs/addons/tailcatzero/` are set to `0600`.
-* **Clean Boot Guarantee:** Nothing is written to `/jffs/scripts/services-start` or persistent startup scripts unless explicitly automated by the user. If the router reboots, all tunnels are terminated and all state is automatically wiped clean.
+* **Clean Boot Guarantee (Default):** Standard sessions leave zero remnants across reboots. If power is interrupted, all tunnels terminate and volatile memory state is automatically wiped.
+* **Reboot-Persistent Sessions (`timeout: 0` / Opt-In):**
+  * When sessions are explicitly started in persistent mode (`timeout: 0`), service parameters and tokens are written to `/jffs/addons/tailcatzero/persistent/${service_type}.conf` with directory permissions `0700` and file permissions `0600`.
+  * Restored automatically via Asuswrt-Merlin's `/jffs/scripts/wan-event` hook (`[ "$2" = "connected" ]`), guaranteeing that the WAN interface and NTP time synchronization (`date +%s > 1700000000`) are active before launching tunnels.
+  * **amtm Mail Integration Security:** Integrates directly with Asuswrt-Merlin's amtm mail framework (`/jffs/addons/amtm/mail`). Encrypted SMTP passwords (`emailpw.enc`) are decrypted in-flight via `/usr/sbin/openssl aes-256-cbc`; plaintext credentials are never copied or stored in TAILCAT ZER0 configs.
+  * **Single Combined Notification:** When persistent sessions restart and generate new WireGuard keys, a single combined email is sent with all refreshed tokens, eliminating email notification storms.
+  * **View-Only Session Safety Boundary:** Diagnostic view-only sessions (`VIEW`) are strictly excluded from persistent storage and are unconditionally capped at 120 minutes maximum.
 
 ---
 
@@ -120,3 +126,8 @@ Every session launched by TAILCAT ZER0 is assigned a dedicated background watchd
 | **`/proc/meminfo` False Positive Blocking** | Denying access to safe memory stats | *`check_proc_component()` matches only full path components, allowing `/proc/meminfo` while still blocking `/proc/<pid>/mem`.* |
 | **Sensitive File Dump via `cut` / `column`** | Extracting `/etc/shadow` fields with text tools | *`cut` and `column` are routed through `is_sensitive_file_access()` checks, blocking access to credentials and restricted paths.* |
 | **Directory Traversal via `cd`** | Navigating into sensitive directories from view shell | *`cd` is a native in-process built-in (`chdir()`) guarded by `check_file_path_security()`, blocking paths under `/jffs/ssl`, `/etc/ssl`, and similar restricted trees.* |
+| **Persistent Configuration Tampering** | Viewing or modifying saved reboot tunnels from view shell | *`persistent` and `persistent_sessions` are hardcoded into sensitive path patterns; `tailcat` and `tailcatzero` execution requests are unconditionally rejected.* |
+| **amtm Email Credential Snooping** | Extracting encrypted SMTP passwords or configs | *`email.conf`, `emailpw.enc`, and `/jffs/addons/amtm/mail` paths are blocked by sandbox sensitive pattern filters.* |
+| **View-Only Session Infinite Persistence** | Guest keeping permanent backdoor across reboots | *`VIEW` sessions are strictly capped at 120m max (even if timeout: 0) and `save_persistent_session()` rejects saving VIEW to flash.* |
+
+

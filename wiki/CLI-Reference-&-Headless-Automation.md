@@ -9,7 +9,7 @@ While TAILCAT ZER0 features a full interactive TUI, all features are exposed via
 Run `tailcatzero -h` or `tailcatzero --help`:
 
 ```text
-TAILCAT ZER0 v1.11.2 — Ephemeral WireGuard Tunnel & Multi-Service Manager
+TAILCAT ZER0 v1.12.0 — Ephemeral WireGuard Tunnel & Multi-Service Manager
 
 Usage:
   tailcatzero                           Launch interactive TUI dashboard (default)
@@ -26,6 +26,8 @@ Usage:
   tailcatzero allow <cmd>               Proactively permit command in view-only mode
   tailcatzero revoke <cmd>              Revoke command permission from view-only mode
   tailcatzero timeout [min|persistent]  Get or configure default auto-kill session timeout
+  tailcatzero persistent [list|clear]   Manage reboot-persistent session configurations
+  tailcatzero --restore-persistent      Restore persistent sessions & send amtm email
   tailcatzero update                    Update TAILCAT ZER0 script & engine (hash-verified)
   tailcatzero check-update              Check upstream version & hash for updates
   tailcatzero -v, --version             Show version & script hash
@@ -36,7 +38,7 @@ Usage:
 |---|---|---|
 | `status` | *(none)* | Display running sessions, service type, process ID, capability token, and remaining timeout countdown. |
 | `ssh` | `[root \| view]` | Start an ephemeral remote shell tunnel. Defaults to `root` if no argument is provided. |
-| `view` | *(none)* | Shortcut to start a restricted view-only diagnostic shell session directly. |
+| `view` | *(none)* | Shortcut to start a restricted view-only diagnostic shell session directly. Capped at 120m maximum. |
 | `recv` | `[/path/to/inbox]` | Start encrypted file and directory receiver inbox (`--accept-dirs`). Defaults to `/tmp/tailcat-inbox` if omitted. |
 | `files` | `[/path] [ro \| rw]` | Start SFTP directory share. Defaults to `/jffs` with `ro` (read-only) mode if omitted. |
 | `webgui` | `[port]` | Start Asuswrt WebGUI proxy tunnel. Defaults to HTTPS port `8443`. |
@@ -46,7 +48,9 @@ Usage:
 | `allow` | `<cmd>` | Proactively add `<cmd>` to the current view-only session allowlist. |
 | `revoke` | `<cmd>` | Revoke permission for `<cmd>` from the current view-only session allowlist. |
 | `timeout` | `[min \| persistent]` | Query current default timeout or set a new duration (in minutes, or `0` / `persistent`). |
-| `stop` | `all` | Stop all active tunnels and terminate all background watchdogs. |
+| `persistent` | `[list \| clear]` | Inspect saved reboot-persistent configurations and amtm mail status, or clear all saved boot profiles. |
+| `--restore-persistent` | *(none)* | Internal/WAN-event hook to restore persistent tunnels after boot and dispatch new keys via amtm email. |
+| `stop` | `all` | Stop all active tunnels, clean up persistent configurations, and terminate watchdogs. |
 | `stop` | `<SERVICE>` | Stop a specific service (`SSH`, `VIEW`, `RECV`, `FILES`, or `WEBGUI`). |
 | `update` | *(none)* | Check GitHub upstream for updates by cryptographic hash (`md5sum`) and upgrade script and engine if changed. |
 | `check-update` | *(none)* | Non-destructively check whether upstream code has changed by comparing script hash and SemVer. |
@@ -117,6 +121,29 @@ tailcatzero stop VIEW
 
 # Stop everything immediately
 tailcatzero stop all
+```
+
+### 4. Managing Reboot-Persistent Sessions
+```sh
+# Set persistent mode (timeout: 0) and start a root shell
+tailcatzero timeout 0
+tailcatzero ssh root
+
+# List all saved reboot-persistent sessions and check amtm email status
+tailcatzero persistent list
+
+# Output example:
+# [♾️] Configured Persistent Sessions:
+#   • Remote Support Shell (Root)         (SSH)
+#     Last Token: tcpGFwWCC...
+#     Updated:    2026-09-09 21:00:00
+# [✓] amtm Email Integration: Configured
+
+# Clear all persistent configurations (sessions will not restart on reboot)
+tailcatzero persistent clear
+
+# Manually trigger restore flow (waits for WAN & NTP, starts tunnels, sends amtm email if keys change)
+tailcatzero --restore-persistent
 ```
 
 ---

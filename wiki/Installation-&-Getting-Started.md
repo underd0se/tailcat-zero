@@ -45,10 +45,11 @@ curl -fsSL https://raw.githubusercontent.com/underd0se/tailcat-zero/main/install
 1. **Verifies JFFS Partition:** Ensures `/jffs` is mounted, writable, and has sufficient space (>15MB).
 2. **Detects Architecture:** Identifies your CPU (`arm64`, `armv7`, or `amd64`).
 3. **Fetches Engine Binary:** Downloads the official compiled `tailcat` engine directly from [Tailscale's GitHub Releases](https://github.com/tailscale/tailcat/releases/latest).
-4. **Installs Scripts:**
+4. **Installs Scripts & Directories:**
    - Main manager: `/jffs/addons/tailcatzero/tailcatzero`
    - View-only sandbox: `/jffs/addons/tailcatzero/tailcat-view-shell` (C99 Musl static binary)
    - Default configuration: `/jffs/addons/tailcatzero/tailcatzero.cfg`
+   - Persistent sessions store: `/jffs/addons/tailcatzero/persistent` (`0700`)
 5. **Registers PATH Symlinks:**
    - Creates `/jffs/scripts/tailcatzero`
    - Links into `/opt/bin/tailcatzero` (if Entware is present).
@@ -65,7 +66,7 @@ tailcatzero --version
 ```
 *Expected output:*
 ```text
-TAILCAT ZER0 v1.11.2 [hash] (engine v0.6.0)
+TAILCAT ZER0 v1.12.0 [hash] (engine v0.6.0)
 ```
 
 Check the initial service status:
@@ -83,7 +84,7 @@ tailcatzero
 ```
 
 ```text
-  TAILCAT ZER0 v1.10.4             ╱|、
+  TAILCAT ZER0 v1.12.0             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ

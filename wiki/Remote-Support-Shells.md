@@ -18,7 +18,10 @@ TAILCAT ZER0 offers two distinct shell operational modes depending on your trust
 | **Sensitive File Access** | Unrestricted (`/etc/shadow`, `.ssh/id_*`) | ❌ Protected; access denied to credential stores |
 | **Hardware Flash Safeguards** | Subject to normal root rules | 🛡️ Hard Red Lines block `mtd` flash tampering |
 | **Permission Escalation** | Not applicable (already root) | 🔔 Supported (`request <cmd>` with host approval) |
-| **Auto-Kill Watchdog** | Enabled (default 30m) | Enabled (default 30m) |
+| **Reboot Persistence (`timeout: 0`)** | ✅ Supported (survives reboots, emails new tokens via amtm) | ❌ Strictly Prohibited (never persistent; not saved to flash) |
+| **Maximum Session Duration** | Configurable (ephemeral or persistent `0m`) | Strictly capped at 120 minutes maximum |
+| **Auto-Kill Watchdog** | Enabled (default 30m) | Enabled (default 30m; max 120m) |
+
 
 ---
 
@@ -95,9 +98,10 @@ tailcatzero ssh view
 
 ### What the Guest Cannot Do:
 * Cannot modify files or router settings (`nvram set`, `nvram commit`, `touch`, `rm`, `echo ... > file`).
-* Cannot reboot, halt, or kill running processes (`reboot`, `kill`, `killall`).
-* Cannot execute shell escapes, subshells, or command chaining (`;`, `&&`, `||`, `$()`).
 * Cannot read passwords, private keys, or hashes (`/etc/shadow`, `/tmp/etc/shadow`, `id_rsa`, `dropbear.key`).
+* Cannot view, edit, or access persistent boot configs or amtm email credentials (`/jffs/addons/tailcatzero/persistent`, `/jffs/addons/amtm/mail`).
+* Cannot run or request `tailcatzero` or `tailcat` management commands.
+* **Safety Constraint:** View-only diagnostic sessions can never be persistent and are strictly capped at 120 minutes maximum under all conditions.
 
 *(See [View-Only Sandbox & Escalation](View-Only-Sandbox-&-Permission-Escalation) for a deep dive into the sandbox architecture).*
 
@@ -156,6 +160,14 @@ tailcatzero ssh root
 # or simply:
 tailcatzero ssh
 ```
+
+#### ♾️ Reboot-Persistent Root Shell (Survives Reboots & Power Outages):
+If you need an administrative root backdoor that stays available even if the router reboots or loses power:
+1. Configure default timeout to persistent (`0 min`) via Option 5 or run `tailcatzero timeout 0`.
+2. Launch the root shell: `tailcatzero ssh root`.
+3. The session is automatically saved to `/jffs/addons/tailcatzero/persistent/SSH.conf`.
+4. Upon reboot, the WAN event hook automatically restores the tunnel once internet connectivity is restored.
+5. If new ephemeral WireGuard keys are generated, TAILCAT ZER0 sends the updated connection command directly to your email via Asuswrt-Merlin's amtm mail integration.
 
 ---
 

@@ -6,7 +6,7 @@
 
 set -eu
 
-VERSION="v1.11.0"
+VERSION="v1.12.0"
 REPO_RAW_URL="https://raw.githubusercontent.com/underd0se/tailcat-zero/${VERSION}"
 
 # ANSI Colors
@@ -23,6 +23,7 @@ BIN_DIR="${ADDON_DIR}/bin"
 TAILCAT_BIN="${BIN_DIR}/tailcat"
 VIEW_SHELL_BIN="${BIN_DIR}/tailcat-view-shell"
 CFG_FILE="${ADDON_DIR}/tailcatzero.cfg"
+PERSISTENT_DIR="${ADDON_DIR}/persistent"
 
 printf "\n%b%b==============================================================%b\n" "$C_CYAN" "$C_BOLD" "$C_RESET"
 printf "  %bTAILCAT ZER0 Installer %s%b\n" "$C_BOLD" "${VERSION}" "$C_RESET"
@@ -51,7 +52,8 @@ esac
 printf "%b[+] Detected architecture: %b%s%b (%s)\n" "$C_GREEN" "$C_BOLD" "${pkg_arch}" "$C_RESET" "${arch}"
 
 # 3. Directory Setup
-mkdir -p "$ADDON_DIR" "$BIN_DIR"
+mkdir -p "$ADDON_DIR" "$BIN_DIR" "$PERSISTENT_DIR"
+chmod 700 "$PERSISTENT_DIR" 2>/dev/null || true
 
 # 4. Download TailCat Static Binary (100% Dynamic Discovery)
 cur_bin_ver=""

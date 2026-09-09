@@ -244,7 +244,7 @@ By default, every session is guarded by an ephemeral watchdog timer set to **30 
 Select **Option 5 (Configure Default Timeout)** from the main menu:
 
 ```text
-  TAILCAT ZER0 v1.10.4             ╱|、
+  TAILCAT ZER0 v1.12.0             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -267,7 +267,12 @@ Select **Option 5 (Configure Default Timeout)** from the main menu:
 
 * Enter `1`, `2`, or `3` for quick presets.
 * Enter custom minutes (e.g. `45` or `180`).
-* Enter `4` or `p` for **Persistent Mode** (`0 min`), disabling auto-kill until manually stopped.
+* Enter `4` or `p` for **Persistent Mode** (`0 min`).
+
+### How Persistent Mode Works Across Router Reboots:
+* **Automatic Boot Restoration:** Root Shell, SFTP, File Receiver, and WebGUI sessions started with `timeout: 0` are automatically saved to non-volatile flash (`/jffs/addons/tailcatzero/persistent/`). The WAN event hook (`/jffs/scripts/wan-event`) automatically restores these tunnels after a router reboot or power outage once WAN connectivity and NTP clock sync are established.
+* **amtm Email Key Delivery:** If WireGuard generates new ephemeral keys upon reboot, TAILCAT ZER0 automatically emails the renewed tokens and connection commands to your configured inbox via Asuswrt-Merlin's amtm mail framework.
+* **View-Only Session Safety Cap:** View-only diagnostic sessions (`VIEW`) are **never persistent** and will always be capped at 120 minutes maximum to ensure diagnostic backdoors cannot be left open indefinitely.
 
 ---
 
@@ -276,7 +281,7 @@ Select **Option 5 (Configure Default Timeout)** from the main menu:
 Select **Option 6 (Manage TAILCAT ZER0)** from the main menu:
 
 ```text
-  TAILCAT ZER0 v1.10.4             ╱|、
+  TAILCAT ZER0 v1.12.0             ╱|、
                                  (˚ˎ 。7
                                   |、˜〵
   Instant Tunnel Manager         じしˍ,)ノ
@@ -285,9 +290,13 @@ Select **Option 6 (Manage TAILCAT ZER0)** from the main menu:
 
   ⚙️  Manage TAILCAT ZER0:
 
-  1. 🔄 Check & Update TAILCAT ZER0  Update script & engine (v1.10.4 / v0.6.0)
+  amtm Email Status:       Configured
+  Persistent Sessions:     1 active configuration(s)
+
+  1. 🔄 Check & Update TAILCAT ZER0  Update script & engine (v1.12.0 / v0.6.0)
   2. ⚡ Force Reinstall TAILCAT ZER0 Fresh download of script & binary
   3. 🗑️ Complete Uninstall           Remove addon, configs & init hooks
+  4. ♾️  Clear Persistent Sessions    Remove 1 saved boot configuration(s)
 
 ========================================================================
 
@@ -297,6 +306,7 @@ Select **Option 6 (Manage TAILCAT ZER0)** from the main menu:
 * Enter `u` or `1` to run the smart updater.
 * Enter `r` or `2` to force-reinstall fresh copies from GitHub.
 * Enter `c` or `3` to perform a complete clean uninstallation.
+* Enter `4` or `p` to clear all saved reboot-persistent session configurations.
 
 ---
 
