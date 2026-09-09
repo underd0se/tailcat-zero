@@ -6,7 +6,7 @@
 
 set -u
 
-VERSION="1.12.0"
+VERSION="1.12.1"
 CONFIG_DIR="/jffs/addons/tailcatzero"
 CONFIG_FILE="${CONFIG_DIR}/tailcatzero.cfg"
 ADDON_SCRIPT="${CONFIG_DIR}/tailcatzero"
@@ -177,6 +177,24 @@ in_place_refresh() {
 erase_to_bottom() {
     if [ -t 1 ]; then
         printf "\033[J\033[?25h"
+    fi
+}
+
+copy_to_clipboard() {
+    _text="$1"
+    [ -n "$_text" ] || return 0
+    _b64=""
+    if command -v base64 >/dev/null 2>&1; then
+        _b64=$(printf "%s" "$_text" | base64 2>/dev/null | tr -d '\r\n')
+    fi
+    if [ -z "$_b64" ] && [ -x /usr/sbin/openssl ]; then
+        _b64=$(printf "%s" "$_text" | /usr/sbin/openssl enc -base64 2>/dev/null | tr -d '\r\n')
+    fi
+    if [ -z "$_b64" ] && command -v openssl >/dev/null 2>&1; then
+        _b64=$(printf "%s" "$_text" | openssl enc -base64 2>/dev/null | tr -d '\r\n')
+    fi
+    if [ -n "$_b64" ] && [ -t 1 ]; then
+        printf "\033]52;c;%s\a" "$_b64"
     fi
 }
 
@@ -1747,19 +1765,21 @@ render_single_session_card() {
 
     printf "  %b💬 Copy & Paste to Friend / Admin Support:%b\n" "$C_BOLD" "$C_RESET"
     printf "  %b────────────────────────────────────────────────────────────────────────%b\n" "$C_CYAN" "$C_RESET"
-    printf "  %b%s%b\n" "$C_WHITE" "${invite_str}" "$C_RESET"
+    printf "  %b%s%b\n\n" "$C_WHITE" "${invite_str}" "$C_RESET"
     if [ "$s_id" = "WEBGUI" ]; then
         read -r wp_proto wp_port <<EOF
 $(get_webgui_connect_info "${EXTRA_INFO:-}")
 EOF
-        printf "  %b1. Run: %b%s%b\n" "$C_WHITE" "$C_YELLOW" "$cmd" "$C_RESET"
+        printf "  %b1. Run on client terminal (or press %bC%b to copy):%b\n" "$C_WHITE" "$C_KEY" "$C_WHITE" "$C_RESET"
+        printf "  %b%s%b\n\n" "$C_YELLOW" "$cmd" "$C_RESET"
         printf "  %b2. Open browser: %b%s://localhost:%s%b\n" "$C_WHITE" "$C_CYAN" "$wp_proto" "$wp_port" "$C_RESET"
         if [ "$wp_proto" = "https" ]; then
             printf "\n  %b💡 Tip: If browser flags SSL certificate domain mismatch on localhost,%b\n" "$C_GRAY" "$C_RESET"
             printf "  %b         proceed past the self-signed warning or use HTTP port forward.%b\n" "$C_GRAY" "$C_RESET"
         fi
     else
-        printf "  %bRun: %b%s%b\n" "$C_WHITE" "$C_YELLOW" "$cmd" "$C_RESET"
+        printf "  %bRun command on client terminal (or press %bC%b to copy):%b\n" "$C_WHITE" "$C_KEY" "$C_WHITE" "$C_RESET"
+        printf "  %b%s%b\n" "$C_YELLOW" "$cmd" "$C_RESET"
     fi
     printf "  %b────────────────────────────────────────────────────────────────────────%b\n\n" "$C_CYAN" "$C_RESET"
 
@@ -1812,9 +1832,9 @@ interactive_session_card() {
         if [ "$cur_svc" = "ALL" ]; then
             render_multi_session_overview
             if [ "$req_cnt" -gt 0 ]; then
-                printf "  👁️ %bV%biew (1-%d)  |  🔔 %bP%bending (%d)  |  🛑 %bS%btop All  |  🔄 %bR%befresh  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$active_cnt" "$C_KEY" "$C_RESET" "$req_cnt" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
+                printf "  👁️ %bV%biew (1-%d)  |  📋 %bC%bopy  |  🔔 %bP%bending (%d)  |  🛑 %bS%btop All  |  🔄 %bR%befresh  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$active_cnt" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$req_cnt" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
             else
-                printf "  👁️ %bV%biew (1-%d)  |  🛑 %bS%btop All  |  🔄 %bR%befresh  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$active_cnt" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
+                printf "  👁️ %bV%biew (1-%d)  |  📋 %bC%bopy  |  🛑 %bS%btop All  |  🔄 %bR%befresh  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$active_cnt" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
             fi
             erase_to_bottom
             act=""
@@ -1825,6 +1845,26 @@ interactive_session_card() {
                 continue
             fi
             case "$act" in
+                [cC])
+                    _all_cmds=""
+                    for s in SSH VIEW RECV FILES WEBGUI; do
+                        if is_service_active "$s"; then
+                            s_file="${SESSIONS_DIR}/${s}.env"
+                            parse_session_file "$s_file"
+                            _c=$(get_client_connect_cmd "$s" "$TOKEN" "${EXTRA_INFO:-}")
+                            if [ -n "$_all_cmds" ]; then
+                                _all_cmds="${_all_cmds}
+${_c}"
+                            else
+                                _all_cmds="${_c}"
+                            fi
+                        fi
+                    done
+                    if [ -n "$_all_cmds" ]; then
+                        copy_to_clipboard "$_all_cmds"
+                        FLASH_MSG="${C_GREEN}[+] Connect command(s) copied to clipboard!${C_RESET}"
+                    fi
+                    ;;
                 [pP])
                     if [ "$req_cnt" -gt 0 ]; then
                         show_approval_modal
@@ -1875,15 +1915,15 @@ interactive_session_card() {
             fi
             if [ "$active_cnt" -gt 1 ]; then
                 if [ "$req_cnt" -gt 0 ]; then
-                    printf "  🛑 %bS%btop  |  📋 %bA%bll  |  🔔 %bP%bending (%d)  |  ${qr_btn}  |  🔄 %bR%befresh  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$req_cnt" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
+                    printf "  📋 %bC%bopy  |  🛑 %bS%btop  |  📋 %bA%bll  |  🔔 %bP%bending (%d)  |  ${qr_btn}  |  🔄 %bR%befresh  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$req_cnt" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
                 else
-                    printf "  🛑 %bS%btop  |  📋 %bA%bll  |  ${qr_btn}  |  🔄 %bR%befresh  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
+                    printf "  📋 %bC%bopy  |  🛑 %bS%btop  |  📋 %bA%bll  |  ${qr_btn}  |  🔄 %bR%befresh  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
                 fi
             else
                 if [ "$req_cnt" -gt 0 ]; then
-                    printf "  🛑 %bS%btop  |  🔔 %bP%bending (%d)  |  ${qr_btn}  |  🔄 %bR%befresh  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$req_cnt" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
+                    printf "  📋 %bC%bopy  |  🛑 %bS%btop  |  🔔 %bP%bending (%d)  |  ${qr_btn}  |  🔄 %bR%befresh  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$req_cnt" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
                 else
-                    printf "  🛑 %bS%btop  |  ${qr_btn}  |  🔄 %bR%befresh  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
+                    printf "  📋 %bC%bopy  |  🛑 %bS%btop  |  ${qr_btn}  |  🔄 %bR%befresh  |  ↩️ %bB%back: " "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET" "$C_KEY" "$C_RESET"
                 fi
             fi
 
@@ -1896,6 +1936,13 @@ interactive_session_card() {
                 continue
             fi
             case "$act" in
+                [cC])
+                    s_file="${SESSIONS_DIR}/${cur_svc}.env"
+                    parse_session_file "$s_file"
+                    _cmd_to_copy=$(get_client_connect_cmd "$cur_svc" "$TOKEN" "${EXTRA_INFO:-}")
+                    copy_to_clipboard "$_cmd_to_copy"
+                    FLASH_MSG="${C_GREEN}[+] Connect command copied to clipboard!${C_RESET}"
+                    ;;
                 [pP])
                     if [ "$req_cnt" -gt 0 ]; then
                         show_approval_modal
@@ -2864,6 +2911,8 @@ cli_help() {
     printf "Usage:\n"
     printf "  %btailcatzero%b                           Launch interactive TUI dashboard (default)\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero status%b                    Display running sessions and connect tokens\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero cmd [SVC]%b                 Print client connect command (for copying/scripting)\n" "$C_CYAN" "$C_RESET"
+    printf "  %btailcatzero token [SVC]%b               Print raw session capability token\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero stop [all|SVC]%b            Stop all sessions or a specific service (SSH, VIEW, RECV, FILES, WEBGUI)\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero ssh [root|view]%b           Start remote shell tunnel (default root)\n" "$C_CYAN" "$C_RESET"
     printf "  %btailcatzero view%b                      Start restricted view-only diagnostic shell\n" "$C_CYAN" "$C_RESET"
@@ -2924,6 +2973,92 @@ EOF
     done
 }
 
+cli_cmd() {
+    target_svc="${1:-}"
+    if [ -n "$target_svc" ]; then
+        case "$target_svc" in
+            SSH|ssh|root|1) target_svc="SSH" ;;
+            VIEW|view|ro|5) target_svc="VIEW" ;;
+            RECV|recv|2) target_svc="RECV" ;;
+            FILES|files|sftp|3) target_svc="FILES" ;;
+            WEBGUI|webgui|web|4) target_svc="WEBGUI" ;;
+            *)
+                printf "%b[!] Unknown service: %s%b\n" "$C_RED" "$target_svc" "$C_RESET" >&2
+                return 1
+                ;;
+        esac
+        if ! is_service_active "$target_svc"; then
+            printf "%b[!] Service %s is not active.%b\n" "$C_RED" "$target_svc" "$C_RESET" >&2
+            return 1
+        fi
+        s_file="${SESSIONS_DIR}/${target_svc}.env"
+        parse_session_file "$s_file"
+        get_client_connect_cmd "$target_svc" "$TOKEN" "${EXTRA_INFO:-}"
+        printf "\n"
+        return 0
+    fi
+
+    active_cnt=$(get_active_service_count)
+    if [ "$active_cnt" -eq 0 ]; then
+        printf "%b[!] No active TailCat sessions are currently running.%b\n" "$C_YELLOW" "$C_RESET" >&2
+        return 1
+    fi
+
+    for s in SSH VIEW RECV FILES WEBGUI; do
+        if is_service_active "$s"; then
+            s_file="${SESSIONS_DIR}/${s}.env"
+            parse_session_file "$s_file"
+            get_client_connect_cmd "$s" "$TOKEN" "${EXTRA_INFO:-}"
+            printf "\n"
+            if [ "$active_cnt" -eq 1 ]; then
+                return 0
+            fi
+        fi
+    done
+}
+
+cli_token() {
+    target_svc="${1:-}"
+    if [ -n "$target_svc" ]; then
+        case "$target_svc" in
+            SSH|ssh|root|1) target_svc="SSH" ;;
+            VIEW|view|ro|5) target_svc="VIEW" ;;
+            RECV|recv|2) target_svc="RECV" ;;
+            FILES|files|sftp|3) target_svc="FILES" ;;
+            WEBGUI|webgui|web|4) target_svc="WEBGUI" ;;
+            *)
+                printf "%b[!] Unknown service: %s%b\n" "$C_RED" "$target_svc" "$C_RESET" >&2
+                return 1
+                ;;
+        esac
+        if ! is_service_active "$target_svc"; then
+            printf "%b[!] Service %s is not active.%b\n" "$C_RED" "$target_svc" "$C_RESET" >&2
+            return 1
+        fi
+        s_file="${SESSIONS_DIR}/${target_svc}.env"
+        parse_session_file "$s_file"
+        printf "%s\n" "$TOKEN"
+        return 0
+    fi
+
+    active_cnt=$(get_active_service_count)
+    if [ "$active_cnt" -eq 0 ]; then
+        printf "%b[!] No active TailCat sessions are currently running.%b\n" "$C_YELLOW" "$C_RESET" >&2
+        return 1
+    fi
+
+    for s in SSH VIEW RECV FILES WEBGUI; do
+        if is_service_active "$s"; then
+            s_file="${SESSIONS_DIR}/${s}.env"
+            parse_session_file "$s_file"
+            printf "%s\n" "$TOKEN"
+            if [ "$active_cnt" -eq 1 ]; then
+                return 0
+            fi
+        fi
+    done
+}
+
 cli_persistent() {
     p_action="${1:-list}"
     case "$p_action" in
@@ -2966,6 +3101,14 @@ if [ $# -gt 0 ]; then
         status|list)
             cli_status
             exit 0
+            ;;
+        cmd|command|connect)
+            cli_cmd "${2:-}"
+            exit $?
+            ;;
+        token|tok|addr)
+            cli_token "${2:-}"
+            exit $?
             ;;
         --restore-persistent|restore-persistent)
             restore_persistent_sessions

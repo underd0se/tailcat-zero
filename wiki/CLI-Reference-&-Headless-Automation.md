@@ -30,6 +30,8 @@ Usage:
   tailcatzero --restore-persistent      Restore persistent sessions & send amtm email
   tailcatzero update                    Update TAILCAT ZER0 script & engine (hash-verified)
   tailcatzero check-update              Check upstream version & hash for updates
+  tailcatzero cmd [SVC]                 Print client connect command (for copying/scripting)
+  tailcatzero token [SVC]               Print raw session capability token
   tailcatzero -v, --version             Show version & script hash
   tailcatzero -h, --help                Show this help message
 ```
@@ -37,6 +39,8 @@ Usage:
 | Command | Arguments | Description |
 |---|---|---|
 | `status` | *(none)* | Display running sessions, service type, process ID, capability token, and remaining timeout countdown. |
+| `cmd` | `[SERVICE]` | Print clean client connect command (e.g. `tailcat ssh tcp...`) for copying, piping, or scripting. |
+| `token` | `[SERVICE]` | Print raw capability token to stdout without formatting or escape sequences. |
 | `ssh` | `[root \| view]` | Start an ephemeral remote shell tunnel. Defaults to `root` if no argument is provided. |
 | `view` | *(none)* | Shortcut to start a restricted view-only diagnostic shell session directly. Capped at 120m maximum. |
 | `recv` | `[/path/to/inbox]` | Start encrypted file and directory receiver inbox (`--accept-dirs`). Defaults to `/tmp/tailcat-inbox` if omitted. |

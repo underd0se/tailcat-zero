@@ -128,17 +128,20 @@ When you launch any service or press `v` (View Sessions), TAILCAT ZER0 renders a
   💬 Copy & Paste to Friend / Admin Support:
   ────────────────────────────────────────────────────────────────────────
   Hey, I've opened a temporary read-only diagnostic TailCat session on my router (28m remaining).
-  Run: tailcat ssh tcpGFwWCBquiVYgLrL7k3HQDl_jERoGKCT7I5VYUIQeZ6LF_q4e2FrWCCGx_dEaW2LF0g2e2n6b1rBPDOYeDTyCVNS2qKtROJmKmFxWCCufT1iqPy9rsILOQQ7EUZk6HsfbXwb3xyO8RbF99tPgGFpGQEv
+
+  Run command on client terminal (or press C to copy):
+  tailcat ssh tcpGFwWCBquiVYgLrL7k3HQDl_jERoGKCT7I5VYUIQeZ6LF_q4e2FrWCCGx_dEaW2LF0g2e2n6b1rBPDOYeDTyCVNS2qKtROJmKmFxWCCufT1iqPy9rsILOQQ7EUZk6HsfbXwb3xyO8RbF99tPgGFpGQEv
   ────────────────────────────────────────────────────────────────────────
 
 ========================================================================
 
-  🛑 Stop  |  📱 QR Code  |  🔄 Refresh  |  ↩️ Back: 
+  📋 Copy  |  🛑 Stop  |  📱 QR Code  |  🔄 Refresh  |  ↩️ Back: 
 ```
 
 ### Hotkey Actions on Session Cards:
 | Key / Number | Action | Description |
 |---|---|---|
+| `c` | **Copy Command** | Copies the connect command directly to your local system clipboard via OSC 52. |
 | `s` / `1` | **Stop Session** | Safely terminates the tunnel and revokes the capability token immediately. |
 | `q` | **QR Code** | Toggles an inline ASCII QR code of the capability token. |
 | `r` | **Refresh** | Refreshes the countdown timer and checks connection state. |

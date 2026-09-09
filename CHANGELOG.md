@@ -5,6 +5,25 @@ All notable changes to TAILCAT ZER0 are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.1] - 2026-09-10
+
+### OSC 52 Clipboard Copy, Dedicated Command Lines & CLI Token Helpers
+
+* **📋 OSC 52 System Clipboard Copy (`c` / `C`):**
+  * Added native OSC 52 terminal clipboard integration to interactive session cards.
+  * Pressing `c` or `C` in single-session cards or multi-session overviews directly copies connect command(s) into the client system clipboard on supported terminals (Ghostty, iTerm2, Alacritty, Kitty, Windows Terminal) without touching the mouse.
+* **📐 Dedicated Command Line Layout (Triple-Click Friendly):**
+  * Isolated connect commands on their own line without inline `Run:` or numeric prefixes.
+  * Triple-clicking anywhere on the command line in modern terminal emulators cleanly selects the entire command without prefix pollution or wrap-boundary truncation.
+* **🛠️ CLI Command & Token Helpers:**
+  * Added `tailcatzero cmd [SVC]` (aliases: `command`, `connect`) to output clean, unformatted client connect commands directly to stdout.
+  * Added `tailcatzero token [SVC]` (aliases: `tok`, `addr`) to output raw WireGuard capability tokens directly to stdout.
+  * Enables seamless remote piping from local laptops (e.g. `ssh router "tailcatzero cmd" | pbcopy`).
+* **🛑 Watchdog Cleanup & Terminal Cleanliness:**
+  * Eliminated raw `/dev/pts/*` broadcast writes in `broadcast_session_warning()`, routing alerts cleanly through `$ACTIVE_TUIS_DIR` IPC and syslog.
+  * Added session file and process liveness guards to prevent orphan watchdog subshells and stale auto-expiration alerts.
+  * Upgraded `is_service_active` and test teardowns to send `SIGTERM` before killing watchdogs so child `sleep` processes are reaped gracefully.
+
 ## [1.12.0] - 2026-09-09
 
 ### Reboot-Persistent Sessions, amtm Email Integration & View-Only 120m Safety Cap
