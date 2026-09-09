@@ -102,31 +102,6 @@ broadcast_session_warning() {
         done
     fi
 
-    # For remote interactive sessions (SSH, VIEW), notify active PTYs that are NOT host TUIs
-    if [ "$_service" = "SSH" ] || [ "$_service" = "VIEW" ]; then
-        for _pt in /dev/pts/[0-9]*; do
-            [ -c "$_pt" ] || continue
-            _is_host_tui=0
-            if [ -d "$ACTIVE_TUIS_DIR" ]; then
-                for _f in "$ACTIVE_TUIS_DIR"/*; do
-                    [ -f "$_f" ] || continue
-                    _t_pid="${_f##*/}"
-                    case "$_t_pid" in
-                        *[!0-9]*) continue ;;
-                    esac
-                    _host_tty=$(head -n 1 "$_f" 2>/dev/null || true)
-                    if [ "$_host_tty" = "$_pt" ]; then
-                        _is_host_tui=1
-                        break
-                    fi
-                done
-            fi
-            if [ "$_is_host_tui" -eq 0 ]; then
-                printf "%b\n" "$_color_msg" > "$_pt" 2>/dev/null || true
-            fi
-        done
-    fi
-
     if [ -n "$_plain_msg" ]; then
         logger -t "$LOG_TAG" "$_plain_msg" 2>/dev/null || true
     fi
@@ -364,7 +339,12 @@ is_service_active() {
             return 0
         fi
         if [ -n "${WATCHDOG_PID:-}" ] && kill -0 "$WATCHDOG_PID" 2>/dev/null; then
-            kill -9 "$WATCHDOG_PID" 2>/dev/null || true
+            kill -TERM "$WATCHDOG_PID" 2>/dev/null || true
+            sleep 0.1 2>/dev/null || true
+            if kill -0 "$WATCHDOG_PID" 2>/dev/null; then
+                kill -9 "$WATCHDOG_PID" 2>/dev/null || true
+            fi
+            wait "$WATCHDOG_PID" 2>/dev/null || true
         fi
         rm -f "$s_file" "${SESSIONS_DIR}/tailcat_addr_${s_id}.txt" "/tmp/tailcat_addr_${s_id}.txt" 2>/dev/null || true
         if [ "$s_id" = "VIEW" ]; then
@@ -1507,36 +1487,44 @@ start_tunnel() {
 
             if [ "$timeout_sec" -gt 300 ]; then
                 _safe_sleep "$(( timeout_sec - 300 ))"
-                if is_tailcat_process "$tailcat_pid"; then
-                    broadcast_session_warning "$service_type" \
-                        "Notice: Session ${service_type} will auto-expire in 5 minutes." \
-                        "\n\033[1;33m[tailcatzero] ⏱️ Notice: Session ${service_type} will auto-expire in 5 minutes.\033[0m\n" \
-                        "${C_YELLOW}⏱️  Notice: Session ${service_type} will auto-expire in 5 minutes.${C_RESET}"
+                if [ ! -f "$session_file" ] || ! is_tailcat_process "$tailcat_pid"; then
+                    exit 0
                 fi
+                broadcast_session_warning "$service_type" \
+                    "Notice: Session ${service_type} will auto-expire in 5 minutes." \
+                    "\n\033[1;33m[tailcatzero] ⏱️ Notice: Session ${service_type} will auto-expire in 5 minutes.\033[0m\n" \
+                    "${C_YELLOW}⏱️  Notice: Session ${service_type} will auto-expire in 5 minutes.${C_RESET}"
+
                 _safe_sleep 240
-                if is_tailcat_process "$tailcat_pid"; then
-                    broadcast_session_warning "$service_type" \
-                        "Warning: Session ${service_type} will terminate in 60 seconds." \
-                        "\n\033[1;31m[tailcatzero] ⚠️ Warning: Session ${service_type} will terminate in 60 seconds.\033[0m\n" \
-                        "${C_RED}⚠️  Warning: Session ${service_type} will terminate in 60 seconds.${C_RESET}"
+                if [ ! -f "$session_file" ] || ! is_tailcat_process "$tailcat_pid"; then
+                    exit 0
                 fi
+                broadcast_session_warning "$service_type" \
+                    "Warning: Session ${service_type} will terminate in 60 seconds." \
+                    "\n\033[1;31m[tailcatzero] ⚠️ Warning: Session ${service_type} will terminate in 60 seconds.\033[0m\n" \
+                    "${C_RED}⚠️  Warning: Session ${service_type} will terminate in 60 seconds.${C_RESET}"
+
                 _safe_sleep 60
             elif [ "$timeout_sec" -gt 60 ]; then
                 _safe_sleep "$(( timeout_sec - 60 ))"
-                if is_tailcat_process "$tailcat_pid"; then
-                    broadcast_session_warning "$service_type" \
-                        "Warning: Session ${service_type} will terminate in 60 seconds." \
-                        "\n\033[1;31m[tailcatzero] ⚠️ Warning: Session ${service_type} will terminate in 60 seconds.\033[0m\n" \
-                        "${C_RED}⚠️  Warning: Session ${service_type} will terminate in 60 seconds.${C_RESET}"
+                if [ ! -f "$session_file" ] || ! is_tailcat_process "$tailcat_pid"; then
+                    exit 0
                 fi
+                broadcast_session_warning "$service_type" \
+                    "Warning: Session ${service_type} will terminate in 60 seconds." \
+                    "\n\033[1;31m[tailcatzero] ⚠️ Warning: Session ${service_type} will terminate in 60 seconds.\033[0m\n" \
+                    "${C_RED}⚠️  Warning: Session ${service_type} will terminate in 60 seconds.${C_RESET}"
+
                 _safe_sleep 60
             else
                 _safe_sleep "$timeout_sec"
             fi
 
-            if is_tailcat_process "$tailcat_pid"; then
-                kill -9 "$tailcat_pid" 2>/dev/null || true
+            if [ ! -f "$session_file" ] || ! is_tailcat_process "$tailcat_pid"; then
+                exit 0
             fi
+
+            kill -9 "$tailcat_pid" 2>/dev/null || true
             rm -f "$session_file" "$addr_file" "/tmp/tailcat_addr_${service_type}.txt"
             if [ "$service_type" = "VIEW" ]; then
                 rm -rf "${REQUESTS_DIR:?}"/* "${VIEW_ONCE_DIR:?}"/* 2>/dev/null || true

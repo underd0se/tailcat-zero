@@ -87,8 +87,8 @@ Every session launched by TAILCAT ZER0 is assigned a dedicated background watchd
 
 1. At startup, the watchdog records the creation timestamp, calculated expiration time, and kernel PID of the service process.
 2. **Phased Expiration Warnings:** If the timeout exceeds 5 minutes, the watchdog proactively broadcasts warnings prior to session termination:
-   * **5 Minutes Remaining:** Broadcasts a notice to active host TUIs (`/tmp/tailcat_sessions/active_tuis`) and remote guest PTYs (`/dev/pts/*`).
-   * **1 Minute Remaining:** Broadcasts a high-priority alert (`⚠️ Warning: Session will terminate in 60 seconds`).
+   * **5 Minutes Remaining:** Dispatches an IPC alert to active host TUIs (`/tmp/tailcat_sessions/active_tuis`) and logs to syslog without polluting host SSH terminals.
+   * **1 Minute Remaining:** Dispatches a high-priority IPC alert (`⚠️ Warning: Session will terminate in 60 seconds`) to active TUIs and syslog.
 3. **PID Rollover & Identity Validation:** Before issuing any kill signals, the watchdog executes `is_tailcat_process("$pid")`, inspecting `/proc/$pid/comm` and `/proc/$pid/cmdline`. If the original process died and the Linux kernel recycled the PID to another system daemon (e.g. `dnsmasq`, `httpd`), `kill -9` is strictly suppressed to prevent friendly fire.
 4. **Graceful SIGTERM Teardown:** `stop_single_session()` sends `SIGTERM` first, giving the watchdog subshell time to fire its `trap 'kill $SLEEP_PID; exit 0' TERM INT HUP` handler and reap any tracked `sleep` child processes. `SIGKILL` is issued only after a 0.1 s grace period if the process has not yet exited, eliminating zombie `sleep` processes after session teardown.
 5. **Clean Teardown:** Session files, address files, and approval tokens are unlinked, rendering the capability token instantly dead.
